@@ -114,11 +114,11 @@ export default function TransactionsPage() {
   }, [apiBaseUrl, queryString]);
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-5xl flex-col gap-6 p-6">
+    <main className="mx-auto flex min-h-screen max-w-5xl flex-col gap-6 px-6 pt-6 pb-[calc(6rem+env(safe-area-inset-bottom))] md:p-6">
       <header className="space-y-2">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-2xl font-semibold">Transactions</h1>
-          <div className="flex items-center gap-2 text-slate-300">
+          <div className="hidden items-center gap-2 text-slate-300 md:flex">
             <Link
               className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-700 hover:border-slate-500"
               href="/"

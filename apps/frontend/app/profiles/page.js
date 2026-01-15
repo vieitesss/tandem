@@ -135,9 +135,9 @@ export default function ProfilesPage() {
   };
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 p-6">
+    <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 px-6 pt-6 pb-[calc(6rem+env(safe-area-inset-bottom))] md:p-6">
       <header className="space-y-2">
-        <Link className="text-xs text-slate-400" href="/">
+        <Link className="hidden text-xs text-slate-400 md:inline-flex" href="/">
           ← Back to transactions
         </Link>
         <h1 className="text-2xl font-semibold">Profiles</h1>
