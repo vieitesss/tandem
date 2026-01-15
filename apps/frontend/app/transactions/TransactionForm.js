@@ -398,7 +398,7 @@ export default function TransactionForm() {
                 <button
                   key={option.label}
                   type="button"
-                  className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs ${
+                  className={`flex min-w-0 items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs ${
                     category === option.label
                       ? "border-emerald-400 bg-emerald-500/10 text-emerald-100"
                       : "border-slate-800 text-slate-200 hover:border-slate-600"
@@ -411,7 +411,9 @@ export default function TransactionForm() {
                   <span className="text-base" aria-hidden>
                     {option.icon}
                   </span>
-                  <span>{option.label}</span>
+                  <span className="min-w-0 flex-1 truncate">
+                    {option.label}
+                  </span>
                 </button>
               ))}
             </div>
@@ -510,8 +512,8 @@ export default function TransactionForm() {
                 + Add split
               </button>
             </div>
-            <div className="space-y-2 rounded-lg border border-slate-800 bg-slate-950 p-3">
-              <div className="grid w-full gap-2 text-xs text-slate-400 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
+            <div className="space-y-2 rounded-2xl border border-slate-800 bg-slate-900/40 p-4">
+              <div className="grid grid-cols-[minmax(0,1fr)_64px_64px_36px] gap-2 px-3 text-xs text-slate-400">
                 <span>
                   User<span className="text-rose-400"> *</span>
                 </span>
@@ -519,15 +521,15 @@ export default function TransactionForm() {
                   Percent<span className="text-rose-400"> *</span>
                 </span>
                 <span>Amount</span>
-                <span className="text-right">Actions</span>
+                <span className="text-right">Remove</span>
               </div>
               {splits.map((split, index) => (
                 <div
                   key={index}
-                  className="grid w-full items-center gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto]"
+                  className="grid grid-cols-[minmax(0,1fr)_64px_64px_36px] items-center gap-2 rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2"
                 >
                   <select
-                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+                    className="w-full min-w-0 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200"
                     value={split.user_id}
                     onChange={(event) =>
                       updateSplit(index, "user_id", event.target.value)
@@ -541,7 +543,7 @@ export default function TransactionForm() {
                     ))}
                   </select>
                   <input
-                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-2 py-2 text-right text-sm text-slate-200"
                     placeholder="Percent"
                     type="number"
                     step="0.1"
@@ -554,12 +556,12 @@ export default function TransactionForm() {
                       )
                     }
                   />
-                  <div className="rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-300">
+                  <div className="rounded-lg border border-slate-800 bg-slate-950 px-2 py-2 text-right text-sm text-slate-300">
                     {splitAmountFor(split.percent).toFixed(2)}
                   </div>
                   {splits.length > 1 ? (
                     <button
-                      className="flex h-9 w-9 items-center justify-center justify-self-end rounded-lg bg-slate-800 text-lg text-rose-300"
+                      className="flex h-7 w-7 items-center justify-center justify-self-end rounded-lg bg-slate-800 text-base text-rose-300"
                       type="button"
                       onClick={() => removeSplit(index)}
                       aria-label="Remove split"
@@ -567,7 +569,9 @@ export default function TransactionForm() {
                       ×
                     </button>
                   ) : (
-                    <div className="justify-self-end text-right text-xs text-slate-500">—</div>
+                    <div className="justify-self-end text-right text-xs text-slate-500">
+                      —
+                    </div>
                   )}
                 </div>
               ))}
