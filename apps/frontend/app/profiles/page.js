@@ -186,20 +186,20 @@ export default function ProfilesPage() {
 
       <section className="space-y-2">
         <h2 className="text-sm text-slate-300">Existing profiles</h2>
-        <div className="space-y-2 rounded-2xl border border-slate-800 bg-slate-900/40 p-4">
-          {profiles.length === 0 ? (
-            <p className="text-sm text-slate-500">No profiles yet.</p>
-          ) : (
-            <>
-              <div className="grid grid-cols-[minmax(0,1fr)_80px_44px] gap-2 px-3 text-xs text-slate-400">
-                <span>Name</span>
-                <span>Split %</span>
-                <span className="text-right">Save</span>
-              </div>
+        {profiles.length === 0 ? (
+          <p className="text-sm text-slate-500">No profiles yet.</p>
+        ) : (
+          <>
+            <div className="grid grid-cols-[minmax(0,1fr)_80px_44px] gap-2 px-3 text-xs text-slate-400">
+              <span>Name</span>
+              <span>Split %</span>
+              <span className="text-right">Save</span>
+            </div>
+            <div className="divide-y divide-slate-800 rounded-2xl border border-slate-800 bg-slate-900/40">
               {profiles.map((profile) => (
                 <div
                   key={profile.id}
-                  className="grid grid-cols-[minmax(0,1fr)_80px_44px] items-center gap-2 rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2"
+                  className="grid grid-cols-[minmax(0,1fr)_80px_44px] items-center gap-2 px-3 py-3"
                 >
                   <input
                     className="w-full min-w-0 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200"
@@ -246,9 +246,9 @@ export default function ProfilesPage() {
                   </button>
                 </div>
               ))}
-            </>
-          )}
-        </div>
+            </div>
+          </>
+        )}
       </section>
 
       {status ? (

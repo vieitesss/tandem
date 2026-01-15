@@ -56,6 +56,9 @@ export default function TransactionForm() {
       hasError ? "border-rose-400" : "border-slate-700"
     }`;
 
+  const sectionClassName =
+    "border-t border-slate-800/70 pt-3 pb-3 first:border-t-0 first:pt-0 last:pb-0";
+
   useEffect(() => {
     let isMounted = true;
 
@@ -299,10 +302,10 @@ export default function TransactionForm() {
 
   return (
     <form
-      className="space-y-6 rounded-2xl border border-slate-800 bg-slate-900/40 p-4"
+      className="rounded-2xl border border-slate-800 bg-slate-900/40 p-4"
       onSubmit={handleSubmit}
     >
-      <div className="space-y-2">
+      <div className={`space-y-2 ${sectionClassName}`}>
         <label className="text-sm text-slate-300">
           {type === "INCOME" ? "Recipient" : "Paid by"}
           <span className="text-rose-400"> *</span>
@@ -331,7 +334,7 @@ export default function TransactionForm() {
           </p>
         ) : null}
       </div>
-      <div className="space-y-2">
+      <div className={`space-y-2 ${sectionClassName}`}>
         <label className="text-sm text-slate-300">
           Type<span className="text-rose-400"> *</span>
         </label>
@@ -345,7 +348,7 @@ export default function TransactionForm() {
           <option value="LIQUIDATION">Liquidation</option>
         </select>
       </div>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className={`grid gap-4 sm:grid-cols-2 ${sectionClassName}`}>
         <div className="space-y-2">
           <label className="text-sm text-slate-300">
             Amount<span className="text-rose-400"> *</span>
@@ -388,44 +391,40 @@ export default function TransactionForm() {
         </div>
       </div>
       {type !== "INCOME" ? (
-        <div className="space-y-2">
+        <div className={`space-y-2 ${sectionClassName}`}>
           <label className="text-sm text-slate-300">
             Category<span className="text-rose-400"> *</span>
           </label>
-          <div className="rounded-lg border border-slate-800 bg-slate-950 p-3">
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {categoryOptions.map((option) => (
-                <button
-                  key={option.label}
-                  type="button"
-                  className={`flex min-w-0 items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs ${
-                    category === option.label
-                      ? "border-emerald-400 bg-emerald-500/10 text-emerald-100"
-                      : "border-slate-800 text-slate-200 hover:border-slate-600"
-                  }`}
-                  onClick={() => {
-                    setCategory(option.label);
-                    setTouched((current) => ({ ...current, category: true }));
-                  }}
-                >
-                  <span className="text-base" aria-hidden>
-                    {option.icon}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate">
-                    {option.label}
-                  </span>
-                </button>
-              ))}
-            </div>
-            {showCategoryError ? (
-              <p className="mt-2 text-xs text-rose-300">
-                Select a category.
-              </p>
-            ) : null}
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {categoryOptions.map((option) => (
+              <button
+                key={option.label}
+                type="button"
+                className={`flex min-w-0 items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs ${
+                  category === option.label
+                    ? "border-emerald-400 bg-emerald-500/10 text-emerald-100"
+                    : "border-slate-800 text-slate-200 hover:border-slate-600"
+                }`}
+                onClick={() => {
+                  setCategory(option.label);
+                  setTouched((current) => ({ ...current, category: true }));
+                }}
+              >
+                <span className="text-base" aria-hidden>
+                  {option.icon}
+                </span>
+                <span className="min-w-0 flex-1 truncate">
+                  {option.label}
+                </span>
+              </button>
+            ))}
           </div>
+          {showCategoryError ? (
+            <p className="mt-2 text-xs text-rose-300">Select a category.</p>
+          ) : null}
         </div>
       ) : null}
-      <div className="space-y-2">
+      <div className={`space-y-2 ${sectionClassName}`}>
         <label className="text-sm text-slate-300">Note</label>
         <input
           className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
@@ -434,7 +433,7 @@ export default function TransactionForm() {
           onChange={(event) => setNote(event.target.value)}
         />
       </div>
-      <div className="space-y-3">
+      <div className={`space-y-3 ${sectionClassName}`}>
         <div className="flex items-center justify-between">
           <label className="text-sm text-slate-300">Split mode</label>
           <div className="flex gap-2 text-xs">
@@ -512,8 +511,8 @@ export default function TransactionForm() {
                 + Add split
               </button>
             </div>
-            <div className="space-y-2 rounded-2xl border border-slate-800 bg-slate-900/40 p-4">
-              <div className="grid grid-cols-[minmax(0,1fr)_64px_64px_36px] gap-2 px-3 text-xs text-slate-400">
+            <div className="space-y-2">
+              <div className="hidden grid-cols-[minmax(0,1fr)_64px_64px_36px] gap-2 px-3 text-xs text-slate-400 sm:grid">
                 <span>
                   User<span className="text-rose-400"> *</span>
                 </span>
@@ -526,53 +525,70 @@ export default function TransactionForm() {
               {splits.map((split, index) => (
                 <div
                   key={index}
-                  className="grid grid-cols-[minmax(0,1fr)_64px_64px_36px] items-center gap-2 rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2"
+                  className="flex flex-col gap-3 rounded-lg border border-slate-800 bg-slate-950/60 p-3 sm:grid sm:grid-cols-[minmax(0,1fr)_64px_64px_36px] sm:items-center sm:gap-2 sm:px-3 sm:py-2"
                 >
-                  <select
-                    className="w-full min-w-0 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200"
-                    value={split.user_id}
-                    onChange={(event) =>
-                      updateSplit(index, "user_id", event.target.value)
-                    }
-                  >
-                    <option value="">Select user</option>
-                    {profiles.map((profile) => (
-                      <option key={profile.id} value={profile.id}>
-                        {profile.display_name || profile.id}
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-2 py-2 text-right text-sm text-slate-200"
-                    placeholder="Percent"
-                    type="number"
-                    step="0.1"
-                    value={split.percent}
-                    onChange={(event) =>
-                      updateSplit(
-                        index,
-                        "percent",
-                        normalizeNumberInput(event.target.value)
-                      )
-                    }
-                  />
-                  <div className="rounded-lg border border-slate-800 bg-slate-950 px-2 py-2 text-right text-sm text-slate-300">
-                    {splitAmountFor(split.percent).toFixed(2)}
-                  </div>
-                  {splits.length > 1 ? (
-                    <button
-                      className="flex h-7 w-7 items-center justify-center justify-self-end rounded-lg bg-slate-800 text-base text-rose-300"
-                      type="button"
-                      onClick={() => removeSplit(index)}
-                      aria-label="Remove split"
-                    >
-                      ×
-                    </button>
-                  ) : (
-                    <div className="justify-self-end text-right text-xs text-slate-500">
-                      —
+                  <div className="grid grid-cols-[minmax(0,1fr)_40px] items-end gap-3 sm:contents">
+                    <div className="space-y-1 sm:contents">
+                      <label className="text-xs text-slate-400 sm:hidden">
+                        User<span className="text-rose-400"> *</span>
+                      </label>
+                      <select
+                        className="w-full min-w-0 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200"
+                        value={split.user_id}
+                        onChange={(event) =>
+                          updateSplit(index, "user_id", event.target.value)
+                        }
+                      >
+                        <option value="">Select user</option>
+                        {profiles.map((profile) => (
+                          <option key={profile.id} value={profile.id}>
+                            {profile.display_name || profile.id}
+                          </option>
+                        ))}
+                      </select>
                     </div>
-                  )}
+                    {splits.length > 1 ? (
+                      <button
+                        className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-800 text-base text-rose-300 sm:col-start-4 sm:row-start-1 sm:h-7 sm:w-7 sm:justify-self-end"
+                        type="button"
+                        onClick={() => removeSplit(index)}
+                        aria-label="Remove split"
+                      >
+                        ×
+                      </button>
+                    ) : (
+                      <div className="hidden text-right text-xs text-slate-500 sm:block sm:col-start-4 sm:row-start-1 sm:justify-self-end">
+                        —
+                      </div>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 sm:contents">
+                    <div className="space-y-1 sm:contents">
+                      <label className="text-xs text-slate-400 sm:hidden">
+                        Percent<span className="text-rose-400"> *</span>
+                      </label>
+                      <input
+                        className="w-full rounded-lg border border-slate-700 bg-slate-950 px-2 py-2 text-right text-sm text-slate-200"
+                        placeholder="Percent"
+                        type="number"
+                        step="0.1"
+                        value={split.percent}
+                        onChange={(event) =>
+                          updateSplit(
+                            index,
+                            "percent",
+                            normalizeNumberInput(event.target.value)
+                          )
+                        }
+                      />
+                    </div>
+                    <div className="space-y-1 sm:contents">
+                      <label className="text-xs text-slate-400 sm:hidden">Amount</label>
+                      <div className="rounded-lg border border-slate-800 bg-slate-950 px-2 py-2 text-right text-sm text-slate-300">
+                        {splitAmountFor(split.percent).toFixed(2)}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
@@ -589,19 +605,21 @@ export default function TransactionForm() {
       </div>
       {status ? (
         <p
-          className={`text-sm ${
+          className={`${sectionClassName} text-sm ${
             status.tone === "success" ? "text-emerald-300" : "text-rose-300"
           }`}
         >
           {status.message}
         </p>
       ) : null}
-      <button
-        className="w-full rounded-lg bg-emerald-500 px-4 py-2 font-semibold text-slate-900"
-        type="submit"
-      >
-        Save transaction
-      </button>
+      <div className={sectionClassName}>
+        <button
+          className="w-full rounded-lg bg-emerald-500 px-4 py-2 font-semibold text-slate-900"
+          type="submit"
+        >
+          Save transaction
+        </button>
+      </div>
     </form>
   );
 }
