@@ -160,61 +160,79 @@ export default function TransactionsPage() {
       <section className="grid gap-4 rounded-2xl border border-slate-800 bg-slate-900/40 p-4 md:grid-cols-3">
         <label className="space-y-2 text-sm text-slate-300">
           Month
-          <select
-            className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
-            value={filters.month}
-            onChange={(event) =>
-              setFilters((current) => ({
-                ...current,
-                month: event.target.value,
-              }))
-            }
-          >
-            <option value="">All months</option>
-            {monthOptions.map((month) => (
-              <option key={month} value={month}>
-                {formatMonthLabel(month)}
-              </option>
-            ))}
-          </select>
+          <div className="relative">
+            <select
+              className="w-full appearance-none rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 pr-9 text-sm text-slate-200"
+              value={filters.month}
+              onChange={(event) =>
+                setFilters((current) => ({
+                  ...current,
+                  month: event.target.value,
+                }))
+              }
+            >
+              <option value="">All months</option>
+              {monthOptions.map((month) => (
+                <option key={month} value={month}>
+                  {formatMonthLabel(month)}
+                </option>
+              ))}
+            </select>
+            <i
+              className="fas fa-angle-down pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-300"
+              aria-hidden
+            />
+          </div>
         </label>
         <label className="space-y-2 text-sm text-slate-300">
           Type
-          <select
-            className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
-            value={filters.type}
-            onChange={(event) =>
-              setFilters((current) => ({
-                ...current,
-                type: event.target.value,
-              }))
-            }
-          >
-            {typeOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+          <div className="relative">
+            <select
+              className="w-full appearance-none rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 pr-9 text-sm text-slate-200"
+              value={filters.type}
+              onChange={(event) =>
+                setFilters((current) => ({
+                  ...current,
+                  type: event.target.value,
+                }))
+              }
+            >
+              {typeOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <i
+              className="fas fa-angle-down pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-300"
+              aria-hidden
+            />
+          </div>
         </label>
         <label className="space-y-2 text-sm text-slate-300">
           Category
-          <select
-            className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
-            value={filters.category}
-            onChange={(event) =>
-              setFilters((current) => ({
-                ...current,
-                category: event.target.value,
-              }))
-            }
-          >
-            {categoryOptions.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
+          <div className="relative">
+            <select
+              className="w-full appearance-none rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 pr-9 text-sm text-slate-200"
+              value={filters.category}
+              onChange={(event) =>
+                setFilters((current) => ({
+                  ...current,
+                  category: event.target.value,
+                }))
+              }
+            >
+              {categoryOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+            <i
+              className="fas fa-angle-down pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-300"
+              aria-hidden
+            />
+          </div>
         </label>
       </section>
 
