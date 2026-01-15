@@ -38,9 +38,23 @@ export default function TransactionForm() {
   const [status, setStatus] = useState(null);
   const [profiles, setProfiles] = useState([]);
   const [beneficiaryId, setBeneficiaryId] = useState("");
+  const [hasTriedSubmit, setHasTriedSubmit] = useState(false);
+  const [amountFormatError, setAmountFormatError] = useState(false);
+  const [touched, setTouched] = useState({
+    payer: false,
+    amount: false,
+    date: false,
+    beneficiary: false,
+    category: false,
+  });
 
   const apiBaseUrl =
     process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000";
+
+  const inputClassName = (hasError) =>
+    `w-full rounded-lg border bg-slate-950 px-3 py-2 ${
+      hasError ? "border-rose-400" : "border-slate-700"
+    }`;
 
   useEffect(() => {
     let isMounted = true;
@@ -87,6 +101,7 @@ export default function TransactionForm() {
 
     if (type === "INCOME") {
       setCategory("");
+      setTouched((current) => ({ ...current, category: false }));
     }
   }, [type]);
 
@@ -94,8 +109,46 @@ export default function TransactionForm() {
     return splits.reduce((sum, split) => sum + Number(split.percent || 0), 0);
   }, [splits]);
 
+  const hasSplitInput = useMemo(() => {
+    return splits.some((split) => split.user_id || split.percent);
+  }, [splits]);
+
+  const hasInvalidSplit = useMemo(() => {
+    return splits.some(
+      (split) => !split.user_id || Number(split.percent || 0) <= 0
+    );
+  }, [splits]);
+
+  const hasSplitTotalError = Math.abs(totalPercent - 100) > 0.01;
+  const isPayerMissing = !payerId;
+  const amountNumber = Number(amount);
+  const isAmountMissing =
+    !amount || Number.isNaN(amountNumber) || amountNumber <= 0;
+  const isDateMissing = !date;
+  const isCategoryMissing = type === "EXPENSE" && !category;
+  const isBeneficiaryMissing = type === "LIQUIDATION" && !beneficiaryId;
+
+  const showPayerError = (hasTriedSubmit || touched.payer) && isPayerMissing;
+  const showAmountError = (hasTriedSubmit || touched.amount) && isAmountMissing;
+  const showAmountFormatError =
+    (hasTriedSubmit || touched.amount) && amountFormatError;
+  const showDateError = (hasTriedSubmit || touched.date) && isDateMissing;
+  const showCategoryError =
+    (hasTriedSubmit || touched.category) && isCategoryMissing;
+  const showBeneficiaryError =
+    (hasTriedSubmit || touched.beneficiary) && isBeneficiaryMissing;
+  const showSplitError =
+    type === "EXPENSE" &&
+    splitMode === "custom" &&
+    (hasInvalidSplit || hasSplitTotalError) &&
+    (hasTriedSubmit || hasSplitInput);
+
   const canSubmit = useMemo(() => {
-    if (!payerId || !amount || !date) {
+    if (isPayerMissing || isAmountMissing || isDateMissing || amountFormatError) {
+      return false;
+    }
+
+    if (type === "EXPENSE" && isCategoryMissing) {
       return false;
     }
 
@@ -111,12 +164,19 @@ export default function TransactionForm() {
       return true;
     }
 
-    const hasInvalidSplit = splits.some(
-      (split) => !split.user_id || Number(split.percent || 0) <= 0
-    );
-
-    return !hasInvalidSplit && Math.abs(totalPercent - 100) < 0.01;
-  }, [payerId, amount, beneficiaryId, date, splitMode, splits, totalPercent, type]);
+    return !hasInvalidSplit && !hasSplitTotalError;
+  }, [
+    isPayerMissing,
+    isAmountMissing,
+    isDateMissing,
+    isCategoryMissing,
+    amountFormatError,
+    beneficiaryId,
+    splitMode,
+    hasInvalidSplit,
+    hasSplitTotalError,
+    type,
+  ]);
 
   const updateSplit = (index, field, value) => {
     setSplits((current) =>
@@ -142,9 +202,34 @@ export default function TransactionForm() {
     return (Number(amount) * Number(percent)) / 100;
   };
 
+  const normalizeNumberInput = (value) => {
+    if (!value) {
+      return "";
+    }
+
+    const sanitized = value.replace(/[^0-9.]/g, "");
+    const [whole, ...decimals] = sanitized.split(".");
+
+    return decimals.length > 0 ? `${whole}.${decimals.join("")}` : whole;
+  };
+
+  const handleAmountChange = (event) => {
+    const rawValue = event.target.value;
+    const normalizedValue = normalizeNumberInput(rawValue);
+
+    setAmount(normalizedValue);
+    setTouched((current) => ({ ...current, amount: true }));
+    setAmountFormatError(rawValue !== normalizedValue);
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
+    setHasTriedSubmit(true);
     setStatus(null);
+
+    if (!canSubmit) {
+      return;
+    }
 
     const trimmedPayerId = payerId.trim();
     const trimmedBeneficiaryId = beneficiaryId.trim();
@@ -198,6 +283,15 @@ export default function TransactionForm() {
             }))
           : [initialSplit]
       );
+      setHasTriedSubmit(false);
+      setAmountFormatError(false);
+      setTouched({
+        payer: false,
+        amount: false,
+        date: false,
+        beneficiary: false,
+        category: false,
+      });
     } catch (error) {
       setStatus({ tone: "error", message: error.message });
     }
@@ -211,11 +305,16 @@ export default function TransactionForm() {
       <div className="space-y-2">
         <label className="text-sm text-slate-300">
           {type === "INCOME" ? "Recipient" : "Paid by"}
+          <span className="text-rose-400"> *</span>
         </label>
         <select
-          className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+          className={inputClassName(showPayerError)}
           value={payerId}
-          onChange={(event) => setPayerId(event.target.value)}
+          onChange={(event) => {
+            setPayerId(event.target.value);
+            setTouched((current) => ({ ...current, payer: true }));
+          }}
+          aria-invalid={showPayerError}
         >
           <option value="">
             {type === "INCOME" ? "Select recipient" : "Select payer"}
@@ -226,9 +325,16 @@ export default function TransactionForm() {
             </option>
           ))}
         </select>
+        {showPayerError ? (
+          <p className="text-xs text-rose-300">
+            {type === "INCOME" ? "Select a recipient." : "Select who paid."}
+          </p>
+        ) : null}
       </div>
       <div className="space-y-2">
-        <label className="text-sm text-slate-300">Type</label>
+        <label className="text-sm text-slate-300">
+          Type<span className="text-rose-400"> *</span>
+        </label>
         <select
           className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
           value={type}
@@ -241,29 +347,51 @@ export default function TransactionForm() {
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <label className="text-sm text-slate-300">Amount</label>
+          <label className="text-sm text-slate-300">
+            Amount<span className="text-rose-400"> *</span>
+          </label>
           <input
-            className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+            className={inputClassName(showAmountError)}
             placeholder="0.00"
-            type="number"
-            step="0.01"
+            type="text"
+            inputMode="decimal"
+            pattern="[0-9]*[.]?[0-9]*"
             value={amount}
-            onChange={(event) => setAmount(event.target.value)}
+            onChange={handleAmountChange}
+            aria-invalid={showAmountError}
           />
+          {showAmountFormatError ? (
+            <p className="text-xs text-rose-300">
+              Only numbers and a decimal point are allowed.
+            </p>
+          ) : showAmountError ? (
+            <p className="text-xs text-rose-300">Enter an amount above 0.</p>
+          ) : null}
         </div>
         <div className="space-y-2">
-          <label className="text-sm text-slate-300">Date</label>
+          <label className="text-sm text-slate-300">
+            Date<span className="text-rose-400"> *</span>
+          </label>
           <input
-            className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+            className={inputClassName(showDateError)}
             type="date"
             value={date}
-            onChange={(event) => setDate(event.target.value)}
+            onChange={(event) => {
+              setDate(event.target.value);
+              setTouched((current) => ({ ...current, date: true }));
+            }}
+            aria-invalid={showDateError}
           />
+          {showDateError ? (
+            <p className="text-xs text-rose-300">Choose a date.</p>
+          ) : null}
         </div>
       </div>
       {type !== "INCOME" ? (
         <div className="space-y-2">
-          <label className="text-sm text-slate-300">Category</label>
+          <label className="text-sm text-slate-300">
+            Category<span className="text-rose-400"> *</span>
+          </label>
           <div className="rounded-lg border border-slate-800 bg-slate-950 p-3">
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {categoryOptions.map((option) => (
@@ -275,7 +403,10 @@ export default function TransactionForm() {
                       ? "border-emerald-400 bg-emerald-500/10 text-emerald-100"
                       : "border-slate-800 text-slate-200 hover:border-slate-600"
                   }`}
-                  onClick={() => setCategory(option.label)}
+                  onClick={() => {
+                    setCategory(option.label);
+                    setTouched((current) => ({ ...current, category: true }));
+                  }}
                 >
                   <span className="text-base" aria-hidden>
                     {option.icon}
@@ -284,6 +415,11 @@ export default function TransactionForm() {
                 </button>
               ))}
             </div>
+            {showCategoryError ? (
+              <p className="mt-2 text-xs text-rose-300">
+                Select a category.
+              </p>
+            ) : null}
           </div>
         </div>
       ) : null}
@@ -336,10 +472,17 @@ export default function TransactionForm() {
             <p className="text-xs text-slate-400">
               Liquidations always send 100% to the other partner.
             </p>
+            <label className="text-xs text-slate-400">
+              Recipient<span className="text-rose-400"> *</span>
+            </label>
             <select
-              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+              className={inputClassName(showBeneficiaryError)}
               value={beneficiaryId}
-              onChange={(event) => setBeneficiaryId(event.target.value)}
+              onChange={(event) => {
+                setBeneficiaryId(event.target.value);
+                setTouched((current) => ({ ...current, beneficiary: true }));
+              }}
+              aria-invalid={showBeneficiaryError}
             >
               <option value="">Select recipient</option>
               {profiles
@@ -350,6 +493,9 @@ export default function TransactionForm() {
                   </option>
                 ))}
             </select>
+            {showBeneficiaryError ? (
+              <p className="text-xs text-rose-300">Select a recipient.</p>
+            ) : null}
           </div>
         ) : null}
         {splitMode === "custom" && type === "EXPENSE" ? (
@@ -366,8 +512,12 @@ export default function TransactionForm() {
             </div>
             <div className="space-y-2 rounded-lg border border-slate-800 bg-slate-950 p-3">
               <div className="grid w-full gap-2 text-xs text-slate-400 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
-                <span>User</span>
-                <span>Percent</span>
+                <span>
+                  User<span className="text-rose-400"> *</span>
+                </span>
+                <span>
+                  Percent<span className="text-rose-400"> *</span>
+                </span>
                 <span>Amount</span>
                 <span className="text-right">Actions</span>
               </div>
@@ -397,7 +547,11 @@ export default function TransactionForm() {
                     step="0.1"
                     value={split.percent}
                     onChange={(event) =>
-                      updateSplit(index, "percent", event.target.value)
+                      updateSplit(
+                        index,
+                        "percent",
+                        normalizeNumberInput(event.target.value)
+                      )
                     }
                   />
                   <div className="rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-300">
@@ -421,9 +575,9 @@ export default function TransactionForm() {
             <div className="text-xs text-slate-400">
               Total: {totalPercent.toFixed(1)}%
             </div>
-            {Math.abs(totalPercent - 100) > 0.01 ? (
+            {showSplitError ? (
               <p className="text-xs text-rose-300">
-                Split percentages must total 100%.
+                Select a user and percent for each split. Total must be 100%.
               </p>
             ) : null}
           </div>
@@ -439,9 +593,8 @@ export default function TransactionForm() {
         </p>
       ) : null}
       <button
-        className="w-full rounded-lg bg-emerald-500 px-4 py-2 font-semibold text-slate-900 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-300"
+        className="w-full rounded-lg bg-emerald-500 px-4 py-2 font-semibold text-slate-900"
         type="submit"
-        disabled={!canSubmit}
       >
         Save transaction
       </button>

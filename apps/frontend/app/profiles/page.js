@@ -45,6 +45,17 @@ export default function ProfilesPage() {
     );
   };
 
+  const normalizeNumberInput = (value) => {
+    if (!value) {
+      return "";
+    }
+
+    const sanitized = value.replace(/[^0-9.]/g, "");
+    const [whole, ...decimals] = sanitized.split(".");
+
+    return decimals.length > 0 ? `${whole}.${decimals.join("")}` : whole;
+  };
+
   const parsePercent = (value) => {
     const normalized = Number(value);
     if (Number.isNaN(normalized) || normalized <= 0 || normalized >= 100) {
@@ -160,7 +171,7 @@ export default function ProfilesPage() {
             onChange={(event) =>
               setForm((current) => ({
                 ...current,
-                splitPercent: event.target.value,
+                splitPercent: normalizeNumberInput(event.target.value),
               }))
             }
           />
@@ -179,37 +190,63 @@ export default function ProfilesPage() {
           {profiles.length === 0 ? (
             <p className="text-sm text-slate-500">No profiles yet.</p>
           ) : (
-            profiles.map((profile) => (
-              <div
-                key={profile.id}
-                className="grid items-center gap-3 sm:grid-cols-[1fr_120px_120px]"
-              >
-                <input
-                  className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
-                  value={profile.display_name}
-                  onChange={(event) =>
-                    updateProfile(profile.id, "display_name", event.target.value)
-                  }
-                />
-                <input
-                  className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
-                  type="number"
-                  step="0.1"
-                  value={profile.splitPercent}
-                  onChange={(event) =>
-                    updateProfile(profile.id, "splitPercent", event.target.value)
-                  }
-                />
-                <button
-                  className="rounded-lg bg-slate-800 px-4 py-2 text-sm text-slate-200"
-                  type="button"
-                  onClick={() => handleSave(profile)}
-                  disabled={savingId === profile.id}
-                >
-                  {savingId === profile.id ? "Saving" : "Save"}
-                </button>
+            <>
+              <div className="grid grid-cols-[minmax(0,1fr)_80px_44px] gap-2 px-3 text-xs text-slate-400">
+                <span>Name</span>
+                <span>Split %</span>
+                <span className="text-right">Save</span>
               </div>
-            ))
+              {profiles.map((profile) => (
+                <div
+                  key={profile.id}
+                  className="grid grid-cols-[minmax(0,1fr)_80px_44px] items-center gap-2 rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2"
+                >
+                  <input
+                    className="w-full min-w-0 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200"
+                    value={profile.display_name}
+                    aria-label="Profile name"
+                    onChange={(event) =>
+                      updateProfile(profile.id, "display_name", event.target.value)
+                    }
+                  />
+                  <input
+                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-2 py-2 text-right text-sm text-slate-200"
+                    type="number"
+                    step="0.1"
+                    value={profile.splitPercent}
+                    aria-label="Default split percent"
+                    onChange={(event) =>
+                      updateProfile(
+                        profile.id,
+                        "splitPercent",
+                        normalizeNumberInput(event.target.value)
+                      )
+                    }
+                  />
+                  <button
+                    className="flex h-8 w-8 items-center justify-center justify-self-end rounded-lg bg-slate-800 text-slate-200"
+                    type="button"
+                    onClick={() => handleSave(profile)}
+                    disabled={savingId === profile.id}
+                    aria-label="Save profile"
+                    title="Save profile"
+                  >
+                    {savingId === profile.id ? (
+                      "…"
+                    ) : (
+                      <svg
+                        className="h-4 w-4"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                        aria-hidden="true"
+                      >
+                        <path d="M16 4a2 2 0 00-2-2H6a2 2 0 00-2 2v12a1 1 0 001.447.894L10 14.118l4.553 2.776A1 1 0 0016 16V4z" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
+              ))}
+            </>
           )}
         </div>
       </section>
