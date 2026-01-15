@@ -1,3 +1,4 @@
+const crypto = require("crypto");
 const express = require("express");
 const cors = require("cors");
 const { createClient } = require("@supabase/supabase-js");
@@ -37,6 +38,154 @@ app.get("/profiles", async (_req, res) => {
   }
 
   return res.json(data);
+});
+
+app.post("/profiles", async (req, res) => {
+  const { display_name, default_split } = req.body || {};
+
+  if (!display_name) {
+    return res.status(400).json({ error: "Display name is required." });
+  }
+
+  const normalizedSplit =
+    default_split === undefined || default_split === null
+      ? 0.5
+      : Number(default_split);
+
+  if (Number.isNaN(normalizedSplit) || normalizedSplit <= 0 || normalizedSplit >= 1) {
+    return res
+      .status(400)
+      .json({ error: "Default split must be between 0 and 1." });
+  }
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .insert({
+      id: crypto.randomUUID(),
+      display_name,
+      default_split: normalizedSplit,
+    })
+    .select("id")
+    .single();
+
+  if (error) {
+    return res.status(500).json({ error: error.message });
+  }
+
+  return res.status(201).json({ id: data.id });
+});
+
+app.patch("/profiles/:id", async (req, res) => {
+  const { id } = req.params;
+  const { display_name, default_split } = req.body || {};
+
+  if (!id) {
+    return res.status(400).json({ error: "Profile id is required." });
+  }
+
+  const updates = {};
+
+  if (display_name !== undefined) {
+    updates.display_name = display_name;
+  }
+
+  if (default_split !== undefined) {
+    const normalizedSplit = Number(default_split);
+
+    if (Number.isNaN(normalizedSplit) || normalizedSplit <= 0 || normalizedSplit >= 1) {
+      return res
+        .status(400)
+        .json({ error: "Default split must be between 0 and 1." });
+    }
+
+    updates.default_split = normalizedSplit;
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return res.status(400).json({ error: "No updates provided." });
+  }
+
+  const { error } = await supabase.from("profiles").update(updates).eq("id", id);
+
+  if (error) {
+    return res.status(500).json({ error: error.message });
+  }
+
+  return res.json({ id });
+});
+
+app.get("/transactions", async (req, res) => {
+  const { type, category, month } = req.query || {};
+
+  let query = supabase
+    .from("transactions")
+    .select("id, payer_id, amount, category, date, note, type")
+    .order("date", { ascending: false });
+
+  if (type && type !== "ALL") {
+    query = query.eq("type", type);
+  }
+
+  if (category && category !== "ALL") {
+    query = query.eq("category", category);
+  }
+
+  if (month) {
+    const match = String(month).match(/^(\d{4})-(\d{2})$/);
+    if (!match) {
+      return res.status(400).json({ error: "Month must be YYYY-MM." });
+    }
+
+    const start = new Date(`${month}-01T00:00:00Z`);
+    if (Number.isNaN(start.getTime())) {
+      return res.status(400).json({ error: "Invalid month." });
+    }
+
+    const end = new Date(start);
+    end.setUTCMonth(end.getUTCMonth() + 1);
+
+    query = query
+      .gte("date", start.toISOString().slice(0, 10))
+      .lt("date", end.toISOString().slice(0, 10));
+  }
+
+  const { data: transactions, error } = await query;
+
+  if (error) {
+    return res.status(500).json({ error: error.message });
+  }
+
+  if (!transactions || transactions.length === 0) {
+    return res.json([]);
+  }
+
+  const payerIds = Array.from(
+    new Set(transactions.map((transaction) => transaction.payer_id).filter(Boolean))
+  );
+
+  let profilesById = new Map();
+
+  if (payerIds.length > 0) {
+    const { data: profiles, error: profileError } = await supabase
+      .from("profiles")
+      .select("id, display_name")
+      .in("id", payerIds);
+
+    if (profileError) {
+      return res.status(500).json({ error: profileError.message });
+    }
+
+    profilesById = new Map(
+      profiles.map((profile) => [profile.id, profile.display_name])
+    );
+  }
+
+  const response = transactions.map((transaction) => ({
+    ...transaction,
+    payer_name: profilesById.get(transaction.payer_id) || null,
+  }));
+
+  return res.json(response);
 });
 
 app.post("/transactions", async (req, res) => {
