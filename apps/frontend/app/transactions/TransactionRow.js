@@ -179,16 +179,25 @@ export default function TransactionRow({
     </p>
   );
 
+  const handleRowKeyDown = (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      handleToggle();
+    }
+  };
+
   return (
     <div className="px-3 py-3">
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         className="w-full text-left"
         onClick={handleToggle}
+        onKeyDown={handleRowKeyDown}
         aria-expanded={isExpanded}
       >
         {rowContent}
-      </button>
+      </div>
       {isExpanded ? (
         <div className="mt-2 flex items-start justify-between gap-3 text-xs md:hidden">
           <div className="min-w-0 flex-1">{noteContent}</div>
