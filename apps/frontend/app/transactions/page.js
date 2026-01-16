@@ -1,63 +1,17 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
-const typeOptions = [
-  { value: "ALL", label: "All" },
-  { value: "EXPENSE", label: "Expense" },
-  { value: "INCOME", label: "Income" },
-  { value: "LIQUIDATION", label: "Liquidation" },
-];
-
-const categoryOptions = [
-  "All",
-  "Groceries",
-  "Rent",
-  "Utilities",
-  "Restaurants",
-  "Transport",
-  "Health",
-  "Entertainment",
-  "Travel",
-  "Shopping",
-  "Subscriptions",
-  "Salary",
-  "Freelance",
-  "Gifts",
-  "Pets",
-  "Education",
-  "Insurance",
-  "Home",
-  "Kids",
-  "Taxes",
-  "Other",
-];
-
-const formatCurrency = new Intl.NumberFormat("en-GB", {
-  style: "currency",
-  currency: "EUR",
-});
-
-const monthFormatter = new Intl.DateTimeFormat("en-GB", {
-  month: "long",
-  year: "numeric",
-});
-
-const formatMonthLabel = (value) => {
-  if (!value) {
-    return "";
-  }
-
-  const [year, month] = String(value).split("-");
-  const date = new Date(Date.UTC(Number(year), Number(month) - 1, 1));
-
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return monthFormatter.format(date);
-};
+import IconLinkButton from "../shared/IconLinkButton";
+import SelectField from "../shared/SelectField";
+import { getApiBaseUrl } from "../shared/api";
+import { formatMonthLabel } from "../shared/format";
+import {
+  categoryFilterOptions,
+  categoryOptions,
+  typeOptions,
+} from "../shared/transactions";
+import TransactionRow from "./TransactionRow";
 
 export default function TransactionsPage() {
   const [transactions, setTransactions] = useState([]);
@@ -67,9 +21,11 @@ export default function TransactionsPage() {
     type: "ALL",
     category: "All",
   });
+  const [profiles, setProfiles] = useState([]);
+  const [savingId, setSavingId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
 
-  const apiBaseUrl =
-    process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000";
+  const apiBaseUrl = getApiBaseUrl();
 
   const queryString = useMemo(() => {
     const params = new URLSearchParams();
@@ -98,6 +54,26 @@ export default function TransactionsPage() {
     return Array.from(months).sort((a, b) => b.localeCompare(a));
   }, [transactions]);
 
+  const groupedTransactions = useMemo(() => {
+    const groups = new Map();
+
+    transactions.forEach((transaction) => {
+      const monthKey = transaction.date
+        ? transaction.date.slice(0, 7)
+        : "unknown";
+
+      if (!groups.has(monthKey)) {
+        groups.set(monthKey, []);
+      }
+
+      groups.get(monthKey).push(transaction);
+    });
+
+    return Array.from(groups.keys())
+      .sort((a, b) => b.localeCompare(a))
+      .map((month) => ({ month, items: groups.get(month) }));
+  }, [transactions]);
+
   useEffect(() => {
     setStatus({ state: "loading", message: "" });
 
@@ -113,18 +89,81 @@ export default function TransactionsPage() {
       });
   }, [apiBaseUrl, queryString]);
 
+  useEffect(() => {
+    fetch(`${apiBaseUrl}/profiles`)
+      .then((response) => response.json())
+      .then((data) => {
+        setProfiles(Array.isArray(data) ? data : []);
+      })
+      .catch(() => setProfiles([]));
+  }, [apiBaseUrl]);
+
+  const handleUpdate = async (transactionId, payload) => {
+    setSavingId(transactionId);
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/transactions/${transactionId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to update transaction.");
+      }
+
+      setTransactions((current) =>
+        current.map((transaction) =>
+          transaction.id === transactionId ? { ...transaction, ...data } : transaction
+        )
+      );
+
+      return data;
+    } finally {
+      setSavingId(null);
+    }
+  };
+
+  const handleDelete = async (transactionId) => {
+    setDeletingId(transactionId);
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/transactions/${transactionId}`, {
+        method: "DELETE",
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to delete transaction.");
+      }
+
+      setTransactions((current) =>
+        current.filter((transaction) => transaction.id !== transactionId)
+      );
+
+      return data;
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   return (
     <main className="mx-auto flex min-h-screen max-w-5xl flex-col gap-6 px-6 pt-6 pb-[calc(6rem+env(safe-area-inset-bottom))] md:p-6">
       <header className="space-y-2">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-2xl font-semibold">Transactions</h1>
+          <div className="flex items-center gap-3">
+            <img
+              src="/icon.png"
+              alt="Tandem"
+              className="h-8 w-8 md:h-9 md:w-9"
+            />
+            <h1 className="text-2xl font-semibold">Transactions</h1>
+          </div>
           <div className="hidden items-center gap-2 text-slate-300 md:flex">
-            <Link
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-700 hover:border-slate-500"
-              href="/"
-              aria-label="Add transaction"
-              title="Add transaction"
-            >
+            <IconLinkButton href="/" label="Add transaction">
               <svg
                 className="h-5 w-5"
                 viewBox="0 0 20 20"
@@ -133,13 +172,8 @@ export default function TransactionsPage() {
               >
                 <path d="M10 4.5a.75.75 0 01.75.75v3h3a.75.75 0 010 1.5h-3v3a.75.75 0 01-1.5 0v-3h-3a.75.75 0 010-1.5h3v-3A.75.75 0 0110 4.5z" />
               </svg>
-            </Link>
-            <Link
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-700 hover:border-slate-500"
-              href="/profiles"
-              aria-label="Manage profiles"
-              title="Manage profiles"
-            >
+            </IconLinkButton>
+            <IconLinkButton href="/profiles" label="Manage profiles">
               <svg
                 className="h-5 w-5"
                 viewBox="0 0 20 20"
@@ -149,7 +183,7 @@ export default function TransactionsPage() {
                 <path d="M10 10a3 3 0 100-6 3 3 0 000 6z" />
                 <path d="M4.5 16a5.5 5.5 0 0111 0v.5h-11V16z" />
               </svg>
-            </Link>
+            </IconLinkButton>
           </div>
         </div>
         <p className="text-sm text-slate-400">
@@ -160,90 +194,65 @@ export default function TransactionsPage() {
       <section className="grid gap-4 rounded-2xl border border-slate-800 bg-slate-900/40 p-4 md:grid-cols-3">
         <label className="space-y-2 text-sm text-slate-300">
           Month
-          <div className="relative">
-            <select
-              className="w-full appearance-none rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 pr-9 text-sm text-slate-200"
-              value={filters.month}
-              onChange={(event) =>
-                setFilters((current) => ({
-                  ...current,
-                  month: event.target.value,
-                }))
-              }
-            >
-              <option value="">All months</option>
-              {monthOptions.map((month) => (
-                <option key={month} value={month}>
-                  {formatMonthLabel(month)}
-                </option>
-              ))}
-            </select>
-            <i
-              className="fas fa-angle-down pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-300"
-              aria-hidden
-            />
-          </div>
+          <SelectField
+            className="w-full appearance-none rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 pr-9 text-sm text-slate-200"
+            value={filters.month}
+            onChange={(event) =>
+              setFilters((current) => ({
+                ...current,
+                month: event.target.value,
+              }))
+            }
+          >
+            <option value="">All months</option>
+            {monthOptions.map((month) => (
+              <option key={month} value={month}>
+                {formatMonthLabel(month)}
+              </option>
+            ))}
+          </SelectField>
         </label>
         <label className="space-y-2 text-sm text-slate-300">
           Type
-          <div className="relative">
-            <select
-              className="w-full appearance-none rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 pr-9 text-sm text-slate-200"
-              value={filters.type}
-              onChange={(event) =>
-                setFilters((current) => ({
-                  ...current,
-                  type: event.target.value,
-                }))
-              }
-            >
-              {typeOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            <i
-              className="fas fa-angle-down pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-300"
-              aria-hidden
-            />
-          </div>
+          <SelectField
+            className="w-full appearance-none rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 pr-9 text-sm text-slate-200"
+            value={filters.type}
+            onChange={(event) =>
+              setFilters((current) => ({
+                ...current,
+                type: event.target.value,
+              }))
+            }
+          >
+            {typeOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </SelectField>
         </label>
         <label className="space-y-2 text-sm text-slate-300">
           Category
-          <div className="relative">
-            <select
-              className="w-full appearance-none rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 pr-9 text-sm text-slate-200"
-              value={filters.category}
-              onChange={(event) =>
-                setFilters((current) => ({
-                  ...current,
-                  category: event.target.value,
-                }))
-              }
-            >
-              {categoryOptions.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-            <i
-              className="fas fa-angle-down pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-300"
-              aria-hidden
-            />
-          </div>
+          <SelectField
+            className="w-full appearance-none rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 pr-9 text-sm text-slate-200"
+            value={filters.category}
+            onChange={(event) =>
+              setFilters((current) => ({
+                ...current,
+                category: event.target.value,
+              }))
+            }
+          >
+            {categoryFilterOptions.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </SelectField>
         </label>
       </section>
 
-      <section className="space-y-2 rounded-2xl border border-slate-800 bg-slate-900/40 p-4">
-        <div className="hidden grid-cols-[120px_120px_1fr_160px_120px] gap-3 px-3 text-xs text-slate-400 md:grid">
-          <span>Date</span>
-          <span>Type</span>
-          <span>Category</span>
-          <span>Paid by</span>
-          <span className="text-right">Amount</span>
-        </div>
+      <section className="space-y-4">
 
         {status.state === "loading" ? (
           <p className="text-sm text-slate-400">Loading transactions...</p>
@@ -257,71 +266,37 @@ export default function TransactionsPage() {
           <p className="text-sm text-slate-500">No transactions found.</p>
         ) : null}
 
-        {transactions.map((transaction) => {
-          const typeClass =
-            transaction.type === "INCOME"
-              ? "text-emerald-300"
-              : transaction.type === "EXPENSE"
-                ? "text-rose-300"
-                : "text-slate-200";
-
-          const amountClass =
-            transaction.type === "INCOME"
-              ? "text-emerald-300"
-              : transaction.type === "EXPENSE"
-                ? "text-rose-300"
-                : "text-slate-50";
-
-          const formattedDate = transaction.date
-            ? new Date(transaction.date).toLocaleDateString("en-GB")
-            : "—";
+        {groupedTransactions.map((group) => {
+          const monthLabel =
+            group.month === "unknown"
+              ? "Unknown date"
+              : formatMonthLabel(group.month);
 
           return (
-            <div
-              key={transaction.id}
-              className="rounded-lg border border-slate-800 bg-slate-950 p-3 text-sm"
-            >
-              <div className="space-y-2 md:hidden">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-slate-400">Date</span>
-                  <span className="text-slate-200">{formattedDate}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-slate-400">Type</span>
-                  <span className={typeClass}>{transaction.type || "—"}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-slate-400">Category</span>
-                  <span className="text-slate-200">
-                    {transaction.category || "—"}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-slate-400">Paid by</span>
-                  <span className="text-slate-200">
-                    {transaction.payer_name || transaction.payer_id || "—"}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-slate-400">Amount</span>
-                  <span className={amountClass}>
-                    {formatCurrency.format(Number(transaction.amount || 0))}
-                  </span>
-                </div>
+            <div key={group.month} className="space-y-3">
+              <div className="text-sm font-semibold text-slate-200">
+                {monthLabel}
               </div>
-
-              <div className="hidden gap-2 md:grid md:grid-cols-[120px_120px_1fr_160px_120px]">
-                <div className="text-slate-200">{formattedDate}</div>
-                <div className={typeClass}>{transaction.type || "—"}</div>
-                <div className="text-slate-200">
-                  {transaction.category || "—"}
-                </div>
-                <div className="text-slate-200">
-                  {transaction.payer_name || transaction.payer_id || "—"}
-                </div>
-                <div className={`text-right ${amountClass}`}>
-                  {formatCurrency.format(Number(transaction.amount || 0))}
-                </div>
+              <div className="grid grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)_auto] gap-2 px-3 text-xs text-slate-400 md:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto_72px]">
+                <span>Day</span>
+                <span>Paid by</span>
+                <span>Category</span>
+                <span className="hidden md:block">Note</span>
+                <span className="text-right">Amount</span>
+              </div>
+              <div className="divide-y divide-slate-800 rounded-2xl border border-slate-800 bg-slate-900/40">
+                {group.items.map((transaction) => (
+                  <TransactionRow
+                    key={transaction.id}
+                    transaction={transaction}
+                    profiles={profiles}
+                    categoryOptions={categoryOptions}
+                    onSave={handleUpdate}
+                    onDelete={handleDelete}
+                    isSaving={savingId === transaction.id}
+                    isDeleting={deletingId === transaction.id}
+                  />
+                ))}
               </div>
             </div>
           );
