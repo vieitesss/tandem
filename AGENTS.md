@@ -6,8 +6,9 @@
 
 ## Repo Map
 - `apps/backend`: Express API (CommonJS, Node).
-- `apps/frontend`: Next.js 14 app router (ESM, React).
+- `apps/frontend`: Next.js app router (ESM, React).
 - `compose.yaml`: Docker Compose for local dev.
+- `apps/**/package.json`: App scripts and dependencies.
 
 ## Cursor/Copilot Rules
 - No `.cursor/rules/`, `.cursorrules`, or `.github/copilot-instructions.md` found.
@@ -61,6 +62,7 @@
 - Prefer `async/await` for async flows.
 - Use `Number()` for coercions; avoid implicit coercion.
 - Avoid one-letter names except common indices (`i`, `j`) in tight scopes.
+- Keep payload field names consistent with database schema (snake_case).
 
 ## Imports and Modules
 - Order imports: third-party, then local modules.
