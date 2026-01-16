@@ -301,6 +301,187 @@ app.post("/transactions", async (req, res) => {
   return res.status(201).json({ id: transaction.id });
 });
 
+app.patch("/transactions/:id", async (req, res) => {
+  const { id } = req.params;
+  const { payer_id, amount, category, date, note } = req.body || {};
+
+  if (!id) {
+    return res.status(400).json({ error: "Transaction id is required." });
+  }
+
+  const { data: existing, error: existingError } = await supabase
+    .from("transactions")
+    .select("id, type, amount, payer_id")
+    .eq("id", id)
+    .single();
+
+  if (existingError) {
+    return res.status(500).json({ error: existingError.message });
+  }
+
+  if (!existing) {
+    return res.status(404).json({ error: "Transaction not found." });
+  }
+
+  const updates = {};
+
+  if (date !== undefined) {
+    if (!date) {
+      return res.status(400).json({ error: "Date is required." });
+    }
+    updates.date = date;
+  }
+
+  if (amount !== undefined) {
+    const normalizedAmount = Number(amount);
+    if (Number.isNaN(normalizedAmount) || normalizedAmount <= 0) {
+      return res.status(400).json({ error: "Amount must be greater than 0." });
+    }
+    updates.amount = normalizedAmount;
+  }
+
+  if (payer_id !== undefined) {
+    if (!payer_id) {
+      return res.status(400).json({ error: "Payer is required." });
+    }
+    updates.payer_id = payer_id;
+  }
+
+  if (category !== undefined) {
+    if (existing.type !== "INCOME" && !category) {
+      return res.status(400).json({ error: "Category is required." });
+    }
+    updates.category = existing.type === "INCOME" ? null : category;
+  }
+
+  if (note !== undefined) {
+    updates.note = note ? String(note).trim() : null;
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return res.status(400).json({ error: "No updates provided." });
+  }
+
+  const { data: updated, error: updateError } = await supabase
+    .from("transactions")
+    .update(updates)
+    .eq("id", id)
+    .select("id, payer_id, amount, category, date, note, type")
+    .single();
+
+  if (updateError) {
+    return res.status(500).json({ error: updateError.message });
+  }
+
+  if (amount !== undefined || payer_id !== undefined) {
+    const { data: splits, error: splitsError } = await supabase
+      .from("transaction_splits")
+      .select("id, user_id, amount")
+      .eq("transaction_id", id);
+
+    if (splitsError) {
+      return res.status(500).json({ error: splitsError.message });
+    }
+
+    const splitUpdates = [];
+
+    if (amount !== undefined && splits && splits.length > 0) {
+      const total = splits.reduce((sum, split) => sum + Number(split.amount || 0), 0);
+
+      if (total > 0) {
+        splits.forEach((split) => {
+          const ratio = Number(split.amount || 0) / total;
+          const nextAmount = Number((updated.amount * ratio).toFixed(2));
+          splitUpdates.push(
+            supabase
+              .from("transaction_splits")
+              .update({ amount: nextAmount })
+              .eq("id", split.id)
+          );
+        });
+      }
+    }
+
+    if (payer_id !== undefined && splits && splits.length === 1) {
+      splitUpdates.push(
+        supabase
+          .from("transaction_splits")
+          .update({ user_id: updated.payer_id })
+          .eq("id", splits[0].id)
+      );
+    }
+
+    if (splitUpdates.length > 0) {
+      const splitResults = await Promise.all(splitUpdates);
+      const splitError = splitResults.find((result) => result.error);
+
+      if (splitError) {
+        return res.status(500).json({ error: splitError.error.message });
+      }
+    }
+  }
+
+  let payerName = null;
+
+  if (updated.payer_id) {
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("display_name")
+      .eq("id", updated.payer_id)
+      .single();
+
+    if (profileError) {
+      return res.status(500).json({ error: profileError.message });
+    }
+
+    payerName = profile ? profile.display_name : null;
+  }
+
+  return res.json({ ...updated, payer_name: payerName });
+});
+
+app.delete("/transactions/:id", async (req, res) => {
+  const { id } = req.params;
+
+  if (!id) {
+    return res.status(400).json({ error: "Transaction id is required." });
+  }
+
+  const { data: existing, error: existingError } = await supabase
+    .from("transactions")
+    .select("id")
+    .eq("id", id)
+    .single();
+
+  if (existingError) {
+    return res.status(500).json({ error: existingError.message });
+  }
+
+  if (!existing) {
+    return res.status(404).json({ error: "Transaction not found." });
+  }
+
+  const { error: splitsError } = await supabase
+    .from("transaction_splits")
+    .delete()
+    .eq("transaction_id", id);
+
+  if (splitsError) {
+    return res.status(500).json({ error: splitsError.message });
+  }
+
+  const { error: deleteError } = await supabase
+    .from("transactions")
+    .delete()
+    .eq("id", id);
+
+  if (deleteError) {
+    return res.status(500).json({ error: deleteError.message });
+  }
+
+  return res.json({ id });
+});
+
 app.listen(PORT, () => {
   console.log(`Backend listening on ${PORT}`);
 });
