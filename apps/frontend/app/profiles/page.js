@@ -1,7 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+
+import { getApiBaseUrl } from "../shared/api";
+import { normalizeNumberInput } from "../shared/inputs";
+import StatusMessage from "../shared/StatusMessage";
 
 const emptyProfile = { displayName: "", splitPercent: "50" };
 
@@ -11,10 +15,9 @@ export default function ProfilesPage() {
   const [status, setStatus] = useState(null);
   const [savingId, setSavingId] = useState(null);
 
-  const apiBaseUrl =
-    process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000";
+  const apiBaseUrl = getApiBaseUrl();
 
-  const loadProfiles = () => {
+  const loadProfiles = useCallback(() => {
     fetch(`${apiBaseUrl}/profiles`)
       .then((response) => response.json())
       .then((data) => {
@@ -31,11 +34,11 @@ export default function ProfilesPage() {
         );
       })
       .catch(() => setProfiles([]));
-  };
+  }, [apiBaseUrl]);
 
   useEffect(() => {
     loadProfiles();
-  }, []);
+  }, [loadProfiles]);
 
   const updateProfile = (id, field, value) => {
     setProfiles((current) =>
@@ -43,17 +46,6 @@ export default function ProfilesPage() {
         profile.id === id ? { ...profile, [field]: value } : profile
       )
     );
-  };
-
-  const normalizeNumberInput = (value) => {
-    if (!value) {
-      return "";
-    }
-
-    const sanitized = value.replace(/[^0-9.]/g, "");
-    const [whole, ...decimals] = sanitized.split(".");
-
-    return decimals.length > 0 ? `${whole}.${decimals.join("")}` : whole;
   };
 
   const parsePercent = (value) => {
@@ -140,7 +132,14 @@ export default function ProfilesPage() {
         <Link className="hidden text-xs text-slate-400 md:inline-flex" href="/">
           ← Back to transactions
         </Link>
-        <h1 className="text-2xl font-semibold">Profiles</h1>
+        <div className="flex items-center gap-3">
+          <img
+            src="/icon.png"
+            alt="Tandem"
+            className="h-8 w-8 md:h-9 md:w-9"
+          />
+          <h1 className="text-2xl font-semibold">Profiles</h1>
+        </div>
         <p className="text-sm text-slate-400">
           Manage default split percentages for each partner.
         </p>
@@ -251,15 +250,7 @@ export default function ProfilesPage() {
         )}
       </section>
 
-      {status ? (
-        <p
-          className={`text-sm ${
-            status.tone === "success" ? "text-emerald-300" : "text-rose-300"
-          }`}
-        >
-          {status.message}
-        </p>
-      ) : null}
+      <StatusMessage status={status} />
     </main>
   );
 }

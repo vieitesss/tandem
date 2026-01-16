@@ -2,29 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import SelectField from "../shared/SelectField";
+import StatusMessage from "../shared/StatusMessage";
+import { getApiBaseUrl } from "../shared/api";
+import { normalizeNumberInput } from "../shared/inputs";
+import { categoryOptions } from "../shared/transactions";
+
 const initialSplit = { user_id: "", percent: "" };
-const categoryOptions = [
-  { label: "Groceries", icon: "🛒" },
-  { label: "Rent", icon: "🏠" },
-  { label: "Utilities", icon: "💡" },
-  { label: "Restaurants", icon: "🍽️" },
-  { label: "Transport", icon: "🚗" },
-  { label: "Health", icon: "🩺" },
-  { label: "Entertainment", icon: "🎬" },
-  { label: "Travel", icon: "✈️" },
-  { label: "Shopping", icon: "🛍️" },
-  { label: "Subscriptions", icon: "📦" },
-  { label: "Salary", icon: "💼" },
-  { label: "Freelance", icon: "🧑‍💻" },
-  { label: "Gifts", icon: "🎁" },
-  { label: "Pets", icon: "🐾" },
-  { label: "Education", icon: "🎓" },
-  { label: "Insurance", icon: "🛡️" },
-  { label: "Home", icon: "🧹" },
-  { label: "Kids", icon: "🧸" },
-  { label: "Taxes", icon: "🧾" },
-  { label: "Other", icon: "🧩" },
-];
 
 export default function TransactionForm() {
   const [payerId, setPayerId] = useState("");
@@ -35,7 +19,6 @@ export default function TransactionForm() {
   const [type, setType] = useState("EXPENSE");
   const [splitMode, setSplitMode] = useState("custom");
   const [splits, setSplits] = useState([initialSplit]);
-  const [expandedSplitIndex, setExpandedSplitIndex] = useState(null);
   const [status, setStatus] = useState(null);
   const [profiles, setProfiles] = useState([]);
   const [beneficiaryId, setBeneficiaryId] = useState("");
@@ -49,8 +32,7 @@ export default function TransactionForm() {
     category: false,
   });
 
-  const apiBaseUrl =
-    process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000";
+  const apiBaseUrl = getApiBaseUrl();
 
   const inputClassName = (hasError) =>
     `w-full rounded-lg border bg-slate-950 px-3 py-2 ${
@@ -196,37 +178,6 @@ export default function TransactionForm() {
 
   const removeSplit = (index) => {
     setSplits((current) => current.filter((_, splitIndex) => splitIndex !== index));
-    setExpandedSplitIndex((current) => {
-      if (current === null) {
-        return null;
-      }
-      if (current === index) {
-        return null;
-      }
-      if (current > index) {
-        return current - 1;
-      }
-      return current;
-    });
-  };
-
-  const splitAmountFor = (percent) => {
-    if (!amount || !percent) {
-      return 0;
-    }
-
-    return (Number(amount) * Number(percent)) / 100;
-  };
-
-  const normalizeNumberInput = (value) => {
-    if (!value) {
-      return "";
-    }
-
-    const sanitized = value.replace(/[^0-9.]/g, "");
-    const [whole, ...decimals] = sanitized.split(".");
-
-    return decimals.length > 0 ? `${whole}.${decimals.join("")}` : whole;
   };
 
   const handleAmountChange = (event) => {
@@ -323,30 +274,24 @@ export default function TransactionForm() {
           {type === "INCOME" ? "Recipient" : "Paid by"}
           <span className="text-rose-400"> *</span>
         </label>
-        <div className="relative">
-          <select
-            className={`${inputClassName(showPayerError)} appearance-none pr-9`}
-            value={payerId}
-            onChange={(event) => {
-              setPayerId(event.target.value);
-              setTouched((current) => ({ ...current, payer: true }));
-            }}
-            aria-invalid={showPayerError}
-          >
-            <option value="">
-              {type === "INCOME" ? "Select recipient" : "Select payer"}
+        <SelectField
+          className={`${inputClassName(showPayerError)} appearance-none pr-9`}
+          value={payerId}
+          onChange={(event) => {
+            setPayerId(event.target.value);
+            setTouched((current) => ({ ...current, payer: true }));
+          }}
+          aria-invalid={showPayerError}
+        >
+          <option value="">
+            {type === "INCOME" ? "Select recipient" : "Select payer"}
+          </option>
+          {profiles.map((profile) => (
+            <option key={profile.id} value={profile.id}>
+              {profile.display_name || profile.id}
             </option>
-            {profiles.map((profile) => (
-              <option key={profile.id} value={profile.id}>
-                {profile.display_name || profile.id}
-              </option>
-            ))}
-          </select>
-          <i
-            className="fas fa-angle-down pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-300"
-            aria-hidden
-          />
-        </div>
+          ))}
+        </SelectField>
         {showPayerError ? (
           <p className="text-xs text-rose-300">
             {type === "INCOME" ? "Select a recipient." : "Select who paid."}
@@ -357,21 +302,15 @@ export default function TransactionForm() {
         <label className="text-sm text-slate-300">
           Type<span className="text-rose-400"> *</span>
         </label>
-        <div className="relative">
-          <select
-            className="w-full appearance-none rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 pr-9 text-slate-200"
-            value={type}
-            onChange={(event) => setType(event.target.value)}
-          >
-            <option value="EXPENSE">Expense</option>
-            <option value="INCOME">Income</option>
-            <option value="LIQUIDATION">Liquidation</option>
-          </select>
-          <i
-            className="fas fa-angle-down pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-300"
-            aria-hidden
-          />
-        </div>
+        <SelectField
+          className="w-full appearance-none rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 pr-9 text-slate-200"
+          value={type}
+          onChange={(event) => setType(event.target.value)}
+        >
+          <option value="EXPENSE">Expense</option>
+          <option value="INCOME">Income</option>
+          <option value="LIQUIDATION">Liquidation</option>
+        </SelectField>
       </div>
       <div className={`grid gap-4 sm:grid-cols-2 ${sectionClassName}`}>
         <div className="space-y-2">
@@ -501,30 +440,24 @@ export default function TransactionForm() {
             <label className="text-xs text-slate-400">
               Recipient<span className="text-rose-400"> *</span>
             </label>
-            <div className="relative">
-              <select
-                className={`${inputClassName(showBeneficiaryError)} appearance-none pr-9`}
-                value={beneficiaryId}
-                onChange={(event) => {
-                  setBeneficiaryId(event.target.value);
-                  setTouched((current) => ({ ...current, beneficiary: true }));
-                }}
-                aria-invalid={showBeneficiaryError}
-              >
-                <option value="">Select recipient</option>
-                {profiles
-                  .filter((profile) => profile.id !== payerId)
-                  .map((profile) => (
-                    <option key={profile.id} value={profile.id}>
-                      {profile.display_name || profile.id}
-                    </option>
-                  ))}
-              </select>
-              <i
-                className="fas fa-angle-down pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-300"
-                aria-hidden
-              />
-            </div>
+            <SelectField
+              className={`${inputClassName(showBeneficiaryError)} appearance-none pr-9`}
+              value={beneficiaryId}
+              onChange={(event) => {
+                setBeneficiaryId(event.target.value);
+                setTouched((current) => ({ ...current, beneficiary: true }));
+              }}
+              aria-invalid={showBeneficiaryError}
+            >
+              <option value="">Select recipient</option>
+              {profiles
+                .filter((profile) => profile.id !== payerId)
+                .map((profile) => (
+                  <option key={profile.id} value={profile.id}>
+                    {profile.display_name || profile.id}
+                  </option>
+                ))}
+            </SelectField>
             {showBeneficiaryError ? (
               <p className="text-xs text-rose-300">Select a recipient.</p>
             ) : null}
@@ -543,117 +476,66 @@ export default function TransactionForm() {
               </button>
             </div>
             <div className="space-y-2">
-              <div className="hidden grid-cols-[minmax(0,1fr)_64px_64px_36px] gap-2 px-3 text-xs text-slate-400 sm:grid">
+              <div className="grid grid-cols-[minmax(0,1fr)_80px_44px] gap-2 px-3 text-xs text-slate-400">
                 <span>
                   User<span className="text-rose-400"> *</span>
                 </span>
                 <span>
                   Percent<span className="text-rose-400"> *</span>
                 </span>
-                <span>Amount</span>
                 <span className="text-right">Remove</span>
               </div>
-              {splits.map((split, index) => {
-                const isExpanded = expandedSplitIndex === index;
-                const detailsId = `split-details-${index}`;
-
-                return (
+              <div className="divide-y divide-slate-800 rounded-2xl border border-slate-800 bg-slate-900/40">
+                {splits.map((split, index) => (
                   <div
                     key={index}
-                    className="rounded-lg border border-slate-800 bg-slate-950/60 p-3 sm:grid sm:grid-cols-[minmax(0,1fr)_64px_64px_36px] sm:items-center sm:gap-2 sm:px-3 sm:py-2"
+                    className="grid grid-cols-[minmax(0,1fr)_80px_44px] items-center gap-2 px-3 py-3"
                   >
-                    <div className="grid grid-cols-[minmax(0,1fr)_72px_32px] items-end gap-2 sm:contents">
-                      <div className="sm:contents">
-                        <label className="sr-only sm:hidden">
-                          User<span className="text-rose-400"> *</span>
-                        </label>
-                        <div className="relative">
-                          <select
-                            className="w-full min-w-0 appearance-none rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 pr-9 text-sm text-slate-200"
-                            value={split.user_id}
-                            onChange={(event) =>
-                              updateSplit(index, "user_id", event.target.value)
-                            }
-                            aria-label="Split user"
-                          >
-                            <option value="">Select user</option>
-                            {profiles.map((profile) => (
-                              <option key={profile.id} value={profile.id}>
-                                {profile.display_name || profile.id}
-                              </option>
-                            ))}
-                          </select>
-                          <i
-                            className="fas fa-angle-down pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-300"
-                            aria-hidden
-                          />
-                        </div>
-                      </div>
-                      <div className="sm:contents">
-                        <label className="sr-only sm:hidden">
-                          Percent<span className="text-rose-400"> *</span>
-                        </label>
-                        <input
-                          className="w-full rounded-lg border border-slate-700 bg-slate-950 px-2 py-2 text-right text-sm text-slate-200"
-                          placeholder="%"
-                          type="number"
-                          step="0.1"
-                          value={split.percent}
-                          onChange={(event) =>
-                            updateSplit(
-                              index,
-                              "percent",
-                              normalizeNumberInput(event.target.value)
-                            )
-                          }
-                          aria-label="Split percent"
-                        />
-                      </div>
-                      <button
-                        className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-700 bg-slate-950 text-base text-slate-300 sm:hidden"
-                        type="button"
-                        onClick={() =>
-                          setExpandedSplitIndex((current) =>
-                            current === index ? null : index
-                          )
-                        }
-                        aria-expanded={isExpanded}
-                        aria-controls={detailsId}
-                      >
-                        <i
-                          className={isExpanded ? "fas fa-angle-up" : "fas fa-angle-down"}
-                          aria-hidden
-                        />
-                      </button>
-                    </div>
-                    <div
-                      id={detailsId}
-                      className={`${isExpanded ? "grid" : "hidden"} grid-cols-[minmax(0,1fr)_40px] items-end gap-2 sm:contents`}
+                    <SelectField
+                      className="w-full min-w-0 appearance-none rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 pr-9 text-sm text-slate-200"
+                      value={split.user_id}
+                      onChange={(event) =>
+                        updateSplit(index, "user_id", event.target.value)
+                      }
+                      aria-label="Split user"
                     >
-                      <div className="space-y-1 sm:contents">
-                        <label className="text-xs text-slate-400 sm:hidden">Amount</label>
-                        <div className="rounded-lg border border-slate-800 bg-slate-950 px-2 py-2 text-right text-sm text-slate-300">
-                          {splitAmountFor(split.percent).toFixed(2)}
-                        </div>
-                      </div>
-                      {splits.length > 1 ? (
-                        <button
-                          className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-800 text-base text-rose-300 sm:col-start-4 sm:row-start-1 sm:h-7 sm:w-7 sm:justify-self-end"
-                          type="button"
-                          onClick={() => removeSplit(index)}
-                          aria-label="Remove split"
-                        >
-                          ×
-                        </button>
-                      ) : (
-                        <div className="hidden text-right text-xs text-slate-500 sm:block sm:col-start-4 sm:row-start-1 sm:justify-self-end">
-                          —
-                        </div>
-                      )}
-                    </div>
+                      <option value="">Select user</option>
+                      {profiles.map((profile) => (
+                        <option key={profile.id} value={profile.id}>
+                          {profile.display_name || profile.id}
+                        </option>
+                      ))}
+                    </SelectField>
+                    <input
+                      className="w-full rounded-lg border border-slate-700 bg-slate-950 px-2 py-2 text-right text-sm text-slate-200"
+                      placeholder="%"
+                      type="number"
+                      step="0.1"
+                      value={split.percent}
+                      onChange={(event) =>
+                        updateSplit(
+                          index,
+                          "percent",
+                          normalizeNumberInput(event.target.value)
+                        )
+                      }
+                      aria-label="Split percent"
+                    />
+                    {splits.length > 1 ? (
+                      <button
+                        className="flex h-8 w-8 items-center justify-center justify-self-end rounded-lg bg-slate-800 text-rose-300"
+                        type="button"
+                        onClick={() => removeSplit(index)}
+                        aria-label="Remove split"
+                      >
+                        ×
+                      </button>
+                    ) : (
+                      <div className="text-right text-xs text-slate-500">—</div>
+                    )}
                   </div>
-                );
-              })}
+                ))}
+              </div>
             </div>
             <div className="text-xs text-slate-400">
               Total: {totalPercent.toFixed(1)}%
@@ -666,15 +548,7 @@ export default function TransactionForm() {
           </div>
         ) : null}
       </div>
-      {status ? (
-        <p
-          className={`${sectionClassName} text-sm ${
-            status.tone === "success" ? "text-emerald-300" : "text-rose-300"
-          }`}
-        >
-          {status.message}
-        </p>
-      ) : null}
+      <StatusMessage status={status} className={sectionClassName} />
       <div className={sectionClassName}>
         <button
           className="w-full rounded-lg bg-emerald-500 px-4 py-2 font-semibold text-slate-900"
