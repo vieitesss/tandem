@@ -1,4 +1,3 @@
-const crypto = require("crypto");
 const express = require("express");
 const cors = require("cors");
 const { createClient } = require("@supabase/supabase-js");
@@ -22,6 +21,58 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
 const app = express();
 app.use(cors({ origin: CORS_ORIGIN || "*" }));
 app.use(express.json());
+
+const normalizeId = (value) => {
+  if (value === undefined || value === null || value === "") {
+    return null;
+  }
+
+  const numericId = Number(value);
+
+  if (Number.isNaN(numericId) || numericId <= 0) {
+    return Number.NaN;
+  }
+
+  return numericId;
+};
+
+const roundAmount = (value) => Number(Number(value || 0).toFixed(2));
+
+const addAmount = (map, profileId, amount) => {
+  if (!profileId && profileId !== 0) {
+    return;
+  }
+
+  const current = map.get(profileId) || 0;
+  const next = roundAmount(current + Number(amount || 0));
+  map.set(profileId, next);
+};
+
+const normalizeDateParam = (value) => {
+  if (!value) {
+    return null;
+  }
+
+  const match = String(value).match(/^\d{4}-\d{2}-\d{2}$/);
+  if (!match) {
+    return null;
+  }
+
+  const date = new Date(`${value}T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return date.toISOString().slice(0, 10);
+};
+
+const getMonthStart = () => {
+  const now = new Date();
+  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  return start.toISOString().slice(0, 10);
+};
+
+const expenseSplitModes = new Set(["custom", "none", "owed"]);
 
 app.get("/health", (_req, res) => {
   res.json({ status: "ok" });
@@ -61,7 +112,6 @@ app.post("/profiles", async (req, res) => {
   const { data, error } = await supabase
     .from("profiles")
     .insert({
-      id: crypto.randomUUID(),
       display_name,
       default_split: normalizedSplit,
     })
@@ -78,9 +128,10 @@ app.post("/profiles", async (req, res) => {
 app.patch("/profiles/:id", async (req, res) => {
   const { id } = req.params;
   const { display_name, default_split } = req.body || {};
+  const profileId = normalizeId(id);
 
-  if (!id) {
-    return res.status(400).json({ error: "Profile id is required." });
+  if (!id || Number.isNaN(profileId)) {
+    return res.status(400).json({ error: "Profile id must be a number." });
   }
 
   const updates = {};
@@ -105,13 +156,16 @@ app.patch("/profiles/:id", async (req, res) => {
     return res.status(400).json({ error: "No updates provided." });
   }
 
-  const { error } = await supabase.from("profiles").update(updates).eq("id", id);
+  const { error } = await supabase
+    .from("profiles")
+    .update(updates)
+    .eq("id", profileId);
 
   if (error) {
     return res.status(500).json({ error: error.message });
   }
 
-  return res.json({ id });
+  return res.json({ id: profileId });
 });
 
 app.get("/transactions", async (req, res) => {
@@ -119,7 +173,7 @@ app.get("/transactions", async (req, res) => {
 
   let query = supabase
     .from("transactions")
-    .select("id, payer_id, amount, category, date, note, type")
+    .select("id, payer_id, beneficiary_id, split_mode, amount, category, date, note, type")
     .order("date", { ascending: false });
 
   if (type && type !== "ALL") {
@@ -188,6 +242,174 @@ app.get("/transactions", async (req, res) => {
   return res.json(response);
 });
 
+app.get("/debt-summary", async (req, res) => {
+  const { from } = req.query || {};
+  const normalizedFrom = normalizeDateParam(from);
+
+  if (from && !normalizedFrom) {
+    return res.status(400).json({ error: "From date must be YYYY-MM-DD." });
+  }
+
+  const fromDate = normalizedFrom || getMonthStart();
+
+  const { data: profiles, error: profilesError } = await supabase
+    .from("profiles")
+    .select("id, display_name")
+    .order("display_name", { ascending: true });
+
+  if (profilesError) {
+    return res.status(500).json({ error: profilesError.message });
+  }
+
+  const profileIds = profiles ? profiles.map((profile) => profile.id) : [];
+  const baseEntries = profileIds.map((id) => [id, 0]);
+  const expensesByProfile = new Map(baseEntries);
+  const customSplitPaidByProfile = new Map(baseEntries);
+  const owedTransactionsByProfile = new Map(baseEntries);
+  const customSplitShareByProfile = new Map(baseEntries);
+  const liquidationsByProfile = new Map(baseEntries);
+  let totalCustomSplitExpenses = 0;
+
+  if (!profiles || profiles.length === 0) {
+    return res.json({
+      from_date: fromDate,
+      profiles: [],
+      expenses_by_profile: {},
+      owed_by_profile: {},
+      liquidations_by_profile: {},
+      net_by_profile: {},
+      balance: { from_profile_id: null, to_profile_id: null, amount: 0 },
+    });
+  }
+
+  const { data: transactions, error: transactionsError } = await supabase
+    .from("transactions")
+    .select("id, payer_id, beneficiary_id, split_mode, amount, date, type")
+    .gte("date", fromDate)
+    .order("date", { ascending: false });
+
+  if (transactionsError) {
+    return res.status(500).json({ error: transactionsError.message });
+  }
+
+  const customTransactions = new Map();
+
+  if (transactions && transactions.length > 0) {
+    transactions.forEach((transaction) => {
+      if (!transaction || transaction.type === "INCOME") {
+        return;
+      }
+
+      const payerId = transaction.payer_id;
+      const beneficiaryId = transaction.beneficiary_id;
+      const amount = roundAmount(transaction.amount);
+
+      if (transaction.type === "EXPENSE") {
+        if (payerId) {
+          addAmount(expensesByProfile, payerId, amount);
+        }
+
+        if (
+          transaction.split_mode === "owed" &&
+          payerId &&
+          beneficiaryId &&
+          payerId !== beneficiaryId
+        ) {
+          addAmount(owedTransactionsByProfile, beneficiaryId, amount);
+        }
+
+        if (transaction.split_mode === "custom" && payerId) {
+          customTransactions.set(transaction.id, { payerId, amount });
+          addAmount(customSplitPaidByProfile, payerId, amount);
+          totalCustomSplitExpenses = roundAmount(totalCustomSplitExpenses + amount);
+        }
+      }
+
+      if (transaction.type === "LIQUIDATION") {
+        if (payerId) {
+          addAmount(liquidationsByProfile, payerId, amount);
+        }
+      }
+    });
+  }
+
+  if (customTransactions.size > 0) {
+    const customIds = Array.from(customTransactions.keys());
+    const { data: splits, error: splitsError } = await supabase
+      .from("transaction_splits")
+      .select("transaction_id, user_id, amount")
+      .in("transaction_id", customIds);
+
+    if (splitsError) {
+      return res.status(500).json({ error: splitsError.message });
+    }
+
+    if (splits && splits.length > 0) {
+      splits.forEach((split) => {
+        const transaction = customTransactions.get(split.transaction_id);
+        const userId = split.user_id;
+
+        if (!transaction || !userId) {
+          return;
+        }
+
+        const amount = roundAmount(split.amount);
+        addAmount(customSplitShareByProfile, userId, amount);
+      });
+    }
+  }
+
+  const netByProfile = new Map(
+    profileIds.map((profileId) => {
+      const net = roundAmount(
+        (customSplitPaidByProfile.get(profileId) || 0) -
+          ((customSplitShareByProfile.get(profileId) || 0) +
+            (owedTransactionsByProfile.get(profileId) || 0) -
+            (liquidationsByProfile.get(profileId) || 0))
+      );
+      return [profileId, net];
+    })
+  );
+
+  let balance = { from_profile_id: null, to_profile_id: null, amount: 0 };
+
+  if (profiles.length >= 2) {
+    const first = profiles[0];
+    const second = profiles[1];
+    const firstNet = roundAmount(netByProfile.get(first.id) || 0);
+    const amount = roundAmount(Math.abs(firstNet));
+
+    if (amount > 0) {
+      if (firstNet > 0) {
+        balance = {
+          from_profile_id: second.id,
+          to_profile_id: first.id,
+          amount,
+        };
+      } else {
+        balance = {
+          from_profile_id: first.id,
+          to_profile_id: second.id,
+          amount,
+        };
+      }
+    }
+  }
+
+  return res.json({
+    from_date: fromDate,
+    profiles,
+    expenses_by_profile: Object.fromEntries(expensesByProfile),
+    custom_split_paid_by_profile: Object.fromEntries(customSplitPaidByProfile),
+    custom_split_share_by_profile: Object.fromEntries(customSplitShareByProfile),
+    total_custom_split_expenses: totalCustomSplitExpenses,
+    owed_transactions_by_profile: Object.fromEntries(owedTransactionsByProfile),
+    liquidations_by_profile: Object.fromEntries(liquidationsByProfile),
+    net_by_profile: Object.fromEntries(netByProfile),
+    balance,
+  });
+});
+
 app.post("/transactions", async (req, res) => {
   const {
     payer_id,
@@ -207,35 +429,70 @@ app.post("/transactions", async (req, res) => {
 
   const isIncome = type === "INCOME";
   const isLiquidation = type === "LIQUIDATION";
+  const normalizedPayerId = normalizeId(payer_id);
+  const normalizedBeneficiaryId = normalizeId(beneficiary_id);
+  const requestedSplitMode = split_mode || "custom";
 
-  if (isLiquidation && !beneficiary_id) {
+  if (Number.isNaN(normalizedPayerId) || Number.isNaN(normalizedBeneficiaryId)) {
+    return res.status(400).json({ error: "Profile ids must be numbers." });
+  }
+
+  if (isLiquidation && !normalizedBeneficiaryId) {
     return res
       .status(400)
       .json({ error: "Liquidation requires a beneficiary." });
   }
 
-  if (isIncome && !beneficiary_id && !payer_id) {
+  if (isIncome && !normalizedBeneficiaryId && !normalizedPayerId) {
     return res.status(400).json({ error: "Income requires a recipient." });
   }
 
-  if (!isIncome && !payer_id) {
+  if (!isIncome && !normalizedPayerId) {
     return res.status(400).json({ error: "Payer is required." });
   }
 
-  const payerForInsert = isIncome ? beneficiary_id || payer_id : payer_id;
+  if (!isIncome && !isLiquidation && !expenseSplitModes.has(requestedSplitMode)) {
+    return res.status(400).json({ error: "Invalid split mode." });
+  }
+
+  if (requestedSplitMode === "owed" && !normalizedBeneficiaryId) {
+    return res.status(400).json({ error: "Owed expenses need a beneficiary." });
+  }
+
+  if (
+    requestedSplitMode === "owed" &&
+    normalizedBeneficiaryId &&
+    normalizedBeneficiaryId === normalizedPayerId
+  ) {
+    return res.status(400).json({ error: "Owed expenses need another profile." });
+  }
+
+  const payerForInsert = isIncome
+    ? normalizedBeneficiaryId || normalizedPayerId
+    : normalizedPayerId;
   const categoryForInsert = isIncome ? null : category;
+  const splitModeForInsert = isIncome || isLiquidation ? "none" : requestedSplitMode;
+  const beneficiaryForInsert = isIncome
+    ? payerForInsert
+    : isLiquidation
+      ? normalizedBeneficiaryId
+      : requestedSplitMode === "owed"
+        ? normalizedBeneficiaryId
+        : null;
 
   const { data: transaction, error: transactionError } = await supabase
     .from("transactions")
     .insert({
       payer_id: payerForInsert,
+      beneficiary_id: beneficiaryForInsert,
+      split_mode: splitModeForInsert,
       amount,
       category: categoryForInsert,
       date,
       note,
       type,
     })
-    .select("id")
+    .select("id, split_mode")
     .single();
 
   if (transactionError) {
@@ -243,59 +500,42 @@ app.post("/transactions", async (req, res) => {
   }
 
   const normalizedAmount = Number(amount);
-  const effectiveSplitMode =
-    isIncome || isLiquidation ? "none" : split_mode || "custom";
 
-  let splitRows = [];
+  if (transaction.split_mode === "custom") {
+    if (!Array.isArray(splits_percent)) {
+      return res.status(400).json({ error: "Split percentages are required." });
+    }
 
-  if (isLiquidation) {
-    splitRows = [
-      {
-        transaction_id: transaction.id,
-        user_id: beneficiary_id,
-        amount: Number(normalizedAmount.toFixed(2)),
-      },
-    ];
-  } else if (effectiveSplitMode === "none") {
-    splitRows = [
-      {
-        transaction_id: transaction.id,
-        user_id: payerForInsert,
-        amount: Number(normalizedAmount.toFixed(2)),
-      },
-    ];
-  } else if (Array.isArray(splits_percent)) {
     const totalPercent = splits_percent.reduce(
       (sum, split) => sum + Number(split.percent || 0),
       0
     );
 
-    const invalidPercent = splits_percent.some(
-      (split) => Number(split.percent || 0) <= 0 || !split.user_id
-    );
+    const invalidPercent = splits_percent.some((split) => {
+      const normalizedSplitId = normalizeId(split.user_id);
+      return Number(split.percent || 0) <= 0 || !normalizedSplitId;
+    });
 
     if (Math.abs(totalPercent - 100) > 0.01 || invalidPercent) {
       return res.status(400).json({ error: "Split percentages must total 100%." });
     }
 
-    splitRows = splits_percent.map((split) => {
+    const splitRows = splits_percent.map((split) => {
       const percent = Number(split.percent || 0);
       return {
         transaction_id: transaction.id,
-        user_id: split.user_id,
+        user_id: Number(split.user_id),
         amount: Number(((normalizedAmount * percent) / 100).toFixed(2)),
       };
     });
-  } else {
-    return res.status(400).json({ error: "Split percentages are required." });
-  }
 
-  const { error: splitsError } = await supabase
-    .from("transaction_splits")
-    .insert(splitRows);
+    const { error: splitsError } = await supabase
+      .from("transaction_splits")
+      .insert(splitRows);
 
-  if (splitsError) {
-    return res.status(500).json({ error: splitsError.message });
+    if (splitsError) {
+      return res.status(500).json({ error: splitsError.message });
+    }
   }
 
   return res.status(201).json({ id: transaction.id });
@@ -303,16 +543,18 @@ app.post("/transactions", async (req, res) => {
 
 app.patch("/transactions/:id", async (req, res) => {
   const { id } = req.params;
-  const { payer_id, amount, category, date, note } = req.body || {};
+  const { payer_id, amount, category, date, note, split_mode, beneficiary_id } =
+    req.body || {};
+  const transactionId = normalizeId(id);
 
-  if (!id) {
-    return res.status(400).json({ error: "Transaction id is required." });
+  if (!id || Number.isNaN(transactionId)) {
+    return res.status(400).json({ error: "Transaction id must be a number." });
   }
 
   const { data: existing, error: existingError } = await supabase
     .from("transactions")
-    .select("id, type, amount, payer_id")
-    .eq("id", id)
+    .select("id, type, amount, payer_id, split_mode, beneficiary_id")
+    .eq("id", transactionId)
     .single();
 
   if (existingError) {
@@ -340,11 +582,23 @@ app.patch("/transactions/:id", async (req, res) => {
     updates.amount = normalizedAmount;
   }
 
+  let updatedPayerId = existing.payer_id;
+  let updatedSplitMode = existing.split_mode;
+  let updatedBeneficiaryId = existing.beneficiary_id;
+
   if (payer_id !== undefined) {
-    if (!payer_id) {
+    const normalizedPayerId = normalizeId(payer_id);
+
+    if (Number.isNaN(normalizedPayerId)) {
+      return res.status(400).json({ error: "Payer must be a number." });
+    }
+
+    if (!normalizedPayerId) {
       return res.status(400).json({ error: "Payer is required." });
     }
-    updates.payer_id = payer_id;
+
+    updatedPayerId = normalizedPayerId;
+    updates.payer_id = normalizedPayerId;
   }
 
   if (category !== undefined) {
@@ -358,6 +612,67 @@ app.patch("/transactions/:id", async (req, res) => {
     updates.note = note ? String(note).trim() : null;
   }
 
+  if (split_mode !== undefined) {
+    if (existing.type !== "EXPENSE") {
+      return res.status(400).json({ error: "Split mode only applies to expenses." });
+    }
+
+    if (!expenseSplitModes.has(split_mode)) {
+      return res.status(400).json({ error: "Invalid split mode." });
+    }
+
+    if (split_mode === "custom" && existing.split_mode !== "custom") {
+      return res.status(400).json({ error: "Custom splits must be edited in the main form." });
+    }
+
+    updatedSplitMode = split_mode;
+    updates.split_mode = split_mode;
+
+    if (split_mode !== "owed") {
+      updatedBeneficiaryId = null;
+      updates.beneficiary_id = null;
+    }
+  }
+
+  if (beneficiary_id !== undefined) {
+    if (existing.type !== "EXPENSE") {
+      return res.status(400).json({ error: "Beneficiary only applies to expenses." });
+    }
+
+    const normalizedBeneficiaryId = normalizeId(beneficiary_id);
+
+    if (Number.isNaN(normalizedBeneficiaryId)) {
+      return res.status(400).json({ error: "Beneficiary must be a number." });
+    }
+
+    if (updatedSplitMode !== "owed" && normalizedBeneficiaryId) {
+      return res.status(400).json({ error: "Beneficiary only applies to owed." });
+    }
+
+    updatedBeneficiaryId = normalizedBeneficiaryId;
+    updates.beneficiary_id = normalizedBeneficiaryId;
+  }
+
+  if (
+    updatedSplitMode !== "owed" &&
+    (updatedBeneficiaryId || updates.beneficiary_id)
+  ) {
+    updatedBeneficiaryId = null;
+    updates.beneficiary_id = null;
+  }
+
+  if (updatedSplitMode === "owed" && !updatedBeneficiaryId) {
+    return res.status(400).json({ error: "Owed expenses need a beneficiary." });
+  }
+
+  if (
+    updatedSplitMode === "owed" &&
+    updatedBeneficiaryId &&
+    updatedBeneficiaryId === updatedPayerId
+  ) {
+    return res.status(400).json({ error: "Owed expenses need another profile." });
+  }
+
   if (Object.keys(updates).length === 0) {
     return res.status(400).json({ error: "No updates provided." });
   }
@@ -365,58 +680,61 @@ app.patch("/transactions/:id", async (req, res) => {
   const { data: updated, error: updateError } = await supabase
     .from("transactions")
     .update(updates)
-    .eq("id", id)
-    .select("id, payer_id, amount, category, date, note, type")
+    .eq("id", transactionId)
+    .select("id, payer_id, beneficiary_id, split_mode, amount, category, date, note, type")
     .single();
 
   if (updateError) {
     return res.status(500).json({ error: updateError.message });
   }
 
-  if (amount !== undefined || payer_id !== undefined) {
+  if (
+    existing.type === "EXPENSE" &&
+    existing.split_mode === "custom" &&
+    updated.split_mode !== "custom"
+  ) {
+    const { error: deleteError } = await supabase
+      .from("transaction_splits")
+      .delete()
+      .eq("transaction_id", transactionId);
+
+    if (deleteError) {
+      return res.status(500).json({ error: deleteError.message });
+    }
+  }
+
+  const shouldUpdateSplits =
+    existing.type === "EXPENSE" && updated.split_mode === "custom";
+
+  if (shouldUpdateSplits && amount !== undefined) {
     const { data: splits, error: splitsError } = await supabase
       .from("transaction_splits")
       .select("id, user_id, amount")
-      .eq("transaction_id", id);
+      .eq("transaction_id", transactionId);
 
     if (splitsError) {
       return res.status(500).json({ error: splitsError.message });
     }
 
-    const splitUpdates = [];
-
-    if (amount !== undefined && splits && splits.length > 0) {
+    if (splits && splits.length > 0) {
       const total = splits.reduce((sum, split) => sum + Number(split.amount || 0), 0);
 
       if (total > 0) {
-        splits.forEach((split) => {
+        const splitUpdates = splits.map((split) => {
           const ratio = Number(split.amount || 0) / total;
           const nextAmount = Number((updated.amount * ratio).toFixed(2));
-          splitUpdates.push(
-            supabase
-              .from("transaction_splits")
-              .update({ amount: nextAmount })
-              .eq("id", split.id)
-          );
+          return supabase
+            .from("transaction_splits")
+            .update({ amount: nextAmount })
+            .eq("id", split.id);
         });
-      }
-    }
 
-    if (payer_id !== undefined && splits && splits.length === 1) {
-      splitUpdates.push(
-        supabase
-          .from("transaction_splits")
-          .update({ user_id: updated.payer_id })
-          .eq("id", splits[0].id)
-      );
-    }
+        const splitResults = await Promise.all(splitUpdates);
+        const splitError = splitResults.find((result) => result.error);
 
-    if (splitUpdates.length > 0) {
-      const splitResults = await Promise.all(splitUpdates);
-      const splitError = splitResults.find((result) => result.error);
-
-      if (splitError) {
-        return res.status(500).json({ error: splitError.error.message });
+        if (splitError) {
+          return res.status(500).json({ error: splitError.error.message });
+        }
       }
     }
   }
@@ -442,15 +760,16 @@ app.patch("/transactions/:id", async (req, res) => {
 
 app.delete("/transactions/:id", async (req, res) => {
   const { id } = req.params;
+  const transactionId = normalizeId(id);
 
-  if (!id) {
-    return res.status(400).json({ error: "Transaction id is required." });
+  if (!id || Number.isNaN(transactionId)) {
+    return res.status(400).json({ error: "Transaction id must be a number." });
   }
 
   const { data: existing, error: existingError } = await supabase
     .from("transactions")
     .select("id")
-    .eq("id", id)
+    .eq("id", transactionId)
     .single();
 
   if (existingError) {
@@ -464,7 +783,7 @@ app.delete("/transactions/:id", async (req, res) => {
   const { error: splitsError } = await supabase
     .from("transaction_splits")
     .delete()
-    .eq("transaction_id", id);
+    .eq("transaction_id", transactionId);
 
   if (splitsError) {
     return res.status(500).json({ error: splitsError.message });
@@ -473,13 +792,13 @@ app.delete("/transactions/:id", async (req, res) => {
   const { error: deleteError } = await supabase
     .from("transactions")
     .delete()
-    .eq("id", id);
+    .eq("id", transactionId);
 
   if (deleteError) {
     return res.status(500).json({ error: deleteError.message });
   }
 
-  return res.json({ id });
+  return res.json({ id: transactionId });
 });
 
 app.listen(PORT, () => {
