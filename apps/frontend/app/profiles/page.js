@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
-import { getApiBaseUrl } from "../shared/api";
 import { normalizeNumberInput } from "../shared/inputs";
 import StatusMessage from "../shared/StatusMessage";
 
@@ -15,7 +14,7 @@ export default function ProfilesPage() {
   const [status, setStatus] = useState(null);
   const [savingId, setSavingId] = useState(null);
 
-  const apiBaseUrl = getApiBaseUrl();
+  const apiBaseUrl = "/api";
 
   const loadProfiles = useCallback(() => {
     fetch(`${apiBaseUrl}/profiles`)

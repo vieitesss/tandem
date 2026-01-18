@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 
 import SelectField from "../shared/SelectField";
 import StatusMessage from "../shared/StatusMessage";
-import { getApiBaseUrl } from "../shared/api";
 import { normalizeNumberInput } from "../shared/inputs";
 import { categoryOptions } from "../shared/transactions";
 
@@ -33,7 +32,7 @@ export default function TransactionForm() {
     category: false,
   });
 
-  const apiBaseUrl = getApiBaseUrl();
+  const apiBaseUrl = "/api";
 
   const inputClassName = (hasError) =>
     `w-full rounded-lg border bg-slate-950 px-3 py-2 ${

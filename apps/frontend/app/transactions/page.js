@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 
 import IconLinkButton from "../shared/IconLinkButton";
 import SelectField from "../shared/SelectField";
-import { getApiBaseUrl } from "../shared/api";
 import { formatCurrency, formatMonthLabel, formatShortDate } from "../shared/format";
 import {
   categoryFilterOptions,
@@ -37,7 +36,7 @@ export default function TransactionsPage() {
     data: null,
   });
 
-  const apiBaseUrl = getApiBaseUrl();
+  const apiBaseUrl = "/api";
 
   const queryString = useMemo(() => {
     const params = new URLSearchParams();
