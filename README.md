@@ -10,7 +10,7 @@ Tandem is a lightweight expense-splitting app for partners. Create profiles, log
 
 ## Setup
 ### Prerequisites
-- Node.js and npm installed.
+- Bun installed.
 - A Supabase project with the tables used by the backend.
 
 ### Environment variables
@@ -36,16 +36,16 @@ Start the backend:
 
 ```
 cd apps/backend
-npm install
-npm run dev
+bun install
+bun dev
 ```
 
 Start the frontend in a separate terminal:
 
 ```
 cd apps/frontend
-npm install
-npm run dev
+bun install
+bun dev
 ```
 
 ## Using the app

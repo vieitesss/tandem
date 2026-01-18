@@ -1,19 +1,19 @@
-FROM node:20-alpine AS base
+FROM oven/bun:1.3.4-alpine AS base
 WORKDIR /app
-COPY package.json package-lock.json* ./
+COPY package.json bun.lockb* ./
 
 FROM base AS dev
-RUN npm install
+RUN bun install
 COPY . .
-CMD ["npm", "run", "dev"]
+CMD ["bun", "dev"]
 
 FROM base AS builder
-RUN npm ci
+RUN bun install
 COPY . .
-RUN npm run build
+RUN bun run build
 
-FROM node:20-alpine AS runner
+FROM oven/bun:1.3.4-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=builder /app ./
-CMD ["npm", "start"]
+CMD ["bun", "start"]
