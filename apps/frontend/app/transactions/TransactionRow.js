@@ -40,6 +40,11 @@ export default function TransactionRow({
         ? ""
         : String(transaction.amount),
     note: transaction.note || "",
+    splitMode: transaction.split_mode || "none",
+    owedToId:
+      transaction.split_mode === "owed" && transaction.beneficiary_id
+        ? String(transaction.beneficiary_id)
+        : "",
   }));
 
   const amountClass = amountClassFor(transaction.type);
@@ -54,6 +59,25 @@ export default function TransactionRow({
     );
   }, [profiles, transaction.payer_id, transaction.payer_name]);
   const categoryLabel = transaction.category || "—";
+  const splitLabel = useMemo(() => {
+    if (transaction.type !== "EXPENSE") {
+      return "—";
+    }
+
+    if (transaction.split_mode === "owed") {
+      return "Owed";
+    }
+
+    if (transaction.split_mode === "custom") {
+      return "Custom";
+    }
+
+    if (transaction.split_mode === "none") {
+      return "Personal";
+    }
+
+    return "—";
+  }, [transaction.split_mode, transaction.type]);
   const noteLabel = transaction.note ? transaction.note.trim() : "";
   const notePlaceholder = "—";
 
@@ -71,8 +95,26 @@ export default function TransactionRow({
           ? ""
           : String(transaction.amount),
       note: transaction.note || "",
+      splitMode: transaction.split_mode || "none",
+      owedToId:
+        transaction.split_mode === "owed" && transaction.beneficiary_id
+          ? String(transaction.beneficiary_id)
+          : "",
     });
   }, [transaction, isModalOpen]);
+
+  useEffect(() => {
+    if (
+      transaction.type !== "EXPENSE" ||
+      draft.splitMode !== "owed" ||
+      !draft.owedToId ||
+      draft.owedToId !== draft.payerId
+    ) {
+      return;
+    }
+
+    setDraft((current) => ({ ...current, owedToId: "" }));
+  }, [transaction.type, draft.splitMode, draft.owedToId, draft.payerId]);
 
   const amountNumber = Number(draft.amount);
   const isAmountMissing =
@@ -81,8 +123,16 @@ export default function TransactionRow({
   const isPayerMissing = !draft.payerId;
   const isCategoryRequired = transaction.type !== "INCOME";
   const isCategoryMissing = isCategoryRequired && !draft.category;
+  const isOwedMissing =
+    transaction.type === "EXPENSE" &&
+    draft.splitMode === "owed" &&
+    (!draft.owedToId || draft.owedToId === draft.payerId);
   const canSave =
-    !isAmountMissing && !isDateMissing && !isPayerMissing && !isCategoryMissing;
+    !isAmountMissing &&
+    !isDateMissing &&
+    !isPayerMissing &&
+    !isCategoryMissing &&
+    !isOwedMissing;
 
   const handleToggle = () => {
     setIsExpanded((current) => !current);
@@ -100,6 +150,11 @@ export default function TransactionRow({
           ? ""
           : String(transaction.amount),
       note: transaction.note || "",
+      splitMode: transaction.split_mode || "none",
+      owedToId:
+        transaction.split_mode === "owed" && transaction.beneficiary_id
+          ? String(transaction.beneficiary_id)
+          : "",
     });
     setIsModalOpen(true);
   };
@@ -112,6 +167,11 @@ export default function TransactionRow({
 
   const handleSave = async () => {
     if (!canSave) {
+      if (isOwedMissing) {
+        setError("Select who owes you for this expense.");
+        return;
+      }
+
       setError(
         isCategoryRequired
           ? "Fill out day, paid by, category, and amount."
@@ -124,16 +184,24 @@ export default function TransactionRow({
       setError("");
       await onSave(transaction.id, {
         date: draft.date,
-        payer_id: draft.payerId,
+        payer_id: draft.payerId ? Number(draft.payerId) : null,
         category: draft.category,
         amount: Number(draft.amount),
         note: draft.note ? draft.note.trim() : null,
+        split_mode: transaction.type === "EXPENSE" ? draft.splitMode : undefined,
+        beneficiary_id:
+          transaction.type === "EXPENSE" && draft.splitMode === "owed"
+            ? Number(draft.owedToId)
+            : transaction.type === "EXPENSE" && draft.splitMode === "none"
+              ? null
+              : undefined,
       });
       handleCloseModal();
     } catch (saveError) {
       setError(saveError.message || "Failed to update transaction.");
     }
   };
+
 
   const handleDelete = async () => {
     if (!isDeleteConfirm) {
@@ -151,13 +219,14 @@ export default function TransactionRow({
   };
 
   const rowContent = (
-    <div className="grid grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-2 text-sm md:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto_72px]">
+    <div className="grid grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-2 text-sm md:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.7fr)_auto_72px]">
       <span className="text-slate-200 tabular-nums">{dayLabel}</span>
       <span className="truncate text-slate-200">{payerLabel}</span>
       <span className="truncate text-slate-200">{categoryLabel}</span>
       <span className="hidden truncate text-slate-400 md:block">
         {noteLabel || notePlaceholder}
       </span>
+      <span className="hidden truncate text-slate-400 md:block">{splitLabel}</span>
       <span className={`text-right ${amountClass}`}>
         {formatCurrency(transaction.amount)}
       </span>
@@ -219,92 +288,140 @@ export default function TransactionRow({
               <h3 className="text-lg font-semibold">Edit transaction</h3>
               <p className="text-xs text-slate-400">Type: {transaction.type}</p>
             </div>
-            <div className="grid gap-3 text-sm">
-              <label className="space-y-1 text-xs text-slate-400">
-                Date
-                <input
-                  className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200"
-                  type="date"
-                  value={draft.date}
-                  onChange={(event) =>
-                    setDraft((current) => ({
-                      ...current,
-                      date: event.target.value,
-                    }))
-                  }
-                />
-              </label>
-              <label className="space-y-1 text-xs text-slate-400">
-                Paid by
-                <SelectField
-                  className="w-full appearance-none rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 pr-9 text-sm text-slate-200"
-                  value={draft.payerId}
-                  onChange={(event) =>
-                    setDraft((current) => ({
-                      ...current,
-                      payerId: event.target.value,
-                    }))
-                  }
-                >
-                  <option value="">Select payer</option>
-                  {profiles.map((profile) => (
-                    <option key={profile.id} value={profile.id}>
-                      {profile.display_name || profile.id}
-                    </option>
-                  ))}
-                </SelectField>
-              </label>
-              <label className="space-y-1 text-xs text-slate-400">
-                Category
-                <SelectField
-                  className="w-full appearance-none rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 pr-9 text-sm text-slate-200"
-                  value={draft.category}
-                  onChange={(event) =>
-                    setDraft((current) => ({
-                      ...current,
-                      category: event.target.value,
-                    }))
-                  }
-                  disabled={!isCategoryRequired}
-                >
-                  <option value="">
-                    {isCategoryRequired ? "Select category" : "Not required"}
-                  </option>
-                  {categoryOptions.map((option) => (
-                    <option key={option.label} value={option.label}>
-                      {option.label}
-                    </option>
-                  ))}
-                </SelectField>
-              </label>
-              <label className="space-y-1 text-xs text-slate-400">
-                Amount
-                <input
-                  className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-left text-sm text-slate-200"
-                  placeholder="0.00"
-                  inputMode="decimal"
-                  value={draft.amount}
-                  onChange={(event) => {
-                    const normalized = normalizeNumberInput(event.target.value);
-                    setDraft((current) => ({ ...current, amount: normalized }));
-                  }}
-                />
-              </label>
-              <label className="space-y-1 text-xs text-slate-400">
-                Note
-                <input
-                  className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200"
-                  placeholder="No note"
-                  value={draft.note}
-                  onChange={(event) =>
-                    setDraft((current) => ({
-                      ...current,
-                      note: event.target.value,
-                    }))
-                  }
-                />
-              </label>
-            </div>
+             <div className="grid gap-3 text-sm">
+               <label className="space-y-1 text-xs text-slate-400">
+                 Date
+                 <input
+                   className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200"
+                   type="date"
+                   value={draft.date}
+                   onChange={(event) =>
+                     setDraft((current) => ({
+                       ...current,
+                       date: event.target.value,
+                     }))
+                   }
+                 />
+               </label>
+               <label className="space-y-1 text-xs text-slate-400">
+                 Paid by
+                 <SelectField
+                   className="w-full appearance-none rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 pr-9 text-sm text-slate-200"
+                   value={draft.payerId}
+                   onChange={(event) =>
+                     setDraft((current) => ({
+                       ...current,
+                       payerId: event.target.value,
+                     }))
+                   }
+                 >
+                   <option value="">Select payer</option>
+                   {profiles.map((profile) => (
+                     <option key={profile.id} value={profile.id}>
+                       {profile.display_name || profile.id}
+                     </option>
+                   ))}
+                 </SelectField>
+               </label>
+               <label className="space-y-1 text-xs text-slate-400">
+                 Category
+                 <SelectField
+                   className="w-full appearance-none rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 pr-9 text-sm text-slate-200"
+                   value={draft.category}
+                   onChange={(event) =>
+                     setDraft((current) => ({
+                       ...current,
+                       category: event.target.value,
+                     }))
+                   }
+                   disabled={!isCategoryRequired}
+                 >
+                   <option value="">
+                     {isCategoryRequired ? "Select category" : "Not required"}
+                   </option>
+                   {categoryOptions.map((option) => (
+                     <option key={option.label} value={option.label}>
+                       {option.label}
+                     </option>
+                   ))}
+                 </SelectField>
+               </label>
+               {transaction.type === "EXPENSE" ? (
+                 <label className="space-y-1 text-xs text-slate-400">
+                   Split mode
+                   <SelectField
+                     className="w-full appearance-none rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 pr-9 text-sm text-slate-200"
+                     value={draft.splitMode}
+                     onChange={(event) =>
+                       setDraft((current) => ({
+                         ...current,
+                         splitMode: event.target.value,
+                         owedToId:
+                           event.target.value === "owed"
+                             ? current.owedToId
+                             : "",
+                       }))
+                     }
+                   >
+                     <option value="none">Personal</option>
+                     <option value="owed">Owed</option>
+                     <option value="custom">Custom</option>
+                   </SelectField>
+                 </label>
+               ) : null}
+               {transaction.type === "EXPENSE" && draft.splitMode === "owed" ? (
+                 <label className="space-y-1 text-xs text-slate-400">
+                   Owed by
+                   <SelectField
+                     className="w-full appearance-none rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 pr-9 text-sm text-slate-200"
+                     value={draft.owedToId}
+                     onChange={(event) =>
+                       setDraft((current) => ({
+                         ...current,
+                         owedToId: event.target.value,
+                       }))
+                     }
+                   >
+                     <option value="">Select partner</option>
+                     {profiles
+                       .filter((profile) => profile.id !== draft.payerId)
+                       .map((profile) => (
+                         <option key={profile.id} value={profile.id}>
+                           {profile.display_name || profile.id}
+                         </option>
+                       ))}
+                   </SelectField>
+                 </label>
+               ) : null}
+               <label className="space-y-1 text-xs text-slate-400">
+                 Amount
+                 <input
+                   className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-left text-sm text-slate-200"
+                   placeholder="0.00"
+                   inputMode="decimal"
+                   value={draft.amount}
+                   onChange={(event) => {
+                     const normalized = normalizeNumberInput(event.target.value);
+                     setDraft((current) => ({ ...current, amount: normalized }));
+                   }}
+                 />
+               </label>
+               <label className="space-y-1 text-xs text-slate-400">
+                 Note
+                 <input
+                   className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200"
+                   placeholder="No note"
+                   value={draft.note}
+                   onChange={(event) =>
+                     setDraft((current) => ({
+                       ...current,
+                       note: event.target.value,
+                     }))
+                   }
+                 />
+               </label>
+             </div>
+
             {error ? <p className="text-xs text-rose-300">{error}</p> : null}
             <div className="flex flex-wrap items-center justify-between gap-3">
               <button

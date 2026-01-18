@@ -22,6 +22,7 @@ export default function TransactionForm() {
   const [status, setStatus] = useState(null);
   const [profiles, setProfiles] = useState([]);
   const [beneficiaryId, setBeneficiaryId] = useState("");
+  const [owedToId, setOwedToId] = useState("");
   const [hasTriedSubmit, setHasTriedSubmit] = useState(false);
   const [amountFormatError, setAmountFormatError] = useState(false);
   const [touched, setTouched] = useState({
@@ -85,11 +86,25 @@ export default function TransactionForm() {
       setBeneficiaryId("");
     }
 
+    if (type !== "EXPENSE" || splitMode !== "owed") {
+      setOwedToId("");
+    }
+
     if (type === "INCOME") {
       setCategory("");
       setTouched((current) => ({ ...current, category: false }));
     }
-  }, [type]);
+
+    if (splitMode !== "owed") {
+      setTouched((current) => ({ ...current, beneficiary: false }));
+    }
+  }, [type, splitMode]);
+
+  useEffect(() => {
+    if (splitMode === "owed" && owedToId && owedToId === payerId) {
+      setOwedToId("");
+    }
+  }, [splitMode, owedToId, payerId]);
 
   const totalPercent = useMemo(() => {
     return splits.reduce((sum, split) => sum + Number(split.percent || 0), 0);
@@ -113,6 +128,10 @@ export default function TransactionForm() {
   const isDateMissing = !date;
   const isCategoryMissing = type === "EXPENSE" && !category;
   const isBeneficiaryMissing = type === "LIQUIDATION" && !beneficiaryId;
+  const isOwedMissing =
+    splitMode === "owed" &&
+    type === "EXPENSE" &&
+    (!owedToId || owedToId === payerId);
 
   const showPayerError = (hasTriedSubmit || touched.payer) && isPayerMissing;
   const showAmountError = (hasTriedSubmit || touched.amount) && isAmountMissing;
@@ -123,6 +142,8 @@ export default function TransactionForm() {
     (hasTriedSubmit || touched.category) && isCategoryMissing;
   const showBeneficiaryError =
     (hasTriedSubmit || touched.beneficiary) && isBeneficiaryMissing;
+  const showOwedError =
+    (hasTriedSubmit || touched.beneficiary) && isOwedMissing;
   const showSplitError =
     type === "EXPENSE" &&
     splitMode === "custom" &&
@@ -146,6 +167,10 @@ export default function TransactionForm() {
       return Boolean(beneficiaryId);
     }
 
+    if (type === "EXPENSE" && splitMode === "owed") {
+      return Boolean(owedToId) && owedToId !== payerId;
+    }
+
     if (splitMode === "none") {
       return true;
     }
@@ -162,6 +187,7 @@ export default function TransactionForm() {
     hasInvalidSplit,
     hasSplitTotalError,
     type,
+    owedToId,
   ]);
 
   const updateSplit = (index, field, value) => {
@@ -198,11 +224,12 @@ export default function TransactionForm() {
       return;
     }
 
-    const trimmedPayerId = payerId.trim();
-    const trimmedBeneficiaryId = beneficiaryId.trim();
+    const payerValue = payerId ? Number(payerId) : null;
+    const beneficiaryValue = beneficiaryId ? Number(beneficiaryId) : null;
+    const owedValue = owedToId ? Number(owedToId) : null;
 
     const payload = {
-      payer_id: type === "INCOME" ? null : trimmedPayerId,
+      payer_id: type === "INCOME" ? null : payerValue,
       amount: Number(amount),
       category: type === "INCOME" ? null : category.trim() || null,
       date,
@@ -211,15 +238,17 @@ export default function TransactionForm() {
       split_mode: type === "INCOME" || type === "LIQUIDATION" ? "none" : splitMode,
       beneficiary_id:
         type === "LIQUIDATION"
-          ? trimmedBeneficiaryId
+          ? beneficiaryValue
           : type === "INCOME"
-            ? trimmedPayerId
-            : null,
+            ? payerValue
+            : splitMode === "owed"
+              ? owedValue
+              : null,
       splits_percent:
-        type === "INCOME" || type === "LIQUIDATION" || splitMode === "none"
+        type === "INCOME" || type === "LIQUIDATION" || splitMode !== "custom"
           ? []
           : splits.map((split) => ({
-              user_id: split.user_id.trim(),
+              user_id: split.user_id ? Number(split.user_id) : null,
               percent: Number(split.percent || 0),
             })),
     };
@@ -242,6 +271,7 @@ export default function TransactionForm() {
       setNote("");
       setSplitMode(type === "INCOME" || type === "LIQUIDATION" ? "none" : "custom");
       setBeneficiaryId("");
+      setOwedToId("");
       setSplits(
         profiles.length
           ? profiles.map((profile) => ({
@@ -411,7 +441,19 @@ export default function TransactionForm() {
               onClick={() => setSplitMode("none")}
               disabled={type === "INCOME" || type === "LIQUIDATION"}
             >
-              No split
+              Personal
+            </button>
+            <button
+              className={`rounded-full px-3 py-1 ${
+                splitMode === "owed"
+                  ? "bg-emerald-500 text-slate-900"
+                  : "bg-slate-800 text-slate-200"
+              }`}
+              type="button"
+              onClick={() => setSplitMode("owed")}
+              disabled={type === "INCOME" || type === "LIQUIDATION"}
+            >
+              Owed
             </button>
             <button
               className={`rounded-full px-3 py-1 ${
@@ -460,6 +502,39 @@ export default function TransactionForm() {
             </SelectField>
             {showBeneficiaryError ? (
               <p className="text-xs text-rose-300">Select a recipient.</p>
+            ) : null}
+          </div>
+        ) : null}
+        {splitMode === "owed" && type === "EXPENSE" ? (
+          <div className="space-y-2">
+            <p className="text-xs text-slate-400">
+              Owed expenses assign 100% to the other partner.
+            </p>
+            <label className="text-xs text-slate-400">
+              Owed by<span className="text-rose-400"> *</span>
+            </label>
+            <SelectField
+              className={`${inputClassName(showOwedError)} appearance-none pr-9`}
+              value={owedToId}
+              onChange={(event) => {
+                setOwedToId(event.target.value);
+                setTouched((current) => ({ ...current, beneficiary: true }));
+              }}
+              aria-invalid={showOwedError}
+            >
+              <option value="">Select partner</option>
+              {profiles
+                .filter((profile) => profile.id !== payerId)
+                .map((profile) => (
+                  <option key={profile.id} value={profile.id}>
+                    {profile.display_name || profile.id}
+                  </option>
+                ))}
+            </SelectField>
+            {showOwedError ? (
+              <p className="text-xs text-rose-300">
+                Select the other partner who owes you.
+              </p>
             ) : null}
           </div>
         ) : null}

@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import IconLinkButton from "../shared/IconLinkButton";
 import SelectField from "../shared/SelectField";
 import { getApiBaseUrl } from "../shared/api";
-import { formatMonthLabel } from "../shared/format";
+import { formatCurrency, formatMonthLabel, formatShortDate } from "../shared/format";
 import {
   categoryFilterOptions,
   categoryOptions,
@@ -20,10 +20,22 @@ export default function TransactionsPage() {
     month: "",
     type: "ALL",
     category: "All",
+    payerId: "",
+    split: "ALL",
   });
   const [profiles, setProfiles] = useState([]);
   const [savingId, setSavingId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
+  const [debtFromDate, setDebtFromDate] = useState(() => {
+    const now = new Date();
+    const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    return start.toISOString().slice(0, 10);
+  });
+  const [debtSummary, setDebtSummary] = useState({
+    state: "idle",
+    message: "",
+    data: null,
+  });
 
   const apiBaseUrl = getApiBaseUrl();
 
@@ -42,6 +54,35 @@ export default function TransactionsPage() {
     return query ? `?${query}` : "";
   }, [filters]);
 
+  const filteredTransactions = useMemo(() => {
+    const payerId = filters.payerId ? Number(filters.payerId) : null;
+
+    return transactions.filter((transaction) => {
+      if (payerId && transaction.payer_id !== payerId) {
+        return false;
+      }
+
+      if (filters.split && filters.split !== "ALL") {
+        if (transaction.type !== "EXPENSE") {
+          return false;
+        }
+
+        const splitLabel =
+          transaction.split_mode === "none"
+            ? "PERSONAL"
+            : transaction.split_mode
+                ? String(transaction.split_mode).toUpperCase()
+                : "";
+
+        if (splitLabel !== filters.split) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [filters.payerId, filters.split, transactions]);
+
   const monthOptions = useMemo(() => {
     const months = new Set();
 
@@ -57,7 +98,7 @@ export default function TransactionsPage() {
   const groupedTransactions = useMemo(() => {
     const groups = new Map();
 
-    transactions.forEach((transaction) => {
+    filteredTransactions.forEach((transaction) => {
       const monthKey = transaction.date
         ? transaction.date.slice(0, 7)
         : "unknown";
@@ -72,7 +113,7 @@ export default function TransactionsPage() {
     return Array.from(groups.keys())
       .sort((a, b) => b.localeCompare(a))
       .map((month) => ({ month, items: groups.get(month) }));
-  }, [transactions]);
+  }, [filteredTransactions]);
 
   useEffect(() => {
     setStatus({ state: "loading", message: "" });
@@ -97,6 +138,32 @@ export default function TransactionsPage() {
       })
       .catch(() => setProfiles([]));
   }, [apiBaseUrl]);
+
+  useEffect(() => {
+    if (!debtFromDate) {
+      return;
+    }
+
+    setDebtSummary({ state: "loading", message: "", data: null });
+
+    fetch(`${apiBaseUrl}/debt-summary?from=${encodeURIComponent(debtFromDate)}`)
+      .then((response) => response.json())
+      .then((data) => {
+        if (data?.error) {
+          setDebtSummary({ state: "error", message: data.error, data: null });
+          return;
+        }
+
+        setDebtSummary({ state: "idle", message: "", data });
+      })
+      .catch(() => {
+        setDebtSummary({
+          state: "error",
+          message: "Failed to load debt summary.",
+          data: null,
+        });
+      });
+  }, [apiBaseUrl, debtFromDate]);
 
   const handleUpdate = async (transactionId, payload) => {
     setSavingId(transactionId);
@@ -150,6 +217,45 @@ export default function TransactionsPage() {
     }
   };
 
+  const debtProfiles = debtSummary.data?.profiles || [];
+  const debtExpenses = debtSummary.data?.expenses_by_profile || {};
+  const debtCustomSplitPaid = debtSummary.data?.custom_split_paid_by_profile || {};
+  const debtCustomSplitShare = debtSummary.data?.custom_split_share_by_profile || {};
+  const debtCustomSplitTotal = Number(
+    debtSummary.data?.total_custom_split_expenses || 0
+  );
+  const debtOwedTransactions = debtSummary.data?.owed_transactions_by_profile || {};
+  const debtLiquidations = debtSummary.data?.liquidations_by_profile || {};
+  const debtNet = debtSummary.data?.net_by_profile || {};
+  const debtBalance = debtSummary.data?.balance || {};
+  const debtProfileLabels = debtProfiles.map((profile) => ({
+    ...profile,
+    expenses: Number(debtExpenses[profile.id] || 0),
+    customSplitPaid: Number(debtCustomSplitPaid[profile.id] || 0),
+    customSplitShare: Number(debtCustomSplitShare[profile.id] || 0),
+    owedTransactions: Number(debtOwedTransactions[profile.id] || 0),
+    liquidations: Number(debtLiquidations[profile.id] || 0),
+    net: Number(debtNet[profile.id] || 0),
+  }));
+  const debtProfilesById = new Map(
+    debtProfiles.map((profile) => [profile.id, profile])
+  );
+  let debtLine = "All settled up.";
+
+  if (debtSummary.state === "loading") {
+    debtLine = "Calculating balances...";
+  } else if (debtSummary.state === "error") {
+    debtLine = "Unable to calculate debt.";
+  } else if (debtBalance?.amount) {
+    debtLine = `${
+      debtProfilesById.get(debtBalance.from_profile_id)?.display_name ||
+      "Partner 1"
+    } owed ${formatCurrency(debtBalance.amount)} to ${
+      debtProfilesById.get(debtBalance.to_profile_id)?.display_name ||
+      "Partner 2"
+    }`;
+  }
+
   return (
     <main className="mx-auto flex min-h-screen max-w-5xl flex-col gap-6 px-6 pt-6 pb-[calc(6rem+env(safe-area-inset-bottom))] md:p-6">
       <header className="space-y-2">
@@ -187,11 +293,97 @@ export default function TransactionsPage() {
           </div>
         </div>
         <p className="text-sm text-slate-400">
-          Review every transaction and filter by month, type, or category.
+          Review every transaction and filter by month, type, category, or payer.
         </p>
       </header>
 
-      <section className="grid gap-4 rounded-2xl border border-slate-800 bg-slate-900/40 p-4 md:grid-cols-3">
+      <section className="space-y-4 rounded-2xl border border-slate-800 bg-slate-900/40 p-4">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+              Debt summary
+            </p>
+            <h2 className="text-lg font-semibold text-slate-100">
+              {debtLine}
+            </h2>
+            <p className="text-xs text-slate-400">
+              From {formatShortDate(debtFromDate)} onward.
+            </p>
+          </div>
+          <label className="space-y-2 text-xs text-slate-400">
+            From date
+            <input
+              className="w-full min-w-[180px] rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200"
+              type="date"
+              value={debtFromDate}
+              onChange={(event) => {
+                if (event.target.value) {
+                  setDebtFromDate(event.target.value);
+                }
+              }}
+            />
+          </label>
+        </div>
+        <div className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950/40 px-3 py-2 text-sm">
+          <span className="text-slate-400">Total custom split expenses</span>
+          <span className="text-slate-100">{formatCurrency(debtCustomSplitTotal)}</span>
+        </div>
+        {debtSummary.state === "loading" ? (
+          <p className="text-sm text-slate-400">Loading debt summary...</p>
+        ) : null}
+        {debtSummary.state === "error" ? (
+          <p className="text-sm text-rose-300">{debtSummary.message}</p>
+        ) : null}
+        {debtSummary.state === "idle" ? (
+          <div className="grid gap-3 text-sm md:grid-cols-2">
+            {debtProfileLabels.map((profile) => (
+              <div
+                key={profile.id}
+                className="space-y-2 rounded-xl border border-slate-800 bg-slate-950/40 p-3"
+              >
+                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                  {profile.display_name || profile.id}
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400">Expenses paid</span>
+                  <span className="text-slate-100">
+                    {formatCurrency(profile.expenses)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400">Custom split paid</span>
+                  <span className="text-slate-100">
+                    {formatCurrency(profile.customSplitPaid)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400">Transactions owed</span>
+                  <span className="text-slate-100">
+                    {formatCurrency(profile.owedTransactions)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400">Liquidations</span>
+                  <span className="text-slate-100">
+                    {formatCurrency(profile.liquidations)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between border-t border-slate-800 pt-2">
+                  <span className="text-slate-200">Person debt</span>
+                  <span className="text-slate-50">
+                    {formatCurrency(profile.net)}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500">
+                  Debt = custom split paid - (split share + owed - liquidations)
+                </p>
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </section>
+
+      <section className="grid gap-4 rounded-2xl border border-slate-800 bg-slate-900/40 p-4 md:grid-cols-5">
         <label className="space-y-2 text-sm text-slate-300">
           Month
           <SelectField
@@ -250,6 +442,44 @@ export default function TransactionsPage() {
             ))}
           </SelectField>
         </label>
+        <label className="space-y-2 text-sm text-slate-300">
+          Paid by
+          <SelectField
+            className="w-full appearance-none rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 pr-9 text-sm text-slate-200"
+            value={filters.payerId}
+            onChange={(event) =>
+              setFilters((current) => ({
+                ...current,
+                payerId: event.target.value,
+              }))
+            }
+          >
+            <option value="">All payers</option>
+            {profiles.map((profile) => (
+              <option key={profile.id} value={profile.id}>
+                {profile.display_name || profile.id}
+              </option>
+            ))}
+          </SelectField>
+        </label>
+        <label className="space-y-2 text-sm text-slate-300">
+          Split type
+          <SelectField
+            className="w-full appearance-none rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 pr-9 text-sm text-slate-200"
+            value={filters.split}
+            onChange={(event) =>
+              setFilters((current) => ({
+                ...current,
+                split: event.target.value,
+              }))
+            }
+          >
+            <option value="ALL">All splits</option>
+            <option value="PERSONAL">Personal</option>
+            <option value="OWED">Owed</option>
+            <option value="CUSTOM">Custom</option>
+          </SelectField>
+        </label>
       </section>
 
       <section className="space-y-4">
@@ -262,7 +492,7 @@ export default function TransactionsPage() {
           <p className="text-sm text-rose-300">{status.message}</p>
         ) : null}
 
-        {status.state === "idle" && transactions.length === 0 ? (
+        {status.state === "idle" && filteredTransactions.length === 0 ? (
           <p className="text-sm text-slate-500">No transactions found.</p>
         ) : null}
 
@@ -277,11 +507,12 @@ export default function TransactionsPage() {
               <div className="text-sm font-semibold text-slate-200">
                 {monthLabel}
               </div>
-              <div className="grid grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)_auto] gap-2 px-3 text-xs text-slate-400 md:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto_72px]">
+              <div className="grid grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)_auto] gap-2 px-3 text-xs text-slate-400 md:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.7fr)_auto_72px]">
                 <span>Day</span>
                 <span>Paid by</span>
                 <span>Category</span>
                 <span className="hidden md:block">Note</span>
+                <span className="hidden md:block">Split</span>
                 <span className="text-right">Amount</span>
               </div>
               <div className="divide-y divide-slate-800 rounded-2xl border border-slate-800 bg-slate-900/40">
