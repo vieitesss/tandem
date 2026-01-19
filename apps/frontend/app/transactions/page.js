@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import IconLinkButton from "../shared/IconLinkButton";
 import SelectField from "../shared/SelectField";
+import Tooltip from "../shared/Tooltip";
 import { formatCurrency, formatMonthLabel, formatShortDate } from "../shared/format";
 import {
   categoryFilterOptions,
@@ -220,26 +221,46 @@ export default function TransactionsPage() {
   const debtProfiles = debtSummary.data?.profiles || [];
   const debtExpenses = debtSummary.data?.expenses_by_profile || {};
   const debtCustomSplitPaid = debtSummary.data?.custom_split_paid_by_profile || {};
-  const debtCustomSplitShare = debtSummary.data?.custom_split_share_by_profile || {};
-  const debtCustomSplitTotal = Number(
-    debtSummary.data?.total_custom_split_expenses || 0
-  );
-  const debtOwedTransactions = debtSummary.data?.owed_transactions_by_profile || {};
-  const debtLiquidations = debtSummary.data?.liquidations_by_profile || {};
-  const debtLiquidationsReceived =
-    debtSummary.data?.liquidations_received_by_profile || {};
-  const debtNet = debtSummary.data?.net_by_profile || {};
-  const debtBalance = debtSummary.data?.balance || {};
-  const debtProfileLabels = debtProfiles.map((profile) => ({
-    ...profile,
-    expenses: Number(debtExpenses[profile.id] || 0),
-    customSplitPaid: Number(debtCustomSplitPaid[profile.id] || 0),
-    customSplitShare: Number(debtCustomSplitShare[profile.id] || 0),
-    owedTransactions: Number(debtOwedTransactions[profile.id] || 0),
-    liquidationsPaid: Number(debtLiquidations[profile.id] || 0),
-    liquidationsReceived: Number(debtLiquidationsReceived[profile.id] || 0),
-    net: Number(debtNet[profile.id] || 0),
-  }));
+   const debtCustomSplitShare = debtSummary.data?.custom_split_share_by_profile || {};
+   const debtCustomSplitTotal = Number(
+     debtSummary.data?.total_custom_split_expenses || 0
+   );
+   const debtOwedTransactions = debtSummary.data?.owed_transactions_by_profile || {};
+   const debtOwedPaid = debtSummary.data?.owed_paid_by_profile || {};
+   const debtLiquidations = debtSummary.data?.liquidations_by_profile || {};
+   const debtLiquidationsReceived =
+     debtSummary.data?.liquidations_received_by_profile || {};
+   const debtNet = debtSummary.data?.net_by_profile || {};
+   const debtBalance = debtSummary.data?.balance || {};
+  const debtProfileLabels = debtProfiles.map((profile) => {
+    const expenses = Number(debtExpenses[profile.id] || 0);
+    const customSplitPaid = Number(debtCustomSplitPaid[profile.id] || 0);
+    const customSplitShare = Number(debtCustomSplitShare[profile.id] || 0);
+    const owedTransactions = Number(debtOwedTransactions[profile.id] || 0);
+    const owedPaid = Number(debtOwedPaid[profile.id] || 0);
+    const liquidationsPaid = Number(debtLiquidations[profile.id] || 0);
+    const liquidationsReceived = Number(debtLiquidationsReceived[profile.id] || 0);
+    const paidTotal = customSplitPaid + owedPaid + liquidationsPaid;
+    const toPayTotal = customSplitShare + owedTransactions;
+    const receivedTotal = liquidationsReceived;
+
+    return {
+      ...profile,
+      expenses,
+      customSplitPaid,
+      customSplitShare,
+      owedTransactions,
+      owedPaid,
+      liquidationsPaid,
+      liquidationsReceived,
+      paidTotal,
+      toPayTotal,
+      receivedTotal,
+      net: Number(debtNet[profile.id] || 0),
+    };
+  });
+
+
   const debtProfilesById = new Map(
     debtProfiles.map((profile) => [profile.id, profile])
   );
@@ -346,57 +367,109 @@ export default function TransactionsPage() {
           <p className="text-sm text-rose-300">{debtSummary.message}</p>
         ) : null}
         {debtSummary.state === "idle" ? (
-          <div className="grid gap-3 text-sm md:grid-cols-2">
-            {debtProfileLabels.map((profile) => (
-              <div
-                key={profile.id}
-                className="space-y-2 rounded-xl border border-slate-800 bg-slate-950/40 p-3"
-              >
-                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                  {profile.display_name || profile.id}
+          <div className="space-y-3">
+            <p className="text-xs text-slate-500">
+              Net = what was paid - what had to be paid - what was received
+            </p>
+            <div className="grid gap-3 text-sm md:grid-cols-2">
+              {debtProfileLabels.map((profile) => (
+                <div
+                  key={profile.id}
+                  className="space-y-2 rounded-xl border border-slate-800 bg-slate-950/40 p-3"
+                >
+                  <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                    {profile.display_name || profile.id}
+                  </div>
+                  <div className="space-y-2 rounded-xl border border-slate-800 bg-slate-950/60 p-2">
+                    <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                      What was paid
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <Tooltip label="Total amount this person paid on transactions split as custom.">
+                        <span className="text-slate-400">Custom split paid</span>
+                      </Tooltip>
+                      <span className="text-slate-100">
+                        {formatCurrency(profile.customSplitPaid)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400">Owed paid (for others)</span>
+                      <span className="text-slate-100">
+                        {formatCurrency(profile.owedPaid)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400">Liquidations paid</span>
+                      <span className="text-slate-100">
+                        {formatCurrency(profile.liquidationsPaid)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between border-t border-slate-800 pt-2">
+                      <span className="text-slate-200">Paid total</span>
+                      <span className="text-slate-50">
+                        {formatCurrency(profile.paidTotal)}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="space-y-2 rounded-xl border border-slate-800 bg-slate-950/60 p-2">
+                    <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                      What had to be paid
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <Tooltip label="Total share this person should cover based on custom split percentages.">
+                        <span className="text-slate-400">Custom split share</span>
+                      </Tooltip>
+                      <span className="text-slate-100">
+                        {formatCurrency(profile.customSplitShare)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400">Owed expenses</span>
+                      <span className="text-slate-100">
+                        {formatCurrency(profile.owedTransactions)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between border-t border-slate-800 pt-2">
+                      <span className="text-slate-200">To pay total</span>
+                      <span className="text-slate-50">
+                        {formatCurrency(profile.toPayTotal)}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="space-y-2 rounded-xl border border-slate-800 bg-slate-950/60 p-2">
+                    <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                      What was received
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400">Liquidations received</span>
+                      <span className="text-slate-100">
+                        {formatCurrency(profile.liquidationsReceived)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between border-t border-slate-800 pt-2">
+                      <span className="text-slate-200">Received total</span>
+                      <span className="text-slate-50">
+                        {formatCurrency(profile.receivedTotal)}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-2 text-xs text-slate-400">
+                    <p>
+                      {formatCurrency(profile.paidTotal)} -
+                      {formatCurrency(profile.toPayTotal)} -
+                      {formatCurrency(profile.receivedTotal)} =
+                      {formatCurrency(profile.net)}
+                    </p>
+                  </div>
+                  <div className="flex items-center justify-between border-t border-slate-800 pt-2">
+                    <span className="text-slate-200">Person debt</span>
+                    <span className="text-slate-50">
+                      {formatCurrency(profile.net)}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-400">Expenses paid</span>
-                  <span className="text-slate-100">
-                    {formatCurrency(profile.expenses)}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-400">Custom split paid</span>
-                  <span className="text-slate-100">
-                    {formatCurrency(profile.customSplitPaid)}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-400">Transactions owed</span>
-                  <span className="text-slate-100">
-                    {formatCurrency(profile.owedTransactions)}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-400">Liquidations paid</span>
-                  <span className="text-slate-100">
-                    {formatCurrency(profile.liquidationsPaid)}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-400">Liquidations received</span>
-                  <span className="text-slate-100">
-                    {formatCurrency(profile.liquidationsReceived)}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between border-t border-slate-800 pt-2">
-                  <span className="text-slate-200">Person debt</span>
-                  <span className="text-slate-50">
-                    {formatCurrency(profile.net)}
-                  </span>
-                </div>
-                <p className="text-xs text-slate-500">
-                  Debt = custom split paid - (split share + owed - liquidations paid +
-                  liquidations received)
-                </p>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         ) : null}
       </section>
