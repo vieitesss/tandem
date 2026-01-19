@@ -266,6 +266,7 @@ app.get("/debt-summary", async (req, res) => {
   const expensesByProfile = new Map(baseEntries);
   const customSplitPaidByProfile = new Map(baseEntries);
   const owedTransactionsByProfile = new Map(baseEntries);
+  const owedPaidByProfile = new Map(baseEntries);
   const customSplitShareByProfile = new Map(baseEntries);
   const liquidationsByProfile = new Map(baseEntries);
   const liquidationsReceivedByProfile = new Map(baseEntries);
@@ -282,6 +283,7 @@ app.get("/debt-summary", async (req, res) => {
       custom_split_share_by_profile: {},
       total_custom_split_expenses: 0,
       owed_transactions_by_profile: {},
+      owed_paid_by_profile: {},
       liquidations_by_profile: {},
       liquidations_received_by_profile: {},
       net_by_profile: {},
@@ -343,6 +345,7 @@ app.get("/debt-summary", async (req, res) => {
           payerId !== beneficiaryId
         ) {
           addAmount(owedTransactionsByProfile, beneficiaryId, amount);
+          addAmount(owedPaidByProfile, payerId, amount);
           owedTransactions.push({
             id: transaction.id,
             payer_id: payerId,
@@ -450,12 +453,14 @@ app.get("/debt-summary", async (req, res) => {
   const netByProfile = new Map(
     profileIds.map((profileId) => {
       const net = roundAmount(
-        (customSplitPaidByProfile.get(profileId) || 0) -
+        (customSplitPaidByProfile.get(profileId) || 0) +
+          (owedPaidByProfile.get(profileId) || 0) +
+          (liquidationsByProfile.get(profileId) || 0) -
           ((customSplitShareByProfile.get(profileId) || 0) +
-            (owedTransactionsByProfile.get(profileId) || 0) -
-            (liquidationsByProfile.get(profileId) || 0) +
+            (owedTransactionsByProfile.get(profileId) || 0) +
             (liquidationsReceivedByProfile.get(profileId) || 0))
       );
+
       return [profileId, net];
     })
   );
@@ -493,6 +498,7 @@ app.get("/debt-summary", async (req, res) => {
     custom_split_share_by_profile: Object.fromEntries(customSplitShareByProfile),
     total_custom_split_expenses: totalCustomSplitExpenses,
     owed_transactions_by_profile: Object.fromEntries(owedTransactionsByProfile),
+    owed_paid_by_profile: Object.fromEntries(owedPaidByProfile),
     liquidations_by_profile: Object.fromEntries(liquidationsByProfile),
     liquidations_received_by_profile: Object.fromEntries(liquidationsReceivedByProfile),
     net_by_profile: Object.fromEntries(netByProfile),
