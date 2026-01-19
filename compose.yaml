@@ -14,6 +14,13 @@ services:
     volumes:
       - ./apps/backend:/app
       - /app/node_modules
+    healthcheck:
+      test: >
+        bun -e "fetch('http://localhost:4000/health').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
   frontend:
     build:
       context: ./apps/frontend
@@ -22,11 +29,12 @@ services:
     environment:
       NEXT_PUBLIC_SUPABASE_URL: ${SUPABASE_URL}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
-      NEXT_PUBLIC_API_BASE_URL: http://localhost:4000
+      API_BASE_URL: http://backend:4000
     ports:
       - "3000:3000"
     volumes:
       - ./apps/frontend:/app
       - /app/node_modules
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy

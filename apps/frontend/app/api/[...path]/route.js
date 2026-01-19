@@ -26,9 +26,8 @@ const handler = async (request, context) => {
     );
   }
 
-  const pathSegments = Array.isArray(context?.params?.path)
-    ? context.params.path
-    : [];
+  const params = context?.params ? await context.params : null;
+  const pathSegments = Array.isArray(params?.path) ? params.path : [];
   const targetUrl = buildTargetUrl(request.url, pathSegments, apiBaseUrl);
   const headers = buildForwardHeaders(request.headers);
   const method = request.method;
