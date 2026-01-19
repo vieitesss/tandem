@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import IconLinkButton from "../shared/IconLinkButton";
@@ -225,6 +226,8 @@ export default function TransactionsPage() {
   );
   const debtOwedTransactions = debtSummary.data?.owed_transactions_by_profile || {};
   const debtLiquidations = debtSummary.data?.liquidations_by_profile || {};
+  const debtLiquidationsReceived =
+    debtSummary.data?.liquidations_received_by_profile || {};
   const debtNet = debtSummary.data?.net_by_profile || {};
   const debtBalance = debtSummary.data?.balance || {};
   const debtProfileLabels = debtProfiles.map((profile) => ({
@@ -233,7 +236,8 @@ export default function TransactionsPage() {
     customSplitPaid: Number(debtCustomSplitPaid[profile.id] || 0),
     customSplitShare: Number(debtCustomSplitShare[profile.id] || 0),
     owedTransactions: Number(debtOwedTransactions[profile.id] || 0),
-    liquidations: Number(debtLiquidations[profile.id] || 0),
+    liquidationsPaid: Number(debtLiquidations[profile.id] || 0),
+    liquidationsReceived: Number(debtLiquidationsReceived[profile.id] || 0),
     net: Number(debtNet[profile.id] || 0),
   }));
   const debtProfilesById = new Map(
@@ -308,6 +312,14 @@ export default function TransactionsPage() {
             <p className="text-xs text-slate-400">
               From {formatShortDate(debtFromDate)} onward.
             </p>
+            <Link
+              className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-200 hover:text-sky-100"
+              href={`/debt-breakdown?from=${encodeURIComponent(debtFromDate)}`}
+            >
+              See breakdown
+            </Link>
+
+
           </div>
           <label className="space-y-2 text-xs text-slate-400">
             From date
@@ -362,9 +374,15 @@ export default function TransactionsPage() {
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-400">Liquidations</span>
+                  <span className="text-slate-400">Liquidations paid</span>
                   <span className="text-slate-100">
-                    {formatCurrency(profile.liquidations)}
+                    {formatCurrency(profile.liquidationsPaid)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400">Liquidations received</span>
+                  <span className="text-slate-100">
+                    {formatCurrency(profile.liquidationsReceived)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between border-t border-slate-800 pt-2">
@@ -374,7 +392,8 @@ export default function TransactionsPage() {
                   </span>
                 </div>
                 <p className="text-xs text-slate-500">
-                  Debt = custom split paid - (split share + owed - liquidations)
+                  Debt = custom split paid - (split share + owed - liquidations paid +
+                  liquidations received)
                 </p>
               </div>
             ))}

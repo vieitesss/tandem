@@ -268,6 +268,9 @@ app.get("/debt-summary", async (req, res) => {
   const owedTransactionsByProfile = new Map(baseEntries);
   const customSplitShareByProfile = new Map(baseEntries);
   const liquidationsByProfile = new Map(baseEntries);
+  const liquidationsReceivedByProfile = new Map(baseEntries);
+  const owedTransactions = [];
+  const liquidationTransactions = [];
   let totalCustomSplitExpenses = 0;
 
   if (!profiles || profiles.length === 0) {
@@ -275,16 +278,25 @@ app.get("/debt-summary", async (req, res) => {
       from_date: fromDate,
       profiles: [],
       expenses_by_profile: {},
-      owed_by_profile: {},
+      custom_split_paid_by_profile: {},
+      custom_split_share_by_profile: {},
+      total_custom_split_expenses: 0,
+      owed_transactions_by_profile: {},
       liquidations_by_profile: {},
+      liquidations_received_by_profile: {},
       net_by_profile: {},
       balance: { from_profile_id: null, to_profile_id: null, amount: 0 },
+      details: {
+        custom_splits: [],
+        owed_transactions: [],
+        liquidations: [],
+      },
     });
   }
 
   const { data: transactions, error: transactionsError } = await supabase
     .from("transactions")
-    .select("id, payer_id, beneficiary_id, split_mode, amount, date, type")
+    .select("id, payer_id, beneficiary_id, split_mode, amount, date, type, note, category")
     .gte("date", fromDate)
     .order("date", { ascending: false });
 
@@ -293,6 +305,9 @@ app.get("/debt-summary", async (req, res) => {
   }
 
   const customTransactions = new Map();
+  const noteByTransactionId = new Map();
+  const categoryByTransactionId = new Map();
+  const dateByTransactionId = new Map();
 
   if (transactions && transactions.length > 0) {
     transactions.forEach((transaction) => {
@@ -303,6 +318,18 @@ app.get("/debt-summary", async (req, res) => {
       const payerId = transaction.payer_id;
       const beneficiaryId = transaction.beneficiary_id;
       const amount = roundAmount(transaction.amount);
+
+      if (transaction.note) {
+        noteByTransactionId.set(transaction.id, transaction.note);
+      }
+
+      if (transaction.category) {
+        categoryByTransactionId.set(transaction.id, transaction.category);
+      }
+
+      if (transaction.date) {
+        dateByTransactionId.set(transaction.id, transaction.date);
+      }
 
       if (transaction.type === "EXPENSE") {
         if (payerId) {
@@ -316,6 +343,15 @@ app.get("/debt-summary", async (req, res) => {
           payerId !== beneficiaryId
         ) {
           addAmount(owedTransactionsByProfile, beneficiaryId, amount);
+          owedTransactions.push({
+            id: transaction.id,
+            payer_id: payerId,
+            beneficiary_id: beneficiaryId,
+            amount,
+            date: transaction.date,
+            note: transaction.note || null,
+            category: transaction.category || null,
+          });
         }
 
         if (transaction.split_mode === "custom" && payerId) {
@@ -329,9 +365,26 @@ app.get("/debt-summary", async (req, res) => {
         if (payerId) {
           addAmount(liquidationsByProfile, payerId, amount);
         }
+
+        if (beneficiaryId) {
+          addAmount(liquidationsReceivedByProfile, beneficiaryId, amount);
+        }
+
+        if (payerId && beneficiaryId) {
+          liquidationTransactions.push({
+            id: transaction.id,
+            payer_id: payerId,
+            beneficiary_id: beneficiaryId,
+            amount,
+            date: transaction.date,
+            note: transaction.note || null,
+          });
+        }
       }
     });
   }
+
+  const customSplitDetails = [];
 
   if (customTransactions.size > 0) {
     const customIds = Array.from(customTransactions.keys());
@@ -345,6 +398,8 @@ app.get("/debt-summary", async (req, res) => {
     }
 
     if (splits && splits.length > 0) {
+      const splitsByTransaction = new Map();
+
       splits.forEach((split) => {
         const transaction = customTransactions.get(split.transaction_id);
         const userId = split.user_id;
@@ -355,6 +410,39 @@ app.get("/debt-summary", async (req, res) => {
 
         const amount = roundAmount(split.amount);
         addAmount(customSplitShareByProfile, userId, amount);
+
+        if (!splitsByTransaction.has(split.transaction_id)) {
+          splitsByTransaction.set(split.transaction_id, []);
+        }
+
+        splitsByTransaction.get(split.transaction_id).push({
+          user_id: userId,
+          amount,
+        });
+      });
+
+      Array.from(customTransactions.entries()).forEach(([transactionId, data]) => {
+        customSplitDetails.push({
+          id: transactionId,
+          payer_id: data.payerId,
+          amount: data.amount,
+          date: dateByTransactionId.get(transactionId) || null,
+          note: noteByTransactionId.get(transactionId) || null,
+          category: categoryByTransactionId.get(transactionId) || null,
+          splits: splitsByTransaction.get(transactionId) || [],
+        });
+      });
+    } else {
+      Array.from(customTransactions.entries()).forEach(([transactionId, data]) => {
+        customSplitDetails.push({
+          id: transactionId,
+          payer_id: data.payerId,
+          amount: data.amount,
+          date: dateByTransactionId.get(transactionId) || null,
+          note: noteByTransactionId.get(transactionId) || null,
+          category: categoryByTransactionId.get(transactionId) || null,
+          splits: [],
+        });
       });
     }
   }
@@ -365,7 +453,8 @@ app.get("/debt-summary", async (req, res) => {
         (customSplitPaidByProfile.get(profileId) || 0) -
           ((customSplitShareByProfile.get(profileId) || 0) +
             (owedTransactionsByProfile.get(profileId) || 0) -
-            (liquidationsByProfile.get(profileId) || 0))
+            (liquidationsByProfile.get(profileId) || 0) +
+            (liquidationsReceivedByProfile.get(profileId) || 0))
       );
       return [profileId, net];
     })
@@ -405,8 +494,14 @@ app.get("/debt-summary", async (req, res) => {
     total_custom_split_expenses: totalCustomSplitExpenses,
     owed_transactions_by_profile: Object.fromEntries(owedTransactionsByProfile),
     liquidations_by_profile: Object.fromEntries(liquidationsByProfile),
+    liquidations_received_by_profile: Object.fromEntries(liquidationsReceivedByProfile),
     net_by_profile: Object.fromEntries(netByProfile),
     balance,
+    details: {
+      custom_splits: customSplitDetails,
+      owed_transactions: owedTransactions,
+      liquidations: liquidationTransactions,
+    },
   });
 });
 
