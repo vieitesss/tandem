@@ -38,6 +38,38 @@ const normalizeId = (value) => {
 
 const roundAmount = (value) => Number(Number(value || 0).toFixed(2));
 
+/**
+ * Allocates an amount across multiple percentages with remainder distribution.
+ * Ensures the sum of allocated amounts equals the original total amount.
+ * The remainder (if any) is added to the split with the largest share.
+ * 
+ * @param {number} totalAmount - The total amount to allocate
+ * @param {number[]} percentages - Array of percentages (should sum to 100)
+ * @returns {number[]} Array of allocated amounts
+ */
+const allocateAmount = (totalAmount, percentages) => {
+  if (!percentages || percentages.length === 0) {
+    return [];
+  }
+
+  // Calculate each split with rounding
+  const splits = percentages.map(percent => 
+    roundAmount((totalAmount * percent) / 100)
+  );
+
+  // Calculate remainder
+  const sumOfSplits = splits.reduce((sum, amount) => sum + amount, 0);
+  const remainder = roundAmount(totalAmount - sumOfSplits);
+
+  // Distribute remainder to the split with the largest percentage
+  if (remainder !== 0 && splits.length > 0) {
+    const maxPercentIndex = percentages.indexOf(Math.max(...percentages));
+    splits[maxPercentIndex] = roundAmount(splits[maxPercentIndex] + remainder);
+  }
+
+  return splits;
+};
+
 const addAmount = (map, profileId, amount) => {
   if (!profileId && profileId !== 0) {
     return;
@@ -621,12 +653,14 @@ app.post("/transactions", async (req, res) => {
       return res.status(400).json({ error: "Split percentages must total 100%." });
     }
 
-    const splitRows = splits_percent.map((split) => {
-      const percent = Number(split.percent || 0);
+    const percentages = splits_percent.map(split => Number(split.percent || 0));
+    const allocatedAmounts = allocateAmount(normalizedAmount, percentages);
+
+    const splitRows = splits_percent.map((split, index) => {
       return {
         transaction_id: transaction.id,
         user_id: Number(split.user_id),
-        amount: Number(((normalizedAmount * percent) / 100).toFixed(2)),
+        amount: allocatedAmounts[index],
       };
     });
 
@@ -821,12 +855,14 @@ app.patch("/transactions/:id", async (req, res) => {
       const total = splits.reduce((sum, split) => sum + Number(split.amount || 0), 0);
 
       if (total > 0) {
-        const splitUpdates = splits.map((split) => {
-          const ratio = Number(split.amount || 0) / total;
-          const nextAmount = Number((updated.amount * ratio).toFixed(2));
+        // Calculate proportions (percentages) from current split amounts
+        const proportions = splits.map(split => (Number(split.amount || 0) / total) * 100);
+        const allocatedAmounts = allocateAmount(updated.amount, proportions);
+
+        const splitUpdates = splits.map((split, index) => {
           return supabase
             .from("transaction_splits")
-            .update({ amount: nextAmount })
+            .update({ amount: allocatedAmounts[index] })
             .eq("id", split.id);
         });
 
