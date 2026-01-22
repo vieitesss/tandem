@@ -132,11 +132,11 @@ export default function ProfilesPage() {
           ← Back to transactions
         </Link>
         <div className="flex items-center gap-4">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-cream-500/20 to-cream-600/10 border border-cream-500/20 shadow-glow-sm md:h-12 md:w-12">
+          <div className="title-icon flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-cream-500/20 to-cream-600/10 border border-cream-500/20 shadow-glow-sm md:h-12 md:w-12">
             <img
               src="/icon.png"
               alt="Tandem"
-              className="h-7 w-7 md:h-8 md:w-8"
+              className="title-icon-media"
             />
           </div>
           <h1 className="text-3xl font-display font-semibold tracking-tight text-cream-50 md:text-4xl">Profiles</h1>
