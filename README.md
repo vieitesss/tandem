@@ -1,4 +1,15 @@
-# Tandem
+<p align="center">
+  <img src="assets/icon.png" alt="Tandem logo" width="96" />
+</p>
+
+<h1 align="center">Tandem</h1>
+
+<p align="center">
+  <img src="https://img.shields.io/github/license/vieitesss/tandem" alt="License" />
+  <img src="https://img.shields.io/github/last-commit/vieitesss/tandem" alt="Last commit" />
+  <img src="https://img.shields.io/github/issues/vieitesss/tandem" alt="Open issues" />
+  <img src="https://img.shields.io/github/stars/vieitesss/tandem" alt="Stars" />
+</p>
 
 Tandem is a lightweight expense-splitting app for partners. Create profiles, log expenses or income, and keep track of who paid what with clear splits and monthly filters.
 
@@ -7,6 +18,69 @@ Tandem is a lightweight expense-splitting app for partners. Create profiles, log
 - Split expenses by custom percentages or default profile splits.
 - Review transactions with filters for month, type, and category.
 - Manage partner profiles and default split percentages.
+
+## Screenshots
+<details>
+<summary>Desktop</summary>
+
+**Add transaction (1)**
+![Desktop add transaction 1](assets/desktop/add-1.jpeg)
+
+**Add transaction (2)**
+![Desktop add transaction 2](assets/desktop/add-2.jpeg)
+
+**Categories**
+![Desktop categories](assets/desktop/categories.jpeg)
+
+**Profiles**
+![Desktop profiles](assets/desktop/profiles.jpeg)
+
+**Timeline**
+![Desktop timeline](assets/desktop/timeline.jpeg)
+
+**Transactions (1)**
+![Desktop transactions 1](assets/desktop/transactions-1.jpeg)
+
+**Transactions (2)**
+![Desktop transactions 2](assets/desktop/transactions-2.jpeg)
+
+**Transactions edit**
+![Desktop transactions edit](assets/desktop/transactions-edit.png)
+</details>
+
+<details>
+<summary>Mobile</summary>
+
+**Add transaction (1)**
+![Mobile add transaction 1](assets/mobile/add-1.png)
+
+**Add transaction (2)**
+![Mobile add transaction 2](assets/mobile/add-2.png)
+
+**Categories**
+![Mobile categories](assets/mobile/categories.png)
+
+**Profiles**
+![Mobile profiles](assets/mobile/profiles.png)
+
+**Timeline (1)**
+![Mobile timeline 1](assets/mobile/timeline-1.png)
+
+**Timeline (2)**
+![Mobile timeline 2](assets/mobile/timeline-2.png)
+
+**Timeline (3)**
+![Mobile timeline 3](assets/mobile/timeline-3.png)
+
+**Transactions (1)**
+![Mobile transactions 1](assets/mobile/transactions-1.png)
+
+**Transactions (2)**
+![Mobile transactions 2](assets/mobile/transactions-2.png)
+
+**Transactions (3)**
+![Mobile transactions 3](assets/mobile/transactions-3.png)
+</details>
 
 ## Setup
 ### Prerequisites
