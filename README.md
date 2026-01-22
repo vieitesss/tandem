@@ -5,10 +5,10 @@
 <h1 align="center">Tandem</h1>
 
 <p align="center">
-  <img src="https://img.shields.io/github/license/vieitesss/tandem" alt="License" />
-  <img src="https://img.shields.io/github/last-commit/vieitesss/tandem" alt="Last commit" />
-  <img src="https://img.shields.io/github/issues/vieitesss/tandem" alt="Open issues" />
-  <img src="https://img.shields.io/github/stars/vieitesss/tandem" alt="Stars" />
+  <img src="https://img.shields.io/github/license/vieitesss/tandem?cacheSeconds=300" alt="License" />
+  <img src="https://img.shields.io/github/last-commit/vieitesss/tandem?cacheSeconds=300" alt="Last commit" />
+  <img src="https://img.shields.io/github/issues/vieitesss/tandem?cacheSeconds=300" alt="Open issues" />
+  <img src="https://img.shields.io/github/stars/vieitesss/tandem?cacheSeconds=300" alt="Stars" />
 </p>
 
 Tandem is a lightweight expense-splitting app for partners. Create profiles, log expenses or income, and keep track of who paid what with clear splits and monthly filters.
