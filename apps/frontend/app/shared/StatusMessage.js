@@ -4,10 +4,10 @@ export default function StatusMessage({ status, className }) {
   }
 
   const toneClassName =
-    status.tone === "success" ? "text-emerald-300" : "text-rose-300";
+    status.tone === "success" ? "text-sage-300" : "text-coral-300";
   const combinedClassName = className
-    ? `${className} text-sm ${toneClassName}`
-    : `text-sm ${toneClassName}`;
+    ? `${className} text-sm font-medium ${toneClassName}`
+    : `text-sm font-medium ${toneClassName}`;
 
   return <p className={combinedClassName}>{status.message}</p>;
 }

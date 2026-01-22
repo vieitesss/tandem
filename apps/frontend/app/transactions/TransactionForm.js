@@ -20,6 +20,7 @@ export default function TransactionForm() {
   const [splits, setSplits] = useState([initialSplit]);
   const [status, setStatus] = useState(null);
   const [profiles, setProfiles] = useState([]);
+  const [categories, setCategories] = useState(categoryOptions);
   const [beneficiaryId, setBeneficiaryId] = useState("");
   const [owedToId, setOwedToId] = useState("");
   const [hasTriedSubmit, setHasTriedSubmit] = useState(false);
@@ -35,12 +36,12 @@ export default function TransactionForm() {
   const apiBaseUrl = "/api";
 
   const inputClassName = (hasError) =>
-    `w-full rounded-lg border bg-slate-950 px-3 py-2 ${
-      hasError ? "border-rose-400" : "border-slate-700"
+    `w-full rounded-lg border bg-obsidian-900/70 px-3 py-2.5 text-cream-50 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-cream-500/30 ${
+      hasError ? "border-coral-400" : "border-cream-500/20 hover:border-cream-500/30"
     }`;
 
   const sectionClassName =
-    "border-t border-slate-800/70 pt-3 pb-3 first:border-t-0 first:pt-0 last:pb-0";
+    "border-t border-cream-500/10 pt-4 pb-4 first:border-t-0 first:pt-0 last:pb-0";
 
   useEffect(() => {
     let isMounted = true;
@@ -55,6 +56,19 @@ export default function TransactionForm() {
       .catch(() => {
         if (isMounted) {
           setProfiles([]);
+        }
+      });
+
+    fetch(`${apiBaseUrl}/categories`)
+      .then((response) => response.json())
+      .then((data) => {
+        if (isMounted && Array.isArray(data) && data.length > 0) {
+          setCategories(data);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setCategories(categoryOptions);
         }
       });
 
@@ -295,13 +309,13 @@ export default function TransactionForm() {
 
   return (
     <form
-      className="rounded-2xl border border-slate-800 bg-slate-900/40 p-4"
+      className="rounded-2xl border border-cream-500/15 bg-obsidian-800/40 p-6 shadow-card backdrop-blur-sm transition-all duration-300 hover:border-cream-500/25 hover:shadow-elevated animate-fade-in"
       onSubmit={handleSubmit}
     >
       <div className={`space-y-2 ${sectionClassName}`}>
-        <label className="text-sm text-slate-300">
+        <label className="text-sm font-medium text-cream-200 tracking-wide">
           {type === "INCOME" ? "Recipient" : "Paid by"}
-          <span className="text-rose-400"> *</span>
+          <span className="text-coral-400"> *</span>
         </label>
         <SelectField
           className={`${inputClassName(showPayerError)} appearance-none pr-9`}
@@ -322,17 +336,17 @@ export default function TransactionForm() {
           ))}
         </SelectField>
         {showPayerError ? (
-          <p className="text-xs text-rose-300">
+          <p className="text-xs text-coral-300 font-medium">
             {type === "INCOME" ? "Select a recipient." : "Select who paid."}
           </p>
         ) : null}
       </div>
       <div className={`space-y-2 ${sectionClassName}`}>
-        <label className="text-sm text-slate-300">
-          Type<span className="text-rose-400"> *</span>
+        <label className="text-sm font-medium text-cream-200 tracking-wide">
+          Type<span className="text-coral-400"> *</span>
         </label>
         <SelectField
-          className="w-full appearance-none rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 pr-9 text-slate-200"
+          className="w-full appearance-none rounded-lg border border-cream-500/20 bg-obsidian-950/80 px-3 py-2.5 pr-9 text-cream-50 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30 transition-all duration-200"
           value={type}
           onChange={(event) => setType(event.target.value)}
         >
@@ -343,8 +357,8 @@ export default function TransactionForm() {
       </div>
       <div className={`grid gap-4 sm:grid-cols-2 ${sectionClassName}`}>
         <div className="space-y-2">
-          <label className="text-sm text-slate-300">
-            Amount<span className="text-rose-400"> *</span>
+          <label className="text-sm font-medium text-cream-200 tracking-wide">
+            Amount<span className="text-coral-400"> *</span>
           </label>
           <input
             className={inputClassName(showAmountError)}
@@ -357,16 +371,16 @@ export default function TransactionForm() {
             aria-invalid={showAmountError}
           />
           {showAmountFormatError ? (
-            <p className="text-xs text-rose-300">
+            <p className="text-xs text-coral-300 font-medium">
               Only numbers and a decimal point are allowed.
             </p>
           ) : showAmountError ? (
-            <p className="text-xs text-rose-300">Enter an amount above 0.</p>
+            <p className="text-xs text-coral-300 font-medium">Enter an amount above 0.</p>
           ) : null}
         </div>
         <div className="space-y-2">
-          <label className="text-sm text-slate-300">
-            Date<span className="text-rose-400"> *</span>
+          <label className="text-sm font-medium text-cream-200 tracking-wide">
+            Date<span className="text-coral-400"> *</span>
           </label>
           <input
             className={inputClassName(showDateError)}
@@ -379,48 +393,48 @@ export default function TransactionForm() {
             aria-invalid={showDateError}
           />
           {showDateError ? (
-            <p className="text-xs text-rose-300">Choose a date.</p>
+            <p className="text-xs text-coral-300 font-medium">Choose a date.</p>
           ) : null}
         </div>
       </div>
       {type !== "INCOME" ? (
-        <div className={`space-y-2 ${sectionClassName}`}>
-          <label className="text-sm text-slate-300">
-            Category<span className="text-rose-400"> *</span>
+        <div className={`space-y-3 ${sectionClassName}`}>
+          <label className="text-sm font-medium text-cream-200 tracking-wide">
+            Category<span className="text-coral-400"> *</span>
           </label>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {categoryOptions.map((option) => (
+            {categories.map((option) => (
               <button
-                key={option.label}
+                key={option.id || option.label}
                 type="button"
-                className={`flex min-w-0 items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs ${
+                className={`flex min-w-0 items-center gap-2.5 rounded-lg border px-3 py-2.5 text-left text-sm transition-all duration-200 ${
                   category === option.label
-                    ? "border-emerald-400 bg-emerald-500/10 text-emerald-100"
-                    : "border-slate-800 text-slate-200 hover:border-slate-600"
+                    ? "border-cream-400/50 bg-cream-500/15 text-cream-50 shadow-glow-sm"
+                    : "border-cream-500/15 text-cream-200 hover:border-cream-400/30 hover:bg-obsidian-700/40"
                 }`}
                 onClick={() => {
                   setCategory(option.label);
                   setTouched((current) => ({ ...current, category: true }));
                 }}
               >
-                <span className="text-base" aria-hidden>
+                <span className="text-lg" aria-hidden>
                   {option.icon}
                 </span>
-                <span className="min-w-0 flex-1 truncate">
+                <span className="min-w-0 flex-1 truncate font-medium">
                   {option.label}
                 </span>
               </button>
             ))}
           </div>
           {showCategoryError ? (
-            <p className="mt-2 text-xs text-rose-300">Select a category.</p>
+            <p className="mt-2 text-xs text-coral-300 font-medium">Select a category.</p>
           ) : null}
         </div>
       ) : null}
       <div className={`space-y-2 ${sectionClassName}`}>
-        <label className="text-sm text-slate-300">Note</label>
+        <label className="text-sm font-medium text-cream-200 tracking-wide">Note</label>
         <input
-          className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+          className="w-full rounded-lg border border-cream-500/20 bg-obsidian-900/70 px-3 py-2.5 text-cream-50 placeholder:text-cream-100/40 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30 transition-all duration-200"
           placeholder="Optional note"
           value={note}
           onChange={(event) => setNote(event.target.value)}
@@ -428,13 +442,13 @@ export default function TransactionForm() {
       </div>
       <div className={`space-y-3 ${sectionClassName}`}>
         <div className="flex items-center justify-between">
-          <label className="text-sm text-slate-300">Split mode</label>
+          <label className="text-sm font-medium text-cream-200 tracking-wide">Split mode</label>
           <div className="flex gap-2 text-xs">
             <button
-              className={`rounded-full px-3 py-1 ${
+              className={`rounded-full px-3.5 py-1.5 font-medium transition-all duration-200 ${
                 splitMode === "none"
-                  ? "bg-emerald-500 text-slate-900"
-                  : "bg-slate-800 text-slate-200"
+                  ? "bg-cream-500 text-obsidian-950 shadow-glow-sm"
+                  : "bg-obsidian-700/60 text-cream-200 hover:bg-obsidian-700"
               }`}
               type="button"
               onClick={() => setSplitMode("none")}
@@ -443,10 +457,10 @@ export default function TransactionForm() {
               Personal
             </button>
             <button
-              className={`rounded-full px-3 py-1 ${
+              className={`rounded-full px-3.5 py-1.5 font-medium transition-all duration-200 ${
                 splitMode === "owed"
-                  ? "bg-emerald-500 text-slate-900"
-                  : "bg-slate-800 text-slate-200"
+                  ? "bg-cream-500 text-obsidian-950 shadow-glow-sm"
+                  : "bg-obsidian-700/60 text-cream-200 hover:bg-obsidian-700"
               }`}
               type="button"
               onClick={() => setSplitMode("owed")}
@@ -455,10 +469,10 @@ export default function TransactionForm() {
               Owed
             </button>
             <button
-              className={`rounded-full px-3 py-1 ${
+              className={`rounded-full px-3.5 py-1.5 font-medium transition-all duration-200 ${
                 splitMode === "custom"
-                  ? "bg-emerald-500 text-slate-900"
-                  : "bg-slate-800 text-slate-200"
+                  ? "bg-cream-500 text-obsidian-950 shadow-glow-sm"
+                  : "bg-obsidian-700/60 text-cream-200 hover:bg-obsidian-700"
               }`}
               type="button"
               onClick={() => setSplitMode("custom")}
@@ -469,17 +483,17 @@ export default function TransactionForm() {
           </div>
         </div>
         {type === "INCOME" ? (
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-cream-100/60 font-medium">
             Income is always assigned 100% to the recipient.
           </p>
         ) : null}
         {type === "LIQUIDATION" ? (
           <div className="space-y-2">
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-cream-100/60 font-medium">
               Liquidations always send 100% to the other partner.
             </p>
-            <label className="text-xs text-slate-400">
-              Recipient<span className="text-rose-400"> *</span>
+            <label className="text-xs font-medium text-cream-200 tracking-wide">
+              Recipient<span className="text-coral-400"> *</span>
             </label>
             <SelectField
               className={`${inputClassName(showBeneficiaryError)} appearance-none pr-9`}
@@ -500,17 +514,17 @@ export default function TransactionForm() {
                 ))}
             </SelectField>
             {showBeneficiaryError ? (
-              <p className="text-xs text-rose-300">Select a recipient.</p>
+              <p className="text-xs text-coral-300 font-medium">Select a recipient.</p>
             ) : null}
           </div>
         ) : null}
         {splitMode === "owed" && type === "EXPENSE" ? (
           <div className="space-y-2">
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-cream-100/60 font-medium">
               Owed expenses assign 100% to the other partner.
             </p>
-            <label className="text-xs text-slate-400">
-              Owed by<span className="text-rose-400"> *</span>
+            <label className="text-xs font-medium text-cream-200 tracking-wide">
+              Owed by<span className="text-coral-400"> *</span>
             </label>
             <SelectField
               className={`${inputClassName(showOwedError)} appearance-none pr-9`}
@@ -531,7 +545,7 @@ export default function TransactionForm() {
                 ))}
             </SelectField>
             {showOwedError ? (
-              <p className="text-xs text-rose-300">
+              <p className="text-xs text-coral-300 font-medium">
                 Select the other partner who owes you.
               </p>
             ) : null}
@@ -540,9 +554,9 @@ export default function TransactionForm() {
         {splitMode === "custom" && type === "EXPENSE" ? (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <label className="text-sm text-slate-300">Splits</label>
+              <label className="text-sm font-medium text-cream-200 tracking-wide">Splits</label>
               <button
-                className="text-xs text-slate-400 hover:text-slate-200"
+                className="text-xs text-cream-100/60 font-medium hover:text-cream-100"
                 type="button"
                 onClick={addSplit}
               >
@@ -550,23 +564,23 @@ export default function TransactionForm() {
               </button>
             </div>
             <div className="space-y-2">
-              <div className="grid grid-cols-[minmax(0,1fr)_80px_44px] gap-2 px-3 text-xs text-slate-400">
+              <div className="grid grid-cols-[minmax(0,1fr)_80px_44px] gap-2 px-3 text-xs text-cream-100/60 font-medium">
                 <span>
-                  User<span className="text-rose-400"> *</span>
+                  User<span className="text-coral-400"> *</span>
                 </span>
                 <span>
-                  Percent<span className="text-rose-400"> *</span>
+                  Percent<span className="text-coral-400"> *</span>
                 </span>
                 <span className="text-right">Remove</span>
               </div>
-              <div className="divide-y divide-slate-800 rounded-2xl border border-slate-800 bg-slate-900/40">
+              <div className="divide-y divide-cream-500/10 rounded-2xl border border-cream-500/15 bg-obsidian-800/40">
                 {splits.map((split, index) => (
                   <div
                     key={index}
                     className="grid grid-cols-[minmax(0,1fr)_80px_44px] items-center gap-2 px-3 py-3"
                   >
                     <SelectField
-                      className="w-full min-w-0 appearance-none rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 pr-9 text-sm text-slate-200"
+                      className="w-full min-w-0 appearance-none rounded-lg border border-cream-500/20 bg-obsidian-900/70 px-3 py-2 pr-9 text-sm text-cream-50 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30 transition-all duration-200"
                       value={split.user_id}
                       onChange={(event) =>
                         updateSplit(index, "user_id", event.target.value)
@@ -581,7 +595,7 @@ export default function TransactionForm() {
                       ))}
                     </SelectField>
                     <input
-                      className="w-full rounded-lg border border-slate-700 bg-slate-950 px-2 py-2 text-right text-sm text-slate-200"
+                      className="w-full rounded-lg border border-cream-500/20 bg-obsidian-900/70 px-2 py-2 text-right text-sm text-cream-50 font-mono hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30 transition-all duration-200"
                       placeholder="%"
                       type="number"
                       step="0.1"
@@ -597,7 +611,7 @@ export default function TransactionForm() {
                     />
                     {splits.length > 1 ? (
                       <button
-                        className="flex h-8 w-8 items-center justify-center justify-self-end rounded-lg bg-slate-800 text-rose-300"
+                        className="flex h-8 w-8 items-center justify-center justify-self-end rounded-lg bg-obsidian-700/60 text-coral-300 hover:bg-coral-500/20"
                         type="button"
                         onClick={() => removeSplit(index)}
                         aria-label="Remove split"
@@ -605,17 +619,17 @@ export default function TransactionForm() {
                         ×
                       </button>
                     ) : (
-                      <div className="text-right text-xs text-slate-500">—</div>
+                      <div className="text-right text-xs text-cream-100/40">—</div>
                     )}
                   </div>
                 ))}
               </div>
             </div>
-            <div className="text-xs text-slate-400">
+            <div className="text-xs text-cream-100/60 font-medium">
               Total: {totalPercent.toFixed(1)}%
             </div>
             {showSplitError ? (
-              <p className="text-xs text-rose-300">
+              <p className="text-xs text-coral-300 font-medium">
                 Select a user and percent for each split. Total must be 100%.
               </p>
             ) : null}
@@ -625,10 +639,10 @@ export default function TransactionForm() {
       <StatusMessage status={status} className={sectionClassName} />
       <div className={sectionClassName}>
         <button
-          className="w-full rounded-lg bg-emerald-500 px-4 py-2 font-semibold text-slate-900"
+          className="w-full rounded-lg bg-cream-500 px-4 py-3 font-display font-semibold text-obsidian-950 shadow-glow-md transition-all duration-300 hover:bg-cream-400 hover:shadow-glow-lg hover:scale-[1.02] active:scale-[0.98]"
           type="submit"
         >
-          Save transaction
+          Save Transaction
         </button>
       </div>
     </form>

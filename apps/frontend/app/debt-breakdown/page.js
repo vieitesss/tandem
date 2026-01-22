@@ -205,23 +205,25 @@ export default function DebtBreakdownPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-6 px-6 pt-6 pb-[calc(6rem+env(safe-area-inset-bottom))] md:p-6">
-      <header className="space-y-4">
+    <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-8 px-6 pt-8 pb-[calc(6rem+env(safe-area-inset-bottom))] md:p-8 md:pt-12">
+      <header className="space-y-5 animate-fade-in">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <img
-              src="/icon.png"
-              alt="Tandem"
-              className="h-8 w-8 md:h-9 md:w-9"
-            />
+          <div className="flex items-center gap-4">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-cream-500/20 to-cream-600/10 border border-cream-500/20 shadow-glow-sm md:h-12 md:w-12">
+              <img
+                src="/icon.png"
+                alt="Tandem"
+                className="h-7 w-7 md:h-8 md:w-8"
+              />
+            </div>
             <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
-                Debt breakdown
+              <p className="text-xs uppercase tracking-wider text-cream-100/50 font-semibold">
+                Debt Breakdown
               </p>
-              <h1 className="text-2xl font-semibold text-slate-100">{debtLine}</h1>
+              <h1 className="text-2xl font-display font-semibold text-cream-50 tracking-tight md:text-3xl">{debtLine}</h1>
             </div>
           </div>
-          <div className="flex items-center gap-2 text-slate-300">
+          <div className="flex items-center gap-2">
             <IconLinkButton href="/transactions" label="Back to transactions">
               <svg
                 className="h-5 w-5"
@@ -235,23 +237,23 @@ export default function DebtBreakdownPage() {
             </IconLinkButton>
           </div>
         </div>
-        <div className="flex flex-wrap items-end justify-between gap-4 rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
-          <div>
-            <p className="text-sm text-slate-300">
+        <div className="flex flex-wrap items-end justify-between gap-4 rounded-2xl border border-cream-500/15 bg-obsidian-800/40 p-6 shadow-card backdrop-blur-sm">
+          <div className="space-y-2">
+            <p className="text-sm text-cream-100 font-medium leading-relaxed">
               Every number is shown with its source: expenses paid, custom split
               shares, owed transactions, and liquidations.
             </p>
-            <p className="text-xs text-slate-500">
-              Net = what was paid - what had to be paid - what was received.
+            <p className="text-xs text-cream-100/60 font-medium">
+              Net = what was paid - what had to be paid - what was received
             </p>
-            <p className="text-xs text-slate-500">
-              From {formatShortDate(debtFromDate)} onward.
+            <p className="text-xs text-cream-100/60 font-medium">
+              From {formatShortDate(debtFromDate)} onward
             </p>
           </div>
-          <label className="space-y-2 text-xs text-slate-400">
+          <label className="space-y-2 text-xs font-medium text-cream-200 tracking-wide">
             From date
             <input
-              className="w-full min-w-[180px] rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200"
+              className="w-full min-w-[180px] rounded-lg border border-cream-500/20 bg-obsidian-900/70 px-3 py-2 text-sm text-cream-50 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30 transition-all duration-200"
               type="date"
               value={debtFromDate}
               onChange={(event) => {
@@ -265,101 +267,101 @@ export default function DebtBreakdownPage() {
       </header>
 
       {debtSummary.state === "loading" ? (
-        <p className="text-sm text-slate-400">Loading debt breakdown...</p>
+        <p className="text-sm text-cream-100/60 font-medium">Loading debt breakdown...</p>
       ) : null}
       {debtSummary.state === "error" ? (
-        <p className="text-sm text-rose-300">{debtSummary.message}</p>
+        <p className="text-sm text-coral-300 font-medium">{debtSummary.message}</p>
       ) : null}
 
       {debtSummary.state === "idle" ? (
-        <section className="grid gap-4 md:grid-cols-2">
+        <section className="grid gap-6 md:grid-cols-2 animate-slide-up stagger-2">
           {debtProfileLabels.map((profile) => (
             <div
               key={profile.id}
-              className="space-y-3 rounded-2xl border border-slate-800 bg-slate-950/60 p-4"
+              className="space-y-4 rounded-2xl border border-cream-500/15 bg-obsidian-800/40 p-5 shadow-card backdrop-blur-sm"
             >
-              <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+              <div className="text-sm font-display font-semibold uppercase tracking-wider text-cream-100/70">
                 {profile.display_name || profile.id}
               </div>
-              <div className="space-y-2 rounded-xl border border-slate-800 bg-slate-950/60 p-3">
-                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+              <div className="space-y-2 rounded-xl border border-cream-500/10 bg-obsidian-800/55 p-3">
+                <div className="text-xs font-semibold uppercase tracking-wider text-cream-100/50">
                   What was paid
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <Tooltip label="Total amount this person paid on transactions split as custom.">
-                    <span className="text-slate-400">Custom split paid</span>
+                    <span className="text-cream-100/60 font-medium">Custom split paid</span>
                   </Tooltip>
-                  <span className="text-slate-100">
+                  <span className="text-cream-50 font-mono">
                     {formatCurrency(profile.customSplitPaid)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-slate-400">Owed paid (for others)</span>
-                  <span className="text-slate-100">
+                  <span className="text-cream-100/60 font-medium">Owed paid (for others)</span>
+                  <span className="text-cream-50 font-mono">
                     {formatCurrency(profile.owedPaid)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-slate-400">Liquidations paid</span>
-                  <span className="text-slate-100">
+                  <span className="text-cream-100/60 font-medium">Liquidations paid</span>
+                  <span className="text-cream-50 font-mono">
                     {formatCurrency(profile.liquidationsPaid)}
                   </span>
                 </div>
-                <div className="flex items-center justify-between border-t border-slate-800 pt-2 text-sm">
-                  <span className="text-slate-200">Paid total</span>
-                  <span className="text-slate-50">
+                <div className="flex items-center justify-between border-t border-cream-500/10 pt-2 text-sm">
+                  <span className="text-cream-100 font-semibold">Paid total</span>
+                  <span className="text-cream-50 font-mono font-semibold">
                     {formatCurrency(profile.paidTotal)}
                   </span>
                 </div>
               </div>
-              <div className="space-y-2 rounded-xl border border-slate-800 bg-slate-950/60 p-3">
-                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+              <div className="space-y-2 rounded-xl border border-cream-500/10 bg-obsidian-800/55 p-3">
+                <div className="text-xs font-semibold uppercase tracking-wider text-cream-100/50">
                   What had to be paid
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <Tooltip label="Total share this person should cover based on custom split percentages.">
-                    <span className="text-slate-400">Custom split share</span>
+                    <span className="text-cream-100/60 font-medium">Custom split share</span>
                   </Tooltip>
-                  <span className="text-slate-100">
+                  <span className="text-cream-50 font-mono">
                     {formatCurrency(profile.customSplitShare)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-slate-400">Owed expenses</span>
-                  <span className="text-slate-100">
+                  <span className="text-cream-100/60 font-medium">Owed expenses</span>
+                  <span className="text-cream-50 font-mono">
                     {formatCurrency(profile.owedTransactions)}
                   </span>
                 </div>
-                <div className="flex items-center justify-between border-t border-slate-800 pt-2 text-sm">
-                  <span className="text-slate-200">To pay total</span>
-                  <span className="text-slate-50">
+                <div className="flex items-center justify-between border-t border-cream-500/10 pt-2 text-sm">
+                  <span className="text-cream-100 font-semibold">To pay total</span>
+                  <span className="text-cream-50 font-mono font-semibold">
                     {formatCurrency(profile.toPayTotal)}
                   </span>
                 </div>
               </div>
-              <div className="space-y-2 rounded-xl border border-slate-800 bg-slate-950/60 p-3">
-                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+              <div className="space-y-2 rounded-xl border border-cream-500/10 bg-obsidian-800/55 p-3">
+                <div className="text-xs font-semibold uppercase tracking-wider text-cream-100/50">
                   What was received
                 </div>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-slate-400">Liquidations received</span>
-                  <span className="text-slate-100">
+                  <span className="text-cream-100/60 font-medium">Liquidations received</span>
+                  <span className="text-cream-50 font-mono">
                     {formatCurrency(profile.liquidationsReceived)}
                   </span>
                 </div>
-                <div className="flex items-center justify-between border-t border-slate-800 pt-2 text-sm">
-                  <span className="text-slate-200">Received total</span>
-                  <span className="text-slate-50">
+                <div className="flex items-center justify-between border-t border-cream-500/10 pt-2 text-sm">
+                  <span className="text-cream-100 font-semibold">Received total</span>
+                  <span className="text-cream-50 font-mono font-semibold">
                     {formatCurrency(profile.receivedTotal)}
                   </span>
                 </div>
               </div>
-              <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-3 text-xs text-slate-400">
-                <div className="flex items-center justify-between text-sm text-slate-200">
+              <div className="rounded-xl border border-cream-500/10 bg-obsidian-800/55 p-3 text-xs text-cream-100/60">
+                <div className="flex items-center justify-between text-sm text-cream-100 font-semibold">
                   <span>Net position</span>
-                  <span className="text-slate-50">{formatCurrency(profile.net)}</span>
+                  <span className="text-cream-50 font-mono font-semibold">{formatCurrency(profile.net)}</span>
                 </div>
-                <p className="mt-2 text-xs text-slate-500">
+                <p className="mt-2 text-xs text-cream-100/50 font-medium">
                   {formatCurrency(profile.paidTotal)} -
                   {formatCurrency(profile.toPayTotal)} -
                   {formatCurrency(profile.receivedTotal)} =
@@ -372,55 +374,55 @@ export default function DebtBreakdownPage() {
       ) : null}
 
       {debtSummary.state === "idle" ? (
-        <section className="space-y-4 rounded-2xl border border-slate-800 bg-slate-900/40 p-4">
+        <section className="space-y-5 rounded-2xl border border-cream-500/15 bg-obsidian-800/40 p-6 shadow-card backdrop-blur-sm animate-slide-up stagger-3">
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
-              Custom split details
+            <p className="text-xs uppercase tracking-wider text-cream-100/50 font-semibold">
+              Custom Split Details
             </p>
-            <h2 className="text-lg font-semibold text-slate-100">
+            <h2 className="text-xl font-display font-semibold text-cream-50 tracking-tight">
               How custom splits are shared
             </h2>
           </div>
           {customSplitRows.length === 0 ? (
-            <p className="text-sm text-slate-400">No custom split expenses yet.</p>
+            <p className="text-sm text-cream-100/60 font-medium">No custom split expenses yet.</p>
           ) : (
             <div className="space-y-3">
               {customSplitRows.map((transaction) => (
                 <div
                   key={transaction.id}
-                  className="space-y-2 rounded-xl border border-slate-800 bg-slate-950/60 p-3"
+                  className="space-y-2 rounded-xl border border-cream-500/10 bg-obsidian-800/55 p-4"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
                     <div>
-                      <p className="text-slate-100">
+                      <p className="text-cream-50 font-medium">
                         {getTitleForTransaction(transaction)}
                       </p>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-cream-100/50 font-medium">
                         {formatShortDate(transaction.date)} - Paid by {" "}
                         {profileMap.get(transaction.payer_id)?.display_name ||
                           transaction.payer_id ||
                           "Unknown"}
                       </p>
                     </div>
-                    <div className="text-sm font-semibold text-slate-100">
+                    <div className="text-sm font-mono font-semibold text-cream-50">
                       {formatCurrency(transaction.amount)}
                     </div>
                   </div>
                   <div className="space-y-2">
                     {transaction.splits.length === 0 ? (
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-cream-100/50 font-medium">
                         No custom split rows recorded.
                       </p>
                     ) : (
                       transaction.splits.map((split) => (
                         <div
                           key={`${transaction.id}-${split.id}`}
-                          className="flex items-center justify-between text-xs text-slate-400"
+                          className="flex items-center justify-between text-xs text-cream-100/60 font-medium"
                         >
                           <span>
                             {split.name} - {split.percent}% share
                           </span>
-                          <span className="text-slate-100">
+                          <span className="text-cream-50 font-mono">
                             {formatCurrency(split.amount)}
                           </span>
                         </div>
@@ -435,36 +437,36 @@ export default function DebtBreakdownPage() {
       ) : null}
 
       {debtSummary.state === "idle" ? (
-        <section className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-4 rounded-2xl border border-slate-800 bg-slate-900/40 p-4">
+        <section className="grid gap-6 md:grid-cols-2 animate-slide-up stagger-4">
+          <div className="space-y-5 rounded-2xl border border-cream-500/15 bg-obsidian-800/40 p-6 shadow-card backdrop-blur-sm">
             <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
-                Owed transactions
+              <p className="text-xs uppercase tracking-wider text-cream-100/50 font-semibold">
+                Owed Transactions
               </p>
-              <h2 className="text-lg font-semibold text-slate-100">
+              <h2 className="text-xl font-display font-semibold text-cream-50 tracking-tight">
                 Expenses paid for someone else
               </h2>
             </div>
             {owedRows.length === 0 ? (
-              <p className="text-sm text-slate-400">No owed transactions.</p>
+              <p className="text-sm text-cream-100/60 font-medium">No owed transactions.</p>
             ) : (
               <div className="space-y-3">
                 {owedRows.map((transaction) => (
                   <div
                     key={transaction.id}
-                    className="rounded-xl border border-slate-800 bg-slate-950/60 p-3"
+                    className="rounded-xl border border-cream-500/10 bg-obsidian-800/55 p-3"
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
                       <div>
-                        <p className="text-slate-100">
+                        <p className="text-cream-50 font-medium">
                           {getTitleForTransaction(transaction)}
                         </p>
-                        <p className="text-xs text-slate-500">
+                        <p className="text-xs text-cream-100/50 font-medium">
                           {formatShortDate(transaction.date)} - Paid by {" "}
                           {transaction.payerName} for {transaction.beneficiaryName}
                         </p>
                       </div>
-                      <div className="text-sm font-semibold text-slate-100">
+                      <div className="text-sm font-mono font-semibold text-cream-50">
                         {formatCurrency(transaction.amount)}
                       </div>
                     </div>
@@ -474,35 +476,35 @@ export default function DebtBreakdownPage() {
             )}
           </div>
 
-          <div className="space-y-4 rounded-2xl border border-slate-800 bg-slate-900/40 p-4">
+          <div className="space-y-5 rounded-2xl border border-cream-500/15 bg-obsidian-800/40 p-6 shadow-card backdrop-blur-sm">
             <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+              <p className="text-xs uppercase tracking-wider text-cream-100/50 font-semibold">
                 Liquidations
               </p>
-              <h2 className="text-lg font-semibold text-slate-100">
+              <h2 className="text-xl font-display font-semibold text-cream-50 tracking-tight">
                 Payments that settled up
               </h2>
             </div>
             {liquidationRows.length === 0 ? (
-              <p className="text-sm text-slate-400">No liquidations yet.</p>
+              <p className="text-sm text-cream-100/60 font-medium">No liquidations yet.</p>
             ) : (
               <div className="space-y-3">
                 {liquidationRows.map((transaction) => (
                   <div
                     key={transaction.id}
-                    className="rounded-xl border border-slate-800 bg-slate-950/60 p-3"
+                    className="rounded-xl border border-cream-500/10 bg-obsidian-800/55 p-3"
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
                       <div>
-                        <p className="text-slate-100">
+                        <p className="text-cream-50 font-medium">
                           {getTitleForTransaction(transaction)}
                         </p>
-                        <p className="text-xs text-slate-500">
+                        <p className="text-xs text-cream-100/50 font-medium">
                           {formatShortDate(transaction.date)} - {" "}
                           {transaction.payerName} paid {transaction.beneficiaryName}
                         </p>
                       </div>
-                      <div className="text-sm font-semibold text-slate-100">
+                      <div className="text-sm font-mono font-semibold text-cream-50">
                         {formatCurrency(transaction.amount)}
                       </div>
                     </div>

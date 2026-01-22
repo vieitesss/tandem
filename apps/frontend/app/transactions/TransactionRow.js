@@ -1,5 +1,6 @@
 "use client";
 
+import { createPortal } from "react-dom";
 import { useEffect, useMemo, useState } from "react";
 
 import SelectField from "../shared/SelectField";
@@ -8,14 +9,25 @@ import { normalizeNumberInput } from "../shared/inputs";
 
 const amountClassFor = (type) => {
   if (type === "INCOME") {
-    return "text-emerald-300";
+    return "text-sage-400";
   }
 
   if (type === "EXPENSE") {
-    return "text-rose-300";
+    return "text-coral-400";
   }
 
-  return "text-slate-50";
+  return "text-cream-50";
+};
+
+const ModalPortal = ({ children }) => {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
+
+  return mounted ? createPortal(children, document.body) : null;
 };
 
 export default function TransactionRow({
@@ -80,6 +92,17 @@ export default function TransactionRow({
   }, [transaction.split_mode, transaction.type]);
   const noteLabel = transaction.note ? transaction.note.trim() : "";
   const notePlaceholder = "—";
+
+  useEffect(() => {
+    if (isModalOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isModalOpen]);
 
   useEffect(() => {
     if (isModalOpen) {
@@ -219,21 +242,24 @@ export default function TransactionRow({
   };
 
   const rowContent = (
-    <div className="grid grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-2 text-sm md:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.7fr)_auto_72px]">
-      <span className="text-slate-200 tabular-nums">{dayLabel}</span>
-      <span className="truncate text-slate-200">{payerLabel}</span>
-      <span className="truncate text-slate-200">{categoryLabel}</span>
-      <span className="hidden truncate text-slate-400 md:block">
+    <div className="grid grid-cols-[50px_100px_1fr_80px] items-center gap-2 text-sm md:grid-cols-[60px_120px_140px_1fr_100px_90px_72px]">
+      <span className="text-cream-100 tabular-nums font-mono">{dayLabel}</span>
+      <span className="truncate text-cream-100 font-medium">{payerLabel}</span>
+      <span className="truncate text-cream-100/60 md:hidden">
         {noteLabel || notePlaceholder}
       </span>
-      <span className="hidden truncate text-slate-400 md:block">{splitLabel}</span>
-      <span className={`text-right ${amountClass}`}>
+      <span className="hidden truncate text-cream-100 md:block">{categoryLabel}</span>
+      <span className="hidden truncate text-cream-100/60 md:block">
+        {noteLabel || notePlaceholder}
+      </span>
+      <span className="hidden truncate text-cream-100/60 md:block">{splitLabel}</span>
+      <span className={`text-right font-mono font-semibold ${amountClass}`}>
         {formatCurrency(transaction.amount)}
       </span>
       <div className="hidden justify-end md:flex">
         <button
           type="button"
-          className="rounded-md bg-slate-800 px-2 py-1 text-xs text-slate-200"
+          className="rounded-lg bg-obsidian-700/60 px-3 py-1.5 text-xs font-medium text-cream-200 transition-all duration-200 hover:bg-obsidian-700 hover:text-cream-100"
           onClick={handleOpenModal}
         >
           Edit
@@ -242,10 +268,17 @@ export default function TransactionRow({
     </div>
   );
 
-  const noteContent = (
-    <p className={noteLabel ? "text-slate-200" : "text-slate-500"}>
-      {noteLabel || notePlaceholder}
-    </p>
+  const expandedContent = (
+    <div className="space-y-1">
+      <div className="flex items-center gap-2">
+        <span className="text-cream-100/50 text-xs font-medium">Category:</span>
+        <span className="text-cream-100">{categoryLabel}</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="text-cream-100/50 text-xs font-medium">Split:</span>
+        <span className="text-cream-100">{splitLabel}</span>
+      </div>
+    </div>
   );
 
   const handleRowKeyDown = (event) => {
@@ -256,11 +289,11 @@ export default function TransactionRow({
   };
 
   return (
-    <div className="px-3 py-3">
+    <div className="px-3 py-3 transition-all duration-200 hover:bg-obsidian-700/20">
       <div
         role="button"
         tabIndex={0}
-        className="w-full text-left"
+        className="w-full text-left cursor-pointer"
         onClick={handleToggle}
         onKeyDown={handleRowKeyDown}
         aria-expanded={isExpanded}
@@ -269,11 +302,11 @@ export default function TransactionRow({
       </div>
       {isExpanded ? (
         <div className="mt-2 flex items-start justify-between gap-3 text-xs md:hidden">
-          <div className="min-w-0 flex-1">{noteContent}</div>
+          <div className="min-w-0 flex-1">{expandedContent}</div>
           <div className="flex items-center gap-2">
             <button
               type="button"
-              className="rounded-md bg-slate-800 px-2 py-1 text-xs text-slate-200"
+              className="rounded-lg bg-obsidian-700/60 px-3 py-1.5 text-xs font-medium text-cream-200 transition-all duration-200 hover:bg-obsidian-700"
               onClick={handleOpenModal}
             >
               Edit
@@ -282,185 +315,187 @@ export default function TransactionRow({
         </div>
       ) : null}
       {isModalOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4">
-          <div className="w-full max-w-lg space-y-4 rounded-2xl border border-slate-800 bg-slate-900/95 p-5 text-slate-100">
-            <div className="space-y-1">
-              <h3 className="text-lg font-semibold">Edit transaction</h3>
-              <p className="text-xs text-slate-400">Type: {transaction.type}</p>
-            </div>
-             <div className="grid gap-3 text-sm">
-               <label className="space-y-1 text-xs text-slate-400">
-                 Date
-                 <input
-                   className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200"
-                   type="date"
-                   value={draft.date}
-                   onChange={(event) =>
-                     setDraft((current) => ({
-                       ...current,
-                       date: event.target.value,
-                     }))
-                   }
-                 />
-               </label>
-               <label className="space-y-1 text-xs text-slate-400">
-                 Paid by
-                 <SelectField
-                   className="w-full appearance-none rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 pr-9 text-sm text-slate-200"
-                   value={draft.payerId}
-                   onChange={(event) =>
-                     setDraft((current) => ({
-                       ...current,
-                       payerId: event.target.value,
-                     }))
-                   }
-                 >
-                   <option value="">Select payer</option>
-                   {profiles.map((profile) => (
-                     <option key={profile.id} value={profile.id}>
-                       {profile.display_name || profile.id}
-                     </option>
-                   ))}
-                 </SelectField>
-               </label>
-               <label className="space-y-1 text-xs text-slate-400">
-                 Category
-                 <SelectField
-                   className="w-full appearance-none rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 pr-9 text-sm text-slate-200"
-                   value={draft.category}
-                   onChange={(event) =>
-                     setDraft((current) => ({
-                       ...current,
-                       category: event.target.value,
-                     }))
-                   }
-                   disabled={!isCategoryRequired}
-                 >
-                   <option value="">
-                     {isCategoryRequired ? "Select category" : "Not required"}
-                   </option>
-                   {categoryOptions.map((option) => (
-                     <option key={option.label} value={option.label}>
-                       {option.label}
-                     </option>
-                   ))}
-                 </SelectField>
-               </label>
-               {transaction.type === "EXPENSE" ? (
-                 <label className="space-y-1 text-xs text-slate-400">
-                   Split mode
-                   <SelectField
-                     className="w-full appearance-none rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 pr-9 text-sm text-slate-200"
-                     value={draft.splitMode}
+        <ModalPortal>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-obsidian-950/90 backdrop-blur-sm p-4 animate-fade-in">
+            <div className="w-full max-w-lg space-y-4 rounded-2xl border border-cream-500/20 bg-obsidian-800/95 p-6 text-cream-50 shadow-elevated backdrop-blur-xl animate-scale-in">
+              <div className="space-y-1">
+                <h3 className="text-xl font-display font-semibold tracking-tight">Edit Transaction</h3>
+                <p className="text-xs text-cream-100/60 font-medium">Type: {transaction.type}</p>
+              </div>
+               <div className="grid gap-3 text-sm">
+                 <label className="space-y-2 text-xs font-medium text-cream-200 tracking-wide">
+                   Date
+                   <input
+                     className="w-full rounded-lg border border-cream-500/20 bg-obsidian-950/80 px-3 py-2 text-sm text-cream-50 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30 transition-all duration-200"
+                     type="date"
+                     value={draft.date}
                      onChange={(event) =>
                        setDraft((current) => ({
                          ...current,
-                         splitMode: event.target.value,
-                         owedToId:
-                           event.target.value === "owed"
-                             ? current.owedToId
-                             : "",
+                         date: event.target.value,
                        }))
                      }
-                   >
-                     <option value="none">Personal</option>
-                     <option value="owed">Owed</option>
-                     <option value="custom">Custom</option>
-                   </SelectField>
+                   />
                  </label>
-               ) : null}
-               {transaction.type === "EXPENSE" && draft.splitMode === "owed" ? (
-                 <label className="space-y-1 text-xs text-slate-400">
-                   Owed by
+                 <label className="space-y-2 text-xs font-medium text-cream-200 tracking-wide">
+                   Paid by
                    <SelectField
-                     className="w-full appearance-none rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 pr-9 text-sm text-slate-200"
-                     value={draft.owedToId}
+                     className="w-full appearance-none rounded-lg border border-cream-500/20 bg-obsidian-950/80 px-3 py-2 pr-9 text-sm text-cream-50 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30 transition-all duration-200"
+                     value={draft.payerId}
                      onChange={(event) =>
                        setDraft((current) => ({
                          ...current,
-                         owedToId: event.target.value,
+                         payerId: event.target.value,
                        }))
                      }
                    >
-                     <option value="">Select partner</option>
-                     {profiles
-                       .filter((profile) => profile.id !== draft.payerId)
-                       .map((profile) => (
-                         <option key={profile.id} value={profile.id}>
-                           {profile.display_name || profile.id}
-                         </option>
-                       ))}
+                     <option value="">Select payer</option>
+                     {profiles.map((profile) => (
+                       <option key={profile.id} value={profile.id}>
+                         {profile.display_name || profile.id}
+                       </option>
+                     ))}
                    </SelectField>
                  </label>
-               ) : null}
-               <label className="space-y-1 text-xs text-slate-400">
-                 Amount
-                 <input
-                   className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-left text-sm text-slate-200"
-                   placeholder="0.00"
-                   inputMode="decimal"
-                   value={draft.amount}
-                   onChange={(event) => {
-                     const normalized = normalizeNumberInput(event.target.value);
-                     setDraft((current) => ({ ...current, amount: normalized }));
-                   }}
-                 />
-               </label>
-               <label className="space-y-1 text-xs text-slate-400">
-                 Note
-                 <input
-                   className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200"
-                   placeholder="No note"
-                   value={draft.note}
-                   onChange={(event) =>
-                     setDraft((current) => ({
-                       ...current,
-                       note: event.target.value,
-                     }))
-                   }
-                 />
-               </label>
-             </div>
+                 <label className="space-y-2 text-xs font-medium text-cream-200 tracking-wide">
+                   Category
+                   <SelectField
+                     className="w-full appearance-none rounded-lg border border-cream-500/20 bg-obsidian-950/80 px-3 py-2 pr-9 text-sm text-cream-50 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30 transition-all duration-200"
+                     value={draft.category}
+                     onChange={(event) =>
+                       setDraft((current) => ({
+                         ...current,
+                         category: event.target.value,
+                       }))
+                     }
+                     disabled={!isCategoryRequired}
+                   >
+                     <option value="">
+                       {isCategoryRequired ? "Select category" : "Not required"}
+                     </option>
+                     {categoryOptions.map((option) => (
+                       <option key={option.label} value={option.label}>
+                         {option.label}
+                       </option>
+                     ))}
+                   </SelectField>
+                 </label>
+                 {transaction.type === "EXPENSE" ? (
+                   <label className="space-y-2 text-xs font-medium text-cream-200 tracking-wide">
+                     Split mode
+                     <SelectField
+                       className="w-full appearance-none rounded-lg border border-cream-500/20 bg-obsidian-950/80 px-3 py-2 pr-9 text-sm text-cream-50 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30 transition-all duration-200"
+                       value={draft.splitMode}
+                       onChange={(event) =>
+                         setDraft((current) => ({
+                           ...current,
+                           splitMode: event.target.value,
+                           owedToId:
+                             event.target.value === "owed"
+                               ? current.owedToId
+                               : "",
+                         }))
+                       }
+                     >
+                       <option value="none">Personal</option>
+                       <option value="owed">Owed</option>
+                       <option value="custom">Custom</option>
+                     </SelectField>
+                   </label>
+                 ) : null}
+                 {transaction.type === "EXPENSE" && draft.splitMode === "owed" ? (
+                   <label className="space-y-2 text-xs font-medium text-cream-200 tracking-wide">
+                     Owed by
+                     <SelectField
+                       className="w-full appearance-none rounded-lg border border-cream-500/20 bg-obsidian-950/80 px-3 py-2 pr-9 text-sm text-cream-50 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30 transition-all duration-200"
+                       value={draft.owedToId}
+                       onChange={(event) =>
+                         setDraft((current) => ({
+                           ...current,
+                           owedToId: event.target.value,
+                         }))
+                       }
+                     >
+                       <option value="">Select partner</option>
+                       {profiles
+                         .filter((profile) => profile.id !== draft.payerId)
+                         .map((profile) => (
+                           <option key={profile.id} value={profile.id}>
+                             {profile.display_name || profile.id}
+                           </option>
+                         ))}
+                     </SelectField>
+                   </label>
+                 ) : null}
+                 <label className="space-y-2 text-xs font-medium text-cream-200 tracking-wide">
+                   Amount
+                   <input
+                     className="w-full rounded-lg border border-cream-500/20 bg-obsidian-950/80 px-3 py-2 text-left text-sm text-cream-50 font-mono hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30 transition-all duration-200"
+                     placeholder="0.00"
+                     inputMode="decimal"
+                     value={draft.amount}
+                     onChange={(event) => {
+                       const normalized = normalizeNumberInput(event.target.value);
+                       setDraft((current) => ({ ...current, amount: normalized }));
+                     }}
+                   />
+                 </label>
+                 <label className="space-y-2 text-xs font-medium text-cream-200 tracking-wide">
+                   Note
+                   <input
+                     className="w-full rounded-lg border border-cream-500/20 bg-obsidian-950/80 px-3 py-2 text-sm text-cream-50 placeholder:text-cream-100/40 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30 transition-all duration-200"
+                     placeholder="No note"
+                     value={draft.note}
+                     onChange={(event) =>
+                       setDraft((current) => ({
+                         ...current,
+                         note: event.target.value,
+                       }))
+                     }
+                   />
+                 </label>
+               </div>
 
-            {error ? <p className="text-xs text-rose-300">{error}</p> : null}
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <button
-                type="button"
-                className={`rounded-lg px-3 py-2 text-xs font-semibold text-slate-100 ${
-                  isDeleteConfirm
-                    ? "bg-rose-500"
-                    : "bg-rose-500/80 hover:bg-rose-500"
-                }`}
-                onClick={handleDelete}
-                disabled={isDeleting}
-              >
-                {isDeleting
-                  ? "Deleting"
-                  : isDeleteConfirm
-                    ? "Confirm delete"
-                    : "Delete"}
-              </button>
-              <div className="flex items-center gap-2">
+              {error ? <p className="text-xs text-coral-300 font-medium">{error}</p> : null}
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <button
                   type="button"
-                  className="rounded-lg bg-slate-800 px-3 py-2 text-xs text-slate-200"
-                  onClick={handleCloseModal}
-                  disabled={isSaving || isDeleting}
+                  className={`rounded-lg px-4 py-2 text-xs font-semibold transition-all duration-200 ${
+                    isDeleteConfirm
+                      ? "bg-coral-500 text-obsidian-950 shadow-glow-sm"
+                      : "bg-coral-500/80 text-obsidian-950 hover:bg-coral-500 hover:shadow-glow-sm"
+                  }`}
+                  onClick={handleDelete}
+                  disabled={isDeleting}
                 >
-                  Cancel
+                  {isDeleting
+                    ? "Deleting…"
+                    : isDeleteConfirm
+                      ? "Confirm Delete"
+                      : "Delete"}
                 </button>
-                <button
-                  type="button"
-                  className="rounded-lg bg-emerald-500 px-3 py-2 text-xs font-semibold text-slate-900"
-                  onClick={handleSave}
-                  disabled={isSaving || isDeleting}
-                >
-                  {isSaving ? "Saving" : "Save"}
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    className="rounded-lg bg-obsidian-700/60 px-4 py-2 text-xs font-medium text-cream-200 transition-all duration-200 hover:bg-obsidian-700"
+                    onClick={handleCloseModal}
+                    disabled={isSaving || isDeleting}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-lg bg-cream-500 px-4 py-2 text-xs font-semibold text-obsidian-950 shadow-glow-md transition-all duration-200 hover:bg-cream-400 hover:shadow-glow-lg"
+                    onClick={handleSave}
+                    disabled={isSaving || isDeleting}
+                  >
+                    {isSaving ? "Saving…" : "Save"}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        </ModalPortal>
       ) : null}
     </div>
   );

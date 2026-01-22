@@ -126,31 +126,33 @@ export default function ProfilesPage() {
   };
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 px-6 pt-6 pb-[calc(6rem+env(safe-area-inset-bottom))] md:p-6">
-      <header className="space-y-2">
-        <Link className="hidden text-xs text-slate-400 md:inline-flex" href="/">
+    <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-8 px-6 pt-8 pb-[calc(6rem+env(safe-area-inset-bottom))] md:p-8 md:pt-12">
+      <header className="space-y-3 animate-fade-in">
+        <Link className="hidden text-xs font-medium text-cream-300 hover:text-cream-200 transition-colors duration-200 md:inline-flex" href="/">
           ← Back to transactions
         </Link>
-        <div className="flex items-center gap-3">
-          <img
-            src="/icon.png"
-            alt="Tandem"
-            className="h-8 w-8 md:h-9 md:w-9"
-          />
-          <h1 className="text-2xl font-semibold">Profiles</h1>
+        <div className="flex items-center gap-4">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-cream-500/20 to-cream-600/10 border border-cream-500/20 shadow-glow-sm md:h-12 md:w-12">
+            <img
+              src="/icon.png"
+              alt="Tandem"
+              className="h-7 w-7 md:h-8 md:w-8"
+            />
+          </div>
+          <h1 className="text-3xl font-display font-semibold tracking-tight text-cream-50 md:text-4xl">Profiles</h1>
         </div>
-        <p className="text-sm text-slate-400">
-          Manage default split percentages for each partner.
+        <p className="text-sm text-cream-100/60 font-medium tracking-wide">
+          Manage default split percentages for each partner
         </p>
       </header>
 
       <form
-        className="space-y-3 rounded-2xl border border-slate-800 bg-slate-900/40 p-4"
+        className="space-y-3 rounded-2xl border border-cream-500/15 bg-obsidian-800/40 p-6 shadow-card backdrop-blur-sm animate-slide-up stagger-1"
         onSubmit={handleCreate}
       >
         <div className="grid gap-3 sm:grid-cols-[1fr_120px_120px]">
           <input
-            className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+            className="w-full rounded-lg border border-cream-500/20 bg-obsidian-950/80 px-3 py-2.5 text-cream-50 placeholder:text-cream-100/40 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30 transition-all duration-200"
             placeholder="Name"
             value={form.displayName}
             onChange={(event) =>
@@ -161,7 +163,7 @@ export default function ProfilesPage() {
             }
           />
           <input
-            className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+            className="w-full rounded-lg border border-cream-500/20 bg-obsidian-950/80 px-3 py-2.5 text-cream-50 font-mono placeholder:text-cream-100/40 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30 transition-all duration-200"
             placeholder="Split %"
             type="number"
             step="0.1"
@@ -174,7 +176,7 @@ export default function ProfilesPage() {
             }
           />
           <button
-            className="rounded-lg bg-emerald-500 px-4 py-2 font-semibold text-slate-900"
+            className="rounded-lg bg-cream-500 px-4 py-2.5 font-display font-semibold text-obsidian-950 shadow-glow-md transition-all duration-300 hover:bg-cream-400 hover:shadow-glow-lg hover:scale-[1.02] active:scale-[0.98]"
             type="submit"
           >
             Add
@@ -182,70 +184,69 @@ export default function ProfilesPage() {
         </div>
       </form>
 
-      <section className="space-y-2">
-        <h2 className="text-sm text-slate-300">Existing profiles</h2>
+      <section className="space-y-4 animate-slide-up stagger-2">
+        <h2 className="text-sm font-display font-semibold text-cream-100 tracking-tight">Existing Profiles</h2>
         {profiles.length === 0 ? (
-          <p className="text-sm text-slate-500">No profiles yet.</p>
+          <p className="text-sm text-cream-100/60 font-medium">No profiles yet.</p>
         ) : (
-          <>
-            <div className="grid grid-cols-[minmax(0,1fr)_80px_44px] gap-2 px-3 text-xs text-slate-400">
-              <span>Name</span>
-              <span>Split %</span>
-              <span className="text-right">Save</span>
-            </div>
-            <div className="divide-y divide-slate-800 rounded-2xl border border-slate-800 bg-slate-900/40">
-              {profiles.map((profile) => (
-                <div
-                  key={profile.id}
-                  className="grid grid-cols-[minmax(0,1fr)_80px_44px] items-center gap-2 px-3 py-3"
-                >
+          <div className="grid gap-4 sm:grid-cols-2">
+            {profiles.map((profile) => (
+              <div
+                key={profile.id}
+                className="group relative space-y-4 rounded-2xl border border-cream-500/15 bg-obsidian-800/40 p-5 shadow-card backdrop-blur-sm transition-all duration-300 hover:border-cream-500/25 hover:shadow-elevated"
+              >
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-cream-100/40">
+                    Display Name
+                  </label>
                   <input
-                    className="w-full min-w-0 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200"
+                    className="w-full rounded-lg border border-cream-500/10 bg-obsidian-950/60 px-3 py-2 text-sm text-cream-50 transition-all duration-200 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30"
                     value={profile.display_name}
                     aria-label="Profile name"
                     onChange={(event) =>
                       updateProfile(profile.id, "display_name", event.target.value)
                     }
                   />
-                  <input
-                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-2 py-2 text-right text-sm text-slate-200"
-                    type="number"
-                    step="0.1"
-                    value={profile.splitPercent}
-                    aria-label="Default split percent"
-                    onChange={(event) =>
-                      updateProfile(
-                        profile.id,
-                        "splitPercent",
-                        normalizeNumberInput(event.target.value)
-                      )
-                    }
-                  />
-                  <button
-                    className="flex h-8 w-8 items-center justify-center justify-self-end rounded-lg bg-slate-800 text-slate-200"
-                    type="button"
-                    onClick={() => handleSave(profile)}
-                    disabled={savingId === profile.id}
-                    aria-label="Save profile"
-                    title="Save profile"
-                  >
-                    {savingId === profile.id ? (
-                      "…"
-                    ) : (
-                      <svg
-                        className="h-4 w-4"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                        aria-hidden="true"
-                      >
-                        <path d="M16 4a2 2 0 00-2-2H6a2 2 0 00-2 2v12a1 1 0 001.447.894L10 14.118l4.553 2.776A1 1 0 0016 16V4z" />
-                      </svg>
-                    )}
-                  </button>
                 </div>
-              ))}
-            </div>
-          </>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-cream-100/40">
+                    Default Split %
+                  </label>
+                  <div className="relative">
+                    <input
+                      className="w-full rounded-lg border border-cream-500/10 bg-obsidian-950/60 px-3 py-2 pr-9 text-sm text-cream-50 font-mono transition-all duration-200 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30"
+                      type="number"
+                      step="0.1"
+                      value={profile.splitPercent}
+                      aria-label="Default split percent"
+                      onChange={(event) =>
+                        updateProfile(
+                          profile.id,
+                          "splitPercent",
+                          normalizeNumberInput(event.target.value)
+                        )
+                      }
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-mono text-cream-100/40">
+                      %
+                    </span>
+                  </div>
+                </div>
+                <button
+                  className="w-full flex h-10 items-center justify-center rounded-lg bg-obsidian-700/60 text-xs font-semibold text-cream-200 transition-all duration-300 hover:bg-cream-500 hover:text-obsidian-950 hover:shadow-glow-sm disabled:opacity-50"
+                  type="button"
+                  onClick={() => handleSave(profile)}
+                  disabled={savingId === profile.id}
+                >
+                  {savingId === profile.id ? (
+                    <span className="animate-pulse">Saving...</span>
+                  ) : (
+                    "Save Changes"
+                  )}
+                </button>
+              </div>
+            ))}
+          </div>
         )}
       </section>
 

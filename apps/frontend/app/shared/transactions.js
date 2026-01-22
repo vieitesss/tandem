@@ -27,8 +27,3 @@ export const categoryOptions = [
   { label: "Taxes", icon: "🧾" },
   { label: "Other", icon: "🧩" },
 ];
-
-export const categoryFilterOptions = [
-  "All",
-  ...categoryOptions.map((option) => option.label),
-];

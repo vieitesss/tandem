@@ -8,7 +8,6 @@ import SelectField from "../shared/SelectField";
 import Tooltip from "../shared/Tooltip";
 import { formatCurrency, formatMonthLabel, formatShortDate } from "../shared/format";
 import {
-  categoryFilterOptions,
   categoryOptions,
   typeOptions,
 } from "../shared/transactions";
@@ -25,6 +24,7 @@ export default function TransactionsPage() {
     split: "ALL",
   });
   const [profiles, setProfiles] = useState([]);
+  const [categories, setCategories] = useState(categoryOptions);
   const [savingId, setSavingId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
   const [debtFromDate, setDebtFromDate] = useState(() => {
@@ -139,6 +139,21 @@ export default function TransactionsPage() {
       })
       .catch(() => setProfiles([]));
   }, [apiBaseUrl]);
+
+  useEffect(() => {
+    fetch(`${apiBaseUrl}/categories`)
+      .then((response) => response.json())
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setCategories(data);
+        }
+      })
+      .catch(() => setCategories(categoryOptions));
+  }, [apiBaseUrl]);
+
+  const categoryFilterOptions = useMemo(() => {
+    return ["All", ...categories.map((option) => option.label)];
+  }, [categories]);
 
   useEffect(() => {
     if (!debtFromDate) {
@@ -281,18 +296,25 @@ export default function TransactionsPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-5xl flex-col gap-6 px-6 pt-6 pb-[calc(6rem+env(safe-area-inset-bottom))] md:p-6">
-      <header className="space-y-2">
+    <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-8 px-6 pt-8 pb-[calc(6rem+env(safe-area-inset-bottom))] md:p-8 md:pt-12">
+      <header className="space-y-3 animate-fade-in">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <img
-              src="/icon.png"
-              alt="Tandem"
-              className="h-8 w-8 md:h-9 md:w-9"
-            />
-            <h1 className="text-2xl font-semibold">Transactions</h1>
+          <div className="flex items-center gap-4">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-cream-500/20 to-cream-600/10 border border-cream-500/20 shadow-glow-sm md:h-12 md:w-12">
+              <img
+                src="/icon.png"
+                alt="Tandem"
+                className="h-7 w-7 md:h-8 md:w-8"
+              />
+            </div>
+            <h1 className="text-3xl font-display font-semibold tracking-tight text-cream-50 md:text-4xl">Transactions</h1>
           </div>
-          <div className="hidden items-center gap-2 text-slate-300 md:flex">
+          <div className="hidden items-center gap-2 text-cream-300 md:flex">
+            <IconLinkButton href="/timeline" label="View timeline">
+              <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" />
+              </svg>
+            </IconLinkButton>
             <IconLinkButton href="/" label="Add transaction">
               <svg
                 className="h-5 w-5"
@@ -301,6 +323,11 @@ export default function TransactionsPage() {
                 aria-hidden="true"
               >
                 <path d="M10 4.5a.75.75 0 01.75.75v3h3a.75.75 0 010 1.5h-3v3a.75.75 0 01-1.5 0v-3h-3a.75.75 0 010-1.5h3v-3A.75.75 0 0110 4.5z" />
+              </svg>
+            </IconLinkButton>
+            <IconLinkButton href="/categories" label="Manage categories">
+              <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
               </svg>
             </IconLinkButton>
             <IconLinkButton href="/profiles" label="Manage profiles">
@@ -316,36 +343,36 @@ export default function TransactionsPage() {
             </IconLinkButton>
           </div>
         </div>
-        <p className="text-sm text-slate-400">
-          Review every transaction and filter by month, type, category, or payer.
+        <p className="text-sm text-cream-100/60 font-medium tracking-wide">
+          Review every transaction and filter by month, type, category, or payer
         </p>
       </header>
 
-      <section className="space-y-4 rounded-2xl border border-slate-800 bg-slate-900/40 p-4">
+      <section className="space-y-4 rounded-2xl border border-cream-500/15 bg-obsidian-800/40 p-6 shadow-card backdrop-blur-sm animate-slide-up stagger-1">
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
-              Debt summary
+          <div className="space-y-2">
+            <p className="text-xs uppercase tracking-wider text-cream-100/50 font-semibold">
+              Debt Summary
             </p>
-            <h2 className="text-lg font-semibold text-slate-100">
+            <h2 className="text-xl font-display font-semibold text-cream-50 tracking-tight">
               {debtLine}
             </h2>
-            <p className="text-xs text-slate-400">
-              From {formatShortDate(debtFromDate)} onward.
+            <p className="text-xs text-cream-100/60 font-medium">
+              From {formatShortDate(debtFromDate)} onward
             </p>
             <Link
-              className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-200 hover:text-sky-100"
+              className="inline-block text-xs font-semibold uppercase tracking-wider text-cream-400 hover:text-cream-300 transition-colors duration-200"
               href={`/debt-breakdown?from=${encodeURIComponent(debtFromDate)}`}
             >
-              See breakdown
+              See Breakdown →
             </Link>
 
 
           </div>
-          <label className="space-y-2 text-xs text-slate-400">
+          <label className="space-y-2 text-xs font-medium text-cream-200 tracking-wide">
             From date
             <input
-              className="w-full min-w-[180px] rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200"
+              className="w-full min-w-[180px] rounded-lg border border-cream-500/20 bg-obsidian-950/80 px-3 py-2 text-sm text-cream-50 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30 transition-all duration-200"
               type="date"
               value={debtFromDate}
               onChange={(event) => {
@@ -356,114 +383,110 @@ export default function TransactionsPage() {
             />
           </label>
         </div>
-        <div className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950/40 px-3 py-2 text-sm">
-          <span className="text-slate-400">Total custom split expenses</span>
-          <span className="text-slate-100">{formatCurrency(debtCustomSplitTotal)}</span>
+        <div className="flex items-center justify-between rounded-xl border border-cream-500/15 bg-obsidian-950/40 px-4 py-3 text-sm">
+          <span className="text-cream-100/60 font-medium">Total custom split expenses</span>
+          <span className="text-cream-50 font-mono font-semibold">{formatCurrency(debtCustomSplitTotal)}</span>
         </div>
         {debtSummary.state === "loading" ? (
-          <p className="text-sm text-slate-400">Loading debt summary...</p>
+          <p className="text-sm text-cream-100/60 font-medium">Loading debt summary...</p>
         ) : null}
         {debtSummary.state === "error" ? (
-          <p className="text-sm text-rose-300">{debtSummary.message}</p>
+          <p className="text-sm text-coral-300 font-medium">{debtSummary.message}</p>
         ) : null}
         {debtSummary.state === "idle" ? (
           <div className="space-y-3">
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-cream-100/40 font-medium">
               Net = what was paid - what had to be paid - what was received
             </p>
-            <div className="grid gap-3 text-sm md:grid-cols-2">
+            <div className="grid gap-4 text-sm md:grid-cols-2">
               {debtProfileLabels.map((profile) => (
                 <div
                   key={profile.id}
-                  className="space-y-2 rounded-xl border border-slate-800 bg-slate-950/40 p-3"
+                  className="space-y-3 rounded-2xl border border-cream-500/10 bg-obsidian-950/40 p-4 transition-all duration-300 hover:border-cream-500/20"
                 >
-                  <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                  <div className="text-xs font-bold uppercase tracking-wider text-cream-500/80">
                     {profile.display_name || profile.id}
                   </div>
-                  <div className="space-y-2 rounded-xl border border-slate-800 bg-slate-950/60 p-2">
-                    <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                  
+                  <div className="space-y-2 rounded-xl border border-cream-500/5 bg-obsidian-900/40 p-3">
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-cream-100/30">
                       What was paid
                     </div>
                     <div className="flex items-center justify-between">
                       <Tooltip label="Total amount this person paid on transactions split as custom.">
-                        <span className="text-slate-400">Custom split paid</span>
+                        <span className="text-cream-100/60">Custom split paid</span>
                       </Tooltip>
-                      <span className="text-slate-100">
+                      <span className="text-cream-100 font-mono">
                         {formatCurrency(profile.customSplitPaid)}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-400">Owed paid (for others)</span>
-                      <span className="text-slate-100">
+                      <span className="text-cream-100/60">Owed paid (for others)</span>
+                      <span className="text-cream-100 font-mono">
                         {formatCurrency(profile.owedPaid)}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-400">Liquidations paid</span>
-                      <span className="text-slate-100">
-                        {formatCurrency(profile.liquidationsPaid)}
+                      <span className="text-cream-100/60">Liquidations paid</span>
+                      <span className="text-cream-100 font-mono">
+                        {formatCurrency(profile.owedPaid)}
                       </span>
                     </div>
-                    <div className="flex items-center justify-between border-t border-slate-800 pt-2">
-                      <span className="text-slate-200">Paid total</span>
-                      <span className="text-slate-50">
+                    <div className="flex items-center justify-between border-t border-cream-500/10 pt-2 mt-1">
+                      <span className="font-semibold text-cream-50">Paid total</span>
+                      <span className="font-bold text-cream-50 font-mono">
                         {formatCurrency(profile.paidTotal)}
                       </span>
                     </div>
                   </div>
-                  <div className="space-y-2 rounded-xl border border-slate-800 bg-slate-950/60 p-2">
-                    <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+
+                  <div className="space-y-2 rounded-xl border border-cream-500/5 bg-obsidian-900/40 p-3">
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-cream-100/30">
                       What had to be paid
                     </div>
                     <div className="flex items-center justify-between">
                       <Tooltip label="Total share this person should cover based on custom split percentages.">
-                        <span className="text-slate-400">Custom split share</span>
+                        <span className="text-cream-100/60">Custom split share</span>
                       </Tooltip>
-                      <span className="text-slate-100">
+                      <span className="text-cream-100 font-mono">
                         {formatCurrency(profile.customSplitShare)}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-400">Owed expenses</span>
-                      <span className="text-slate-100">
+                      <span className="text-cream-100/60">Owed expenses</span>
+                      <span className="text-cream-100 font-mono">
                         {formatCurrency(profile.owedTransactions)}
                       </span>
                     </div>
-                    <div className="flex items-center justify-between border-t border-slate-800 pt-2">
-                      <span className="text-slate-200">To pay total</span>
-                      <span className="text-slate-50">
+                    <div className="flex items-center justify-between border-t border-cream-500/10 pt-2 mt-1">
+                      <span className="font-semibold text-cream-50">To pay total</span>
+                      <span className="font-bold text-cream-50 font-mono">
                         {formatCurrency(profile.toPayTotal)}
                       </span>
                     </div>
                   </div>
-                  <div className="space-y-2 rounded-xl border border-slate-800 bg-slate-950/60 p-2">
-                    <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+
+                  <div className="space-y-2 rounded-xl border border-cream-500/5 bg-obsidian-900/40 p-3">
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-cream-100/30">
                       What was received
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-400">Liquidations received</span>
-                      <span className="text-slate-100">
+                      <span className="text-cream-100/60">Liquidations received</span>
+                      <span className="text-cream-100 font-mono">
                         {formatCurrency(profile.liquidationsReceived)}
                       </span>
                     </div>
-                    <div className="flex items-center justify-between border-t border-slate-800 pt-2">
-                      <span className="text-slate-200">Received total</span>
-                      <span className="text-slate-50">
+                    <div className="flex items-center justify-between border-t border-cream-500/10 pt-2 mt-1">
+                      <span className="font-semibold text-cream-50">Received total</span>
+                      <span className="font-bold text-cream-50 font-mono">
                         {formatCurrency(profile.receivedTotal)}
                       </span>
                     </div>
                   </div>
-                  <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-2 text-xs text-slate-400">
-                    <p>
-                      {formatCurrency(profile.paidTotal)} -
-                      {formatCurrency(profile.toPayTotal)} -
-                      {formatCurrency(profile.receivedTotal)} =
-                      {formatCurrency(profile.net)}
-                    </p>
-                  </div>
-                  <div className="flex items-center justify-between border-t border-slate-800 pt-2">
-                    <span className="text-slate-200">Person debt</span>
-                    <span className="text-slate-50">
+
+                  <div className="flex items-center justify-between border-t border-cream-500/15 pt-3 mt-2">
+                    <span className="font-display font-semibold text-cream-200">Person net</span>
+                    <span className={`font-display font-bold ${profile.net >= 0 ? 'text-sage-400' : 'text-coral-400'}`}>
                       {formatCurrency(profile.net)}
                     </span>
                   </div>
@@ -474,11 +497,11 @@ export default function TransactionsPage() {
         ) : null}
       </section>
 
-      <section className="grid gap-4 rounded-2xl border border-slate-800 bg-slate-900/40 p-4 md:grid-cols-5">
-        <label className="space-y-2 text-sm text-slate-300">
+      <section className="grid gap-4 rounded-2xl border border-cream-500/15 bg-obsidian-800/40 p-6 shadow-card backdrop-blur-sm md:grid-cols-5 animate-slide-up stagger-2">
+        <label className="space-y-2 text-sm font-medium text-cream-200 tracking-wide">
           Month
           <SelectField
-            className="w-full appearance-none rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 pr-9 text-sm text-slate-200"
+            className="w-full appearance-none rounded-lg border border-cream-500/20 bg-obsidian-950/80 px-3 py-2 pr-9 text-sm text-cream-50 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30 transition-all duration-200"
             value={filters.month}
             onChange={(event) =>
               setFilters((current) => ({
@@ -495,10 +518,10 @@ export default function TransactionsPage() {
             ))}
           </SelectField>
         </label>
-        <label className="space-y-2 text-sm text-slate-300">
+        <label className="space-y-2 text-sm font-medium text-cream-200 tracking-wide">
           Type
           <SelectField
-            className="w-full appearance-none rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 pr-9 text-sm text-slate-200"
+            className="w-full appearance-none rounded-lg border border-cream-500/20 bg-obsidian-950/80 px-3 py-2 pr-9 text-sm text-cream-50 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30 transition-all duration-200"
             value={filters.type}
             onChange={(event) =>
               setFilters((current) => ({
@@ -514,10 +537,10 @@ export default function TransactionsPage() {
             ))}
           </SelectField>
         </label>
-        <label className="space-y-2 text-sm text-slate-300">
+        <label className="space-y-2 text-sm font-medium text-cream-200 tracking-wide">
           Category
           <SelectField
-            className="w-full appearance-none rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 pr-9 text-sm text-slate-200"
+            className="w-full appearance-none rounded-lg border border-cream-500/20 bg-obsidian-950/80 px-3 py-2 pr-9 text-sm text-cream-50 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30 transition-all duration-200"
             value={filters.category}
             onChange={(event) =>
               setFilters((current) => ({
@@ -533,10 +556,10 @@ export default function TransactionsPage() {
             ))}
           </SelectField>
         </label>
-        <label className="space-y-2 text-sm text-slate-300">
+        <label className="space-y-2 text-sm font-medium text-cream-200 tracking-wide">
           Paid by
           <SelectField
-            className="w-full appearance-none rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 pr-9 text-sm text-slate-200"
+            className="w-full appearance-none rounded-lg border border-cream-500/20 bg-obsidian-950/80 px-3 py-2 pr-9 text-sm text-cream-50 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30 transition-all duration-200"
             value={filters.payerId}
             onChange={(event) =>
               setFilters((current) => ({
@@ -553,10 +576,10 @@ export default function TransactionsPage() {
             ))}
           </SelectField>
         </label>
-        <label className="space-y-2 text-sm text-slate-300">
+        <label className="space-y-2 text-sm font-medium text-cream-200 tracking-wide">
           Split type
           <SelectField
-            className="w-full appearance-none rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 pr-9 text-sm text-slate-200"
+            className="w-full appearance-none rounded-lg border border-cream-500/20 bg-obsidian-950/80 px-3 py-2 pr-9 text-sm text-cream-50 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30 transition-all duration-200"
             value={filters.split}
             onChange={(event) =>
               setFilters((current) => ({
@@ -576,15 +599,15 @@ export default function TransactionsPage() {
       <section className="space-y-4">
 
         {status.state === "loading" ? (
-          <p className="text-sm text-slate-400">Loading transactions...</p>
+          <p className="text-sm text-cream-100/60 font-medium">Loading transactions...</p>
         ) : null}
 
         {status.state === "error" ? (
-          <p className="text-sm text-rose-300">{status.message}</p>
+          <p className="text-sm text-coral-300 font-medium">{status.message}</p>
         ) : null}
 
         {status.state === "idle" && filteredTransactions.length === 0 ? (
-          <p className="text-sm text-slate-500">No transactions found.</p>
+          <p className="text-sm text-cream-100/40 font-medium">No transactions found.</p>
         ) : null}
 
         {groupedTransactions.map((group) => {
@@ -594,25 +617,26 @@ export default function TransactionsPage() {
               : formatMonthLabel(group.month);
 
           return (
-            <div key={group.month} className="space-y-3">
-              <div className="text-sm font-semibold text-slate-200">
+            <div key={group.month} className="space-y-3 animate-slide-up">
+              <div className="text-base font-display font-semibold text-cream-100 tracking-tight">
                 {monthLabel}
               </div>
-              <div className="grid grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)_auto] gap-2 px-3 text-xs text-slate-400 md:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.7fr)_auto_72px]">
+              <div className="grid grid-cols-[50px_100px_1fr_80px] gap-2 px-3 text-xs text-cream-100/50 font-semibold uppercase tracking-wider md:grid-cols-[60px_120px_140px_1fr_100px_90px_72px]">
                 <span>Day</span>
                 <span>Paid by</span>
-                <span>Category</span>
+                <span className="md:hidden">Note</span>
+                <span className="hidden md:block">Category</span>
                 <span className="hidden md:block">Note</span>
                 <span className="hidden md:block">Split</span>
                 <span className="text-right">Amount</span>
               </div>
-              <div className="divide-y divide-slate-800 rounded-2xl border border-slate-800 bg-slate-900/40">
+              <div className="divide-y divide-cream-500/10 rounded-2xl border border-cream-500/15 bg-obsidian-800/40 shadow-card backdrop-blur-sm">
                 {group.items.map((transaction) => (
                   <TransactionRow
                     key={transaction.id}
                     transaction={transaction}
                     profiles={profiles}
-                    categoryOptions={categoryOptions}
+                    categoryOptions={categories}
                     onSave={handleUpdate}
                     onDelete={handleDelete}
                     isSaving={savingId === transaction.id}
