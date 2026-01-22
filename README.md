@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/icon.png" alt="Tandem logo" width="96" />
+  <img src="assets/icon.png" alt="Tandem logo" width="140" />
 </p>
 
 <h1 align="center">Tandem</h1>
