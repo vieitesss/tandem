@@ -13,6 +13,9 @@ Tandem is a lightweight expense-splitting app for partners. Create profiles, log
 - Bun installed.
 - A Supabase project with the tables used by the backend.
 
+### Supabase schema
+Run `apps/backend/sql/schema.sql` in the Supabase SQL editor to create the full schema and default categories.
+
 ### Environment variables
 Create a `.env` file in the repo root with:
 
@@ -21,6 +24,10 @@ SUPABASE_URL=your_supabase_url
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 SUPABASE_ANON_KEY=your_anon_key
 ```
+
+For local dev without Docker, also set:
+- Backend: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` in your shell env
+- Frontend: `API_BASE_URL=http://localhost:4000` (for example in `apps/frontend/.env.local`)
 
 ### Run with Docker Compose
 ```
@@ -63,4 +70,4 @@ bun dev
 - Liquidation: A transfer to settle up with the other partner.
 
 ## API overview
-The frontend talks to the backend at `NEXT_PUBLIC_API_BASE_URL` (defaults to `http://localhost:4000`). The backend stores data in Supabase tables `profiles`, `transactions`, and `transaction_splits`.
+The frontend proxies requests through `/api/...` using `API_BASE_URL` (defaults to `http://localhost:4000`). The backend stores data in Supabase tables `profiles`, `transactions`, `transaction_splits`, and `categories`.
