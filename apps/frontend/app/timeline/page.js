@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import InsightCard from "../shared/InsightCard";
 import IconLinkButton from "../shared/IconLinkButton";
+import { useRealtimeUpdates } from "../shared/useRealtimeUpdates";
 import TimelineViz from "./TimelineViz";
 import Tooltip from "../shared/Tooltip";
 import { formatCurrency, formatMonthLabel, formatShortDate } from "../shared/format";
@@ -21,9 +22,9 @@ export default function TimelinePage() {
 
   const apiBaseUrl = "/api";
 
-  useEffect(() => {
+  const fetchTimeline = useCallback(() => {
     setStatus("loading");
-    fetch(`${apiBaseUrl}/timeline`)
+    return fetch(`${apiBaseUrl}/timeline`)
       .then((response) => response.json())
       .then((data) => {
         setTimeline({
@@ -38,6 +39,16 @@ export default function TimelinePage() {
         setStatus("error");
       });
   }, [apiBaseUrl]);
+
+  useEffect(() => {
+    fetchTimeline();
+  }, [fetchTimeline]);
+
+  useRealtimeUpdates({
+    tables: ["transactions", "transaction_splits"],
+    onRefresh: fetchTimeline,
+    channelName: "timeline-updates",
+  });
 
   const monthCards = useMemo(() => {
     return timeline.monthly_data.map((month) => ({

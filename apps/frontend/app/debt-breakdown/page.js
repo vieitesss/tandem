@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import IconLinkButton from "../shared/IconLinkButton";
+import { useRealtimeUpdates } from "../shared/useRealtimeUpdates";
 import Tooltip from "../shared/Tooltip";
 import { formatCurrency, formatShortDate } from "../shared/format";
 
@@ -57,14 +58,14 @@ export default function DebtBreakdownPage() {
     return () => window.removeEventListener("popstate", updateFromParam);
   }, []);
 
-  useEffect(() => {
+  const fetchDebtSummary = useCallback(() => {
     if (!debtFromDate) {
-      return;
+      return null;
     }
 
     setDebtSummary({ state: "loading", message: "", data: null });
 
-    fetch(`${apiBaseUrl}/debt-summary?from=${encodeURIComponent(debtFromDate)}`)
+    return fetch(`${apiBaseUrl}/debt-summary?from=${encodeURIComponent(debtFromDate)}`)
       .then((response) => response.json())
       .then((data) => {
         if (data?.error) {
@@ -82,6 +83,16 @@ export default function DebtBreakdownPage() {
         });
       });
   }, [apiBaseUrl, debtFromDate]);
+
+  useEffect(() => {
+    fetchDebtSummary();
+  }, [fetchDebtSummary]);
+
+  useRealtimeUpdates({
+    tables: ["transactions", "transaction_splits"],
+    onRefresh: fetchDebtSummary,
+    channelName: "debt-breakdown-updates",
+  });
 
   const debtProfiles = debtSummary.data?.profiles || [];
   const debtExpenses = debtSummary.data?.expenses_by_profile || {};

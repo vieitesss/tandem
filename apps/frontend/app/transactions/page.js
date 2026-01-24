@@ -7,7 +7,7 @@ import IconLinkButton from "../shared/IconLinkButton";
 import SelectField from "../shared/SelectField";
 import Tooltip from "../shared/Tooltip";
 import { formatCurrency, formatMonthLabel, formatShortDate } from "../shared/format";
-import { supabase } from "../shared/supabaseClient";
+import { useRealtimeUpdates } from "../shared/useRealtimeUpdates";
 import {
   categoryOptions,
   typeOptions,
@@ -38,7 +38,6 @@ export default function TransactionsPage() {
     message: "",
     data: null,
   });
-  const [hasRealtimeUpdate, setHasRealtimeUpdate] = useState(false);
 
   const apiBaseUrl = "/api";
 
@@ -119,7 +118,6 @@ export default function TransactionsPage() {
   }, [filteredTransactions]);
 
   const fetchTransactions = useCallback(() => {
-    setHasRealtimeUpdate(false);
     setStatus({ state: "loading", message: "" });
 
     return fetch(`${apiBaseUrl}/transactions${queryString}`)
@@ -167,7 +165,6 @@ export default function TransactionsPage() {
       return null;
     }
 
-    setHasRealtimeUpdate(false);
     setDebtSummary({ state: "loading", message: "", data: null });
 
     return fetch(`${apiBaseUrl}/debt-summary?from=${encodeURIComponent(debtFromDate)}`)
@@ -198,56 +195,11 @@ export default function TransactionsPage() {
     fetchDebtSummary();
   }, [fetchTransactions, fetchDebtSummary]);
 
-  useEffect(() => {
-    if (!supabase) {
-      return undefined;
-    }
-
-    const handleRealtimeChange = () => {
-      if (typeof document !== "undefined" && document.visibilityState === "visible") {
-        refreshAll();
-        return;
-      }
-
-      setHasRealtimeUpdate(true);
-    };
-
-    const channel = supabase
-      .channel("transactions-updates")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "transactions" },
-        handleRealtimeChange
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "transaction_splits" },
-        handleRealtimeChange
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [refreshAll]);
-
-  useEffect(() => {
-    if (typeof document === "undefined") {
-      return undefined;
-    }
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible" && hasRealtimeUpdate) {
-        refreshAll();
-      }
-    };
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, [hasRealtimeUpdate, refreshAll]);
+  const { hasRealtimeUpdate, refreshNow } = useRealtimeUpdates({
+    tables: ["transactions", "transaction_splits"],
+    onRefresh: refreshAll,
+    channelName: "transactions-updates",
+  });
 
   const handleUpdate = async (transactionId, payload) => {
     setSavingId(transactionId);
@@ -425,7 +377,7 @@ export default function TransactionsPage() {
             <button
               className="rounded-full border border-cream-400/40 bg-cream-500/10 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-cream-100/80 transition-colors duration-200 hover:border-cream-300 hover:text-cream-50"
               type="button"
-              onClick={refreshAll}
+              onClick={refreshNow}
             >
               Refresh now
             </button>
