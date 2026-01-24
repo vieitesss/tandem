@@ -19,6 +19,61 @@ const formatMonthYear = (value) => {
   return `${month}/${year.slice(2)}`;
 };
 
+const timelineLayout = {
+  fallbackWidth: 600,
+  padding: { horizontal: 16 },
+  desktop: { monthThreshold: 9 },
+  mobile: { monthThreshold: 6, minBarWidth: 28 },
+};
+
+const getBaseWidth = (containerWidth) =>
+  Math.max(
+    (containerWidth || timelineLayout.fallbackWidth) -
+      timelineLayout.padding.horizontal,
+    0
+  );
+
+const buildTimelineLayout = ({ monthCount, baseWidth, isMobile }) => {
+  if (monthCount === 0) {
+    return { chartWidth: 0, barWidth: 0, dataWidth: 0 };
+  }
+
+  if (isMobile) {
+    const fillBarWidth = baseWidth / monthCount;
+    const canFill =
+      monthCount <= timelineLayout.mobile.monthThreshold &&
+      fillBarWidth >= timelineLayout.mobile.minBarWidth;
+
+    if (canFill) {
+      return {
+        chartWidth: baseWidth,
+        barWidth: fillBarWidth,
+        dataWidth: baseWidth,
+      };
+    }
+
+    const barWidth = Math.max(
+      baseWidth / timelineLayout.mobile.monthThreshold,
+      timelineLayout.mobile.minBarWidth
+    );
+    const dataWidth = monthCount * barWidth;
+    return { chartWidth: dataWidth, barWidth, dataWidth };
+  }
+
+  if (monthCount <= timelineLayout.desktop.monthThreshold) {
+    const chartWidth = baseWidth;
+    return {
+      chartWidth,
+      barWidth: chartWidth / monthCount,
+      dataWidth: chartWidth,
+    };
+  }
+
+  const barWidth = baseWidth / timelineLayout.desktop.monthThreshold;
+  const dataWidth = monthCount * barWidth;
+  return { chartWidth: dataWidth, barWidth, dataWidth };
+};
+
 export default function TimelineViz({ monthlyData }) {
   const containerRef = useRef(null);
   const [containerWidth, setContainerWidth] = useState(0);
@@ -67,55 +122,12 @@ export default function TimelineViz({ monthlyData }) {
   }, []);
 
   const monthCount = Array.isArray(monthlyData) ? monthlyData.length : 0;
-  const horizontalPadding = 16;
-  const fallbackWidth = 600;
-  const baseWidth = Math.max(
-    (containerWidth || fallbackWidth) - horizontalPadding,
-    0
+  const baseWidth = getBaseWidth(containerWidth);
+
+  const { chartWidth, barWidth, dataWidth } = useMemo(
+    () => buildTimelineLayout({ monthCount, baseWidth, isMobile }),
+    [baseWidth, isMobile, monthCount]
   );
-  const desktopMonthThreshold = 9;
-  const mobileMonthThreshold = 6;
-  const mobileMinBarWidth = 28;
-
-  const { chartWidth, barWidth, dataWidth } = useMemo(() => {
-    if (monthCount === 0) {
-      return { chartWidth: 0, barWidth: 0, dataWidth: 0 };
-    }
-
-    if (isMobile) {
-      const fillBarWidth = baseWidth / monthCount;
-      const canFill =
-        monthCount <= mobileMonthThreshold && fillBarWidth >= mobileMinBarWidth;
-
-      if (canFill) {
-        return {
-          chartWidth: baseWidth,
-          barWidth: fillBarWidth,
-          dataWidth: baseWidth,
-        };
-      }
-
-      const barWidth = Math.max(
-        baseWidth / mobileMonthThreshold,
-        mobileMinBarWidth
-      );
-      const dataWidth = monthCount * barWidth;
-      return { chartWidth: dataWidth, barWidth, dataWidth };
-    }
-
-    if (monthCount <= desktopMonthThreshold) {
-      const chartWidth = baseWidth;
-      return {
-        chartWidth,
-        barWidth: chartWidth / monthCount,
-        dataWidth: chartWidth,
-      };
-    }
-
-    const barWidth = baseWidth / desktopMonthThreshold;
-    const dataWidth = monthCount * barWidth;
-    return { chartWidth: dataWidth, barWidth, dataWidth };
-  }, [baseWidth, isMobile, monthCount]);
 
   if (monthCount === 0) {
     return null;
