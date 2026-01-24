@@ -83,6 +83,8 @@ Tandem is a lightweight expense-splitting app for partners. Create profiles, log
 </details>
 
 ## Setup
+For production-style self-hosting with Docker images, see `SELF_HOSTING.md`.
+
 ### Prerequisites
 - Bun installed.
 - A Supabase project with the tables used by the backend.
@@ -100,10 +102,11 @@ SUPABASE_ANON_KEY=your_anon_key
 ```
 
 ### Frontend Docker builds
-Next.js inlines `NEXT_PUBLIC_*` values at build time. For frontend Docker releases, export
-`NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` (or set `SUPABASE_URL` and
-`SUPABASE_ANON_KEY`) before running `just release-frontend` so the browser bundle can connect
-to Supabase Realtime.
+Next.js inlines `NEXT_PUBLIC_*` values at build time, but the app can also read Supabase
+credentials at runtime via `/api/config`. For public images or self-hosting, provide
+`SUPABASE_URL` and `SUPABASE_ANON_KEY` to the frontend container so realtime connects without
+rebundling. If you build your own image, you can still export `NEXT_PUBLIC_SUPABASE_URL` and
+`NEXT_PUBLIC_SUPABASE_ANON_KEY` before running `just release-frontend` to inline them.
 
 For local dev without Docker, also set:
 - Backend: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` in your shell env
