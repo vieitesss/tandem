@@ -38,6 +38,18 @@ const normalizeId = (value) => {
 
 const roundAmount = (value) => Number(Number(value || 0).toFixed(2));
 
+const getProfileCount = async () => {
+  const { count, error } = await supabase
+    .from("profiles")
+    .select("id", { count: "exact", head: true });
+
+  if (error) {
+    return { error };
+  }
+
+  return { count: count || 0 };
+};
+
 /**
  * Allocates an amount across multiple percentages with remainder distribution.
  * Ensures the sum of allocated amounts equals the original total amount.
@@ -123,8 +135,85 @@ app.get("/profiles", async (_req, res) => {
   return res.json(data);
 });
 
+app.post("/profiles/setup", async (req, res) => {
+  const { profiles } = req.body || {};
+
+  if (!Array.isArray(profiles) || profiles.length !== 2) {
+    return res.status(400).json({ error: "Exactly two profiles are required." });
+  }
+
+  const { count, error: countError } = await getProfileCount();
+
+  if (countError) {
+    return res.status(500).json({ error: countError.message });
+  }
+
+  if (count > 0) {
+    return res.status(400).json({ error: "Profiles already exist." });
+  }
+
+  const normalizedProfiles = profiles.map((profile) => {
+    const displayName = String(profile?.display_name || "").trim();
+    const normalizedSplit = Number(profile?.default_split);
+
+    return {
+      display_name: displayName,
+      default_split: normalizedSplit,
+    };
+  });
+
+  const hasInvalidName = normalizedProfiles.some(
+    (profile) => !profile.display_name
+  );
+  const hasInvalidSplit = normalizedProfiles.some((profile) => {
+    return (
+      Number.isNaN(profile.default_split) ||
+      profile.default_split <= 0 ||
+      profile.default_split >= 1
+    );
+  });
+
+  if (hasInvalidName || hasInvalidSplit) {
+    return res.status(400).json({
+      error: "Profiles need a name and split between 0 and 1.",
+    });
+  }
+
+  const totalSplit = normalizedProfiles.reduce(
+    (sum, profile) => sum + profile.default_split,
+    0
+  );
+
+  if (Math.abs(totalSplit - 1) > 0.001) {
+    return res
+      .status(400)
+      .json({ error: "Default splits must total 1." });
+  }
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .insert(normalizedProfiles)
+    .select("id");
+
+  if (error) {
+    return res.status(500).json({ error: error.message });
+  }
+
+  return res.status(201).json({ profiles: data || [] });
+});
+
 app.post("/profiles", async (req, res) => {
   const { display_name, default_split } = req.body || {};
+
+  const { count, error: countError } = await getProfileCount();
+
+  if (countError) {
+    return res.status(500).json({ error: countError.message });
+  }
+
+  if (count >= 2) {
+    return res.status(400).json({ error: "Only two profiles are supported." });
+  }
 
   if (!display_name) {
     return res.status(400).json({ error: "Display name is required." });
