@@ -8,6 +8,9 @@ alias b := release-backend
 alias fd := release-frontend-dev
 alias bd := release-backend-dev
 
+_default:
+  @just --list
+
 release-frontend version:
   @just _release {{frontend_dir}} frontend {{version}} false
 
