@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { normalizeNumberInput } from "../shared/inputs";
 import StatusMessage from "../shared/StatusMessage";
+import ProfileSetup from "./ProfileSetup";
 
 const emptyProfile = { displayName: "", splitPercent: "50" };
 
@@ -13,10 +14,12 @@ export default function ProfilesPage() {
   const [form, setForm] = useState(emptyProfile);
   const [status, setStatus] = useState(null);
   const [savingId, setSavingId] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   const apiBaseUrl = "/api";
 
   const loadProfiles = useCallback(() => {
+    setIsLoading(true);
     fetch(`${apiBaseUrl}/profiles`)
       .then((response) => response.json())
       .then((data) => {
@@ -31,8 +34,12 @@ export default function ProfilesPage() {
               }))
             : []
         );
+        setIsLoading(false);
       })
-      .catch(() => setProfiles([]));
+      .catch(() => {
+        setProfiles([]);
+        setIsLoading(false);
+      });
   }, [apiBaseUrl]);
 
   useEffect(() => {
@@ -58,6 +65,14 @@ export default function ProfilesPage() {
   const handleCreate = async (event) => {
     event.preventDefault();
     setStatus(null);
+
+    if (profiles.length >= 2) {
+      setStatus({
+        tone: "error",
+        message: "Only two profiles are supported.",
+      });
+      return;
+    }
 
     const defaultSplit = parsePercent(form.splitPercent);
 
@@ -125,6 +140,35 @@ export default function ProfilesPage() {
     }
   };
 
+  if (isLoading) {
+    return (
+      <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 px-6 pt-8 pb-[calc(6rem+env(safe-area-inset-bottom))] md:p-8 md:pt-12">
+        <header className="space-y-3 animate-fade-in">
+          <div className="flex items-center gap-4">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-cream-500/20 to-cream-600/10 border border-cream-500/20 shadow-glow-sm md:h-12 md:w-12">
+              <img
+                src="/icon.png"
+                alt="Tandem"
+                className="h-7 w-7 md:h-8 md:w-8"
+              />
+            </div>
+            <h1 className="text-3xl font-display font-semibold tracking-tight text-cream-50 md:text-4xl">Profiles</h1>
+          </div>
+          <p className="text-sm text-cream-100/60 font-medium tracking-wide">
+            Loading profiles...
+          </p>
+        </header>
+      </main>
+    );
+  }
+
+  if (profiles.length === 0) {
+    return <ProfileSetup onComplete={loadProfiles} />;
+  }
+
+  const hasTooManyProfiles = profiles.length > 2;
+  const canAddProfile = profiles.length < 2;
+
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-8 px-6 pt-8 pb-[calc(6rem+env(safe-area-inset-bottom))] md:p-8 md:pt-12">
       <header className="space-y-3 animate-fade-in">
@@ -146,43 +190,58 @@ export default function ProfilesPage() {
         </p>
       </header>
 
-      <form
-        className="space-y-3 rounded-2xl border border-cream-500/15 bg-obsidian-800/40 p-6 shadow-card backdrop-blur-sm animate-slide-up stagger-1"
-        onSubmit={handleCreate}
-      >
-        <div className="grid gap-3 sm:grid-cols-[1fr_120px_120px]">
-          <input
-            className="w-full rounded-lg border border-cream-500/20 bg-obsidian-950/80 px-3 py-2.5 text-cream-50 placeholder:text-cream-100/40 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30 transition-all duration-200"
-            placeholder="Name"
-            value={form.displayName}
-            onChange={(event) =>
-              setForm((current) => ({
-                ...current,
-                displayName: event.target.value,
-              }))
-            }
-          />
-          <input
-            className="w-full rounded-lg border border-cream-500/20 bg-obsidian-950/80 px-3 py-2.5 text-cream-50 font-mono placeholder:text-cream-100/40 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30 transition-all duration-200"
-            placeholder="Split %"
-            type="number"
-            step="0.1"
-            value={form.splitPercent}
-            onChange={(event) =>
-              setForm((current) => ({
-                ...current,
-                splitPercent: normalizeNumberInput(event.target.value),
-              }))
-            }
-          />
-          <button
-            className="rounded-lg bg-cream-500 px-4 py-2.5 font-display font-semibold text-obsidian-950 shadow-glow-md transition-all duration-300 hover:bg-cream-400 hover:shadow-glow-lg hover:scale-[1.02] active:scale-[0.98]"
-            type="submit"
-          >
-            Add
-          </button>
-        </div>
-      </form>
+      {hasTooManyProfiles ? (
+        <section className="rounded-2xl border border-coral-500/30 bg-coral-500/10 p-5 text-sm text-coral-100 shadow-card">
+          This workspace has {profiles.length} profiles. Tandem supports exactly
+          two. Remove extras in the database, then refresh the page.
+        </section>
+      ) : null}
+
+      {canAddProfile ? (
+        <form
+          className="space-y-3 rounded-2xl border border-cream-500/15 bg-obsidian-800/40 p-6 shadow-card backdrop-blur-sm animate-slide-up stagger-1"
+          onSubmit={handleCreate}
+        >
+          <div className="grid gap-3 sm:grid-cols-[1fr_120px_120px]">
+            <input
+              className="w-full rounded-lg border border-cream-500/20 bg-obsidian-950/80 px-3 py-2.5 text-cream-50 placeholder:text-cream-100/40 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30 transition-all duration-200"
+              placeholder="Name"
+              value={form.displayName}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  displayName: event.target.value,
+                }))
+              }
+            />
+            <input
+              className="w-full rounded-lg border border-cream-500/20 bg-obsidian-950/80 px-3 py-2.5 text-cream-50 font-mono placeholder:text-cream-100/40 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30 transition-all duration-200"
+              placeholder="Split %"
+              type="number"
+              step="0.1"
+              value={form.splitPercent}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  splitPercent: normalizeNumberInput(event.target.value),
+                }))
+              }
+            />
+            <button
+              className="rounded-lg bg-cream-500 px-4 py-2.5 font-display font-semibold text-obsidian-950 shadow-glow-md transition-all duration-300 hover:bg-cream-400 hover:shadow-glow-lg hover:scale-[1.02] active:scale-[0.98]"
+              type="submit"
+            >
+              Add
+            </button>
+          </div>
+        </form>
+      ) : (
+        <section className="rounded-2xl border border-cream-500/15 bg-obsidian-800/40 p-6 text-sm text-cream-100/70 shadow-card">
+          {hasTooManyProfiles
+            ? "Profile limit exceeded. Remove extras and reload this page."
+            : "Two profiles are already set. Edit them below as needed."}
+        </section>
+      )}
 
       <section className="space-y-4 animate-slide-up stagger-2">
         <h2 className="text-sm font-display font-semibold text-cream-100 tracking-tight">Existing Profiles</h2>
