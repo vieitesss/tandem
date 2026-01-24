@@ -30,6 +30,7 @@ services:
       NEXT_PUBLIC_SUPABASE_URL: ${SUPABASE_URL}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
       API_BASE_URL: http://backend:4000
+    command: sh -c "bun install && bun dev"
     ports:
       - "3000:3000"
     volumes:
