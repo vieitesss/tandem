@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { supabase } from "./supabaseClient";
+import { getSupabaseClient } from "./supabaseClient";
 
 export const useRealtimeUpdates = ({
   tables,
@@ -9,6 +9,7 @@ export const useRealtimeUpdates = ({
   preserveScroll = false,
 }) => {
   const [hasRealtimeUpdate, setHasRealtimeUpdate] = useState(false);
+  const [supabaseClient, setSupabaseClient] = useState(null);
   const tablesKey = useMemo(() => {
     if (!Array.isArray(tables)) {
       return "";
@@ -55,7 +56,21 @@ export const useRealtimeUpdates = ({
   }, [onRefresh, preserveScroll]);
 
   useEffect(() => {
-    if (!supabase || tablesList.length === 0) {
+    let isMounted = true;
+
+    getSupabaseClient().then((client) => {
+      if (isMounted) {
+        setSupabaseClient(client);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!supabaseClient || tablesList.length === 0) {
       return undefined;
     }
 
@@ -69,7 +84,7 @@ export const useRealtimeUpdates = ({
     };
 
     const channelId = channelName || `realtime-updates-${tablesKey}`;
-    let channel = supabase.channel(channelId);
+    let channel = supabaseClient.channel(channelId);
 
     tablesList.forEach((table) => {
       channel = channel.on(
@@ -82,9 +97,9 @@ export const useRealtimeUpdates = ({
     channel.subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      supabaseClient.removeChannel(channel);
     };
-  }, [channelName, refreshNow, tablesKey, tablesList]);
+  }, [channelName, refreshNow, supabaseClient, tablesKey, tablesList]);
 
   useEffect(() => {
     if (typeof document === "undefined") {
