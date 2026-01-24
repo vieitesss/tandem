@@ -190,14 +190,14 @@ export default function TransactionsPage() {
   }, [fetchDebtSummary]);
 
   const refreshAll = useCallback(() => {
-    fetchTransactions();
-    fetchDebtSummary();
+    return Promise.all([fetchTransactions(), fetchDebtSummary()]);
   }, [fetchTransactions, fetchDebtSummary]);
 
   const { hasRealtimeUpdate, refreshNow } = useRealtimeUpdates({
     tables: ["transactions", "transaction_splits"],
     onRefresh: refreshAll,
     channelName: "transactions-updates",
+    preserveScroll: true,
   });
 
   const handleUpdate = async (transactionId, payload) => {

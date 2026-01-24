@@ -48,6 +48,7 @@ export default function TimelinePage() {
     tables: ["transactions", "transaction_splits"],
     onRefresh: fetchTimeline,
     channelName: "timeline-updates",
+    preserveScroll: true,
   });
 
   const monthCards = useMemo(() => {

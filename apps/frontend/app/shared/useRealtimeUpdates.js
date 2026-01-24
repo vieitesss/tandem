@@ -2,7 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { supabase } from "./supabaseClient";
 
-export const useRealtimeUpdates = ({ tables, onRefresh, channelName }) => {
+export const useRealtimeUpdates = ({
+  tables,
+  onRefresh,
+  channelName,
+  preserveScroll = false,
+}) => {
   const [hasRealtimeUpdate, setHasRealtimeUpdate] = useState(false);
   const tablesKey = useMemo(() => {
     if (!Array.isArray(tables)) {
@@ -18,8 +23,36 @@ export const useRealtimeUpdates = ({ tables, onRefresh, channelName }) => {
 
   const refreshNow = useCallback(() => {
     setHasRealtimeUpdate(false);
-    onRefresh();
-  }, [onRefresh]);
+
+    if (typeof window === "undefined" || !preserveScroll) {
+      return onRefresh();
+    }
+
+    const scrollX = window.scrollX;
+    const scrollY = window.scrollY;
+
+    const restoreScroll = () => {
+      if (typeof window === "undefined") {
+        return;
+      }
+
+      window.scrollTo(scrollX, scrollY);
+    };
+
+    const refreshResult = onRefresh();
+
+    Promise.resolve(refreshResult).finally(() => {
+      if (typeof requestAnimationFrame === "function") {
+        requestAnimationFrame(() => requestAnimationFrame(restoreScroll));
+      } else {
+        restoreScroll();
+      }
+
+      setTimeout(restoreScroll, 120);
+    });
+
+    return refreshResult;
+  }, [onRefresh, preserveScroll]);
 
   useEffect(() => {
     if (!supabase || tablesList.length === 0) {

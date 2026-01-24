@@ -94,6 +94,7 @@ export default function DebtBreakdownPage() {
     tables: ["transactions", "transaction_splits"],
     onRefresh: fetchDebtSummary,
     channelName: "debt-breakdown-updates",
+    preserveScroll: true,
   });
 
   const debtProfiles = debtSummary.data?.profiles || [];
