@@ -128,6 +128,10 @@ export default function ProfileSetup({ onComplete }) {
         </p>
       </header>
 
+      <section className="rounded-2xl border border-coral-500/20 bg-coral-500/10 p-4 text-xs text-coral-100/90">
+        Creating profiles resets existing transactions in this workspace.
+      </section>
+
       <form
         className="space-y-6 rounded-2xl border border-cream-500/15 bg-obsidian-800/40 p-6 shadow-card backdrop-blur-sm animate-slide-up"
         onSubmit={handleSubmit}
