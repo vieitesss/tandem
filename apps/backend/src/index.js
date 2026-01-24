@@ -152,6 +152,24 @@ app.post("/profiles/setup", async (req, res) => {
     return res.status(400).json({ error: "Profiles already exist." });
   }
 
+  const { error: splitsClearError } = await supabase
+    .from("transaction_splits")
+    .delete()
+    .neq("id", 0);
+
+  if (splitsClearError) {
+    return res.status(500).json({ error: splitsClearError.message });
+  }
+
+  const { error: transactionsClearError } = await supabase
+    .from("transactions")
+    .delete()
+    .neq("id", 0);
+
+  if (transactionsClearError) {
+    return res.status(500).json({ error: transactionsClearError.message });
+  }
+
   const normalizedProfiles = profiles.map((profile) => {
     const displayName = String(profile?.display_name || "").trim();
     const normalizedSplit = Number(profile?.default_split);
