@@ -1,6 +1,7 @@
 import "./globals.css";
 
 import BottomNav from "./BottomNav";
+import { ToastProvider } from "./shared/ToastProvider";
 
 export const metadata = {
   title: "Tandem — Elegant Expense Sharing",
@@ -17,8 +18,10 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body className="min-h-screen antialiased">
-        {children}
-        <BottomNav />
+        <ToastProvider>
+          {children}
+          <BottomNav />
+        </ToastProvider>
       </body>
     </html>
   );

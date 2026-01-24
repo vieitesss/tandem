@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 
 import { normalizeNumberInput } from "../shared/inputs";
-import StatusMessage from "../shared/StatusMessage";
+import { useToast } from "../shared/ToastProvider";
 
 const initialProfiles = [
   { displayName: "", splitPercent: "50" },
@@ -12,11 +12,11 @@ const initialProfiles = [
 
 export default function ProfileSetup({ onComplete }) {
   const [profiles, setProfiles] = useState(initialProfiles);
-  const [status, setStatus] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [hasTriedSubmit, setHasTriedSubmit] = useState(false);
 
   const apiBaseUrl = "/api";
+  const { showToast } = useToast();
 
   const parsePercent = (value) => {
     const normalized = Number(value);
@@ -51,21 +51,14 @@ export default function ProfileSetup({ onComplete }) {
   const handleSubmit = async (event) => {
     event.preventDefault();
     setHasTriedSubmit(true);
-    setStatus(null);
 
     if (!canSubmit) {
       if (hasInvalidName) {
-        setStatus({ tone: "error", message: "Add names for both profiles." });
+        showToast("Add names for both profiles.", { tone: "error" });
       } else if (hasInvalidSplit) {
-        setStatus({
-          tone: "error",
-          message: "Splits must be between 0 and 100.",
-        });
+        showToast("Splits must be between 0 and 100.", { tone: "error" });
       } else if (hasInvalidTotal) {
-        setStatus({
-          tone: "error",
-          message: "Split percentages must total 100%.",
-        });
+        showToast("Split percentages must total 100%.", { tone: "error" });
       }
       return;
     }
@@ -91,12 +84,12 @@ export default function ProfileSetup({ onComplete }) {
         throw new Error(errorBody.error || "Failed to create profiles.");
       }
 
-      setStatus({ tone: "success", message: "Profiles created." });
+      showToast("Profiles created.");
       setProfiles(initialProfiles);
       setHasTriedSubmit(false);
       onComplete?.();
     } catch (error) {
-      setStatus({ tone: "error", message: error.message });
+      showToast(error.message, { tone: "error" });
     } finally {
       setIsSaving(false);
     }
@@ -215,7 +208,6 @@ export default function ProfileSetup({ onComplete }) {
           {isSaving ? "Saving..." : "Create profiles"}
         </button>
 
-        <StatusMessage status={status} />
       </form>
     </main>
   );

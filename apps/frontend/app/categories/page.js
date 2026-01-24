@@ -4,18 +4,18 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import EmojiPicker from "../shared/EmojiPicker";
-import StatusMessage from "../shared/StatusMessage";
+import { useToast } from "../shared/ToastProvider";
 
 const emptyCategory = { label: "", icon: "" };
 
 export default function CategoriesPage() {
   const [categories, setCategories] = useState([]);
   const [form, setForm] = useState(emptyCategory);
-  const [status, setStatus] = useState(null);
   const [savingId, setSavingId] = useState(null);
   const [activePickerId, setActivePickerId] = useState(null);
 
   const apiBaseUrl = "/api";
+  const { showToast } = useToast();
 
   const loadCategories = () => {
     fetch(`${apiBaseUrl}/categories`)
@@ -40,10 +40,9 @@ export default function CategoriesPage() {
 
   const handleCreate = async (event) => {
     event.preventDefault();
-    setStatus(null);
 
     if (!form.label.trim() || !form.icon.trim()) {
-      setStatus({ tone: "error", message: "Add a name and icon." });
+      showToast("Add a name and icon.", { tone: "error" });
       return;
     }
 
@@ -64,18 +63,17 @@ export default function CategoriesPage() {
 
       setForm(emptyCategory);
       loadCategories();
-      setStatus({ tone: "success", message: "Category created." });
+      showToast("Category created.");
     } catch (error) {
-      setStatus({ tone: "error", message: error.message });
+      showToast(error.message, { tone: "error" });
     }
   };
 
   const handleSave = async (category) => {
-    setStatus(null);
     setSavingId(category.id);
 
     if (!category.label?.trim() || !category.icon?.trim()) {
-      setStatus({ tone: "error", message: "Enter a name and icon." });
+      showToast("Enter a name and icon.", { tone: "error" });
       setSavingId(null);
       return;
     }
@@ -95,19 +93,17 @@ export default function CategoriesPage() {
         throw new Error(errorBody.error || "Failed to update category");
       }
 
-      setStatus({ tone: "success", message: "Category updated." });
+      showToast("Category updated.");
       setActivePickerId(null);
       loadCategories();
     } catch (error) {
-      setStatus({ tone: "error", message: error.message });
+      showToast(error.message, { tone: "error" });
     } finally {
       setSavingId(null);
     }
   };
 
   const handleDelete = async (categoryId) => {
-    setStatus(null);
-
     try {
       const response = await fetch(`${apiBaseUrl}/categories/${categoryId}`, {
         method: "DELETE",
@@ -118,10 +114,10 @@ export default function CategoriesPage() {
         throw new Error(errorBody.error || "Failed to delete category");
       }
 
-      setStatus({ tone: "success", message: "Category deleted." });
+      showToast("Category deleted.");
       loadCategories();
     } catch (error) {
-      setStatus({ tone: "error", message: error.message });
+      showToast(error.message, { tone: "error" });
     }
   };
 
@@ -248,7 +244,6 @@ export default function CategoriesPage() {
         )}
       </section>
 
-      <StatusMessage status={status} />
     </main>
   );
 }

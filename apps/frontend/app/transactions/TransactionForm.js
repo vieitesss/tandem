@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import SelectField from "../shared/SelectField";
-import StatusMessage from "../shared/StatusMessage";
+import { useToast } from "../shared/ToastProvider";
 import { normalizeNumberInput } from "../shared/inputs";
 import { categoryOptions } from "../shared/transactions";
 
@@ -18,8 +18,6 @@ export default function TransactionForm() {
   const [type, setType] = useState("EXPENSE");
   const [splitMode, setSplitMode] = useState("custom");
   const [splits, setSplits] = useState([initialSplit]);
-  const [status, setStatus] = useState(null);
-  const [toast, setToast] = useState(null);
   const [profiles, setProfiles] = useState([]);
   const [categories, setCategories] = useState(categoryOptions);
   const [beneficiaryId, setBeneficiaryId] = useState("");
@@ -33,6 +31,7 @@ export default function TransactionForm() {
     beneficiary: false,
     category: false,
   });
+  const { showToast } = useToast();
 
   const apiBaseUrl = "/api";
 
@@ -77,15 +76,6 @@ export default function TransactionForm() {
       isMounted = false;
     };
   }, [apiBaseUrl]);
-
-  useEffect(() => {
-    if (!toast) {
-      return undefined;
-    }
-
-    const timeout = setTimeout(() => setToast(null), 2500);
-    return () => clearTimeout(timeout);
-  }, [toast]);
 
   useEffect(() => {
     if (profiles.length === 0) {
@@ -241,8 +231,6 @@ export default function TransactionForm() {
   const handleSubmit = async (event) => {
     event.preventDefault();
     setHasTriedSubmit(true);
-    setStatus(null);
-    setToast(null);
 
     if (!canSubmit) {
       return;
@@ -289,7 +277,7 @@ export default function TransactionForm() {
         throw new Error(errorBody.error || "Failed to save transaction");
       }
 
-      setToast({ message: "Transaction saved." });
+      showToast("Transaction saved.");
       setAmount("");
       setCategory("");
       setNote("");
@@ -314,28 +302,15 @@ export default function TransactionForm() {
         category: false,
       });
     } catch (error) {
-      setStatus({ tone: "error", message: error.message });
+      showToast(error.message, { tone: "error" });
     }
   };
 
-  const errorStatus = status?.tone === "error" ? status : null;
-
   return (
-    <div className="relative">
-      {toast ? (
-        <div className="fixed top-6 left-1/2 z-50 w-[min(100%-2rem,420px)] -translate-x-1/2">
-          <div
-            className="rounded-2xl border border-sage-400/40 bg-sage-400/90 px-4 py-3 text-sm font-semibold text-obsidian-950 shadow-glow-md backdrop-blur-md animate-fade-in"
-            role="status"
-          >
-            {toast.message}
-          </div>
-        </div>
-      ) : null}
-      <form
-        className="rounded-2xl border border-cream-500/15 bg-obsidian-800/40 p-6 shadow-card backdrop-blur-sm transition-all duration-300 hover:border-cream-500/25 hover:shadow-elevated animate-fade-in"
-        onSubmit={handleSubmit}
-      >
+    <form
+      className="rounded-2xl border border-cream-500/15 bg-obsidian-800/40 p-6 shadow-card backdrop-blur-sm transition-all duration-300 hover:border-cream-500/25 hover:shadow-elevated animate-fade-in"
+      onSubmit={handleSubmit}
+    >
       <div className={`space-y-2 ${sectionClassName}`}>
         <label className="text-sm font-medium text-cream-200 tracking-wide">
           {type === "INCOME" ? "Recipient" : "Paid by"}
@@ -660,7 +635,6 @@ export default function TransactionForm() {
           </div>
         ) : null}
       </div>
-      <StatusMessage status={errorStatus} className={sectionClassName} />
       <div className={sectionClassName}>
         <button
           className="w-full rounded-lg bg-cream-500 px-4 py-3 font-display font-semibold text-obsidian-950 shadow-glow-md transition-all duration-300 hover:bg-cream-400 hover:shadow-glow-lg hover:scale-[1.02] active:scale-[0.98]"
@@ -669,7 +643,6 @@ export default function TransactionForm() {
           Save Transaction
         </button>
       </div>
-      </form>
-    </div>
+    </form>
   );
 }

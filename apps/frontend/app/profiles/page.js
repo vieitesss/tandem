@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 import { normalizeNumberInput } from "../shared/inputs";
-import StatusMessage from "../shared/StatusMessage";
+import { useToast } from "../shared/ToastProvider";
 import ProfileSetup from "./ProfileSetup";
 
 const emptyProfile = { displayName: "", splitPercent: "50" };
@@ -12,11 +12,11 @@ const emptyProfile = { displayName: "", splitPercent: "50" };
 export default function ProfilesPage() {
   const [profiles, setProfiles] = useState([]);
   const [form, setForm] = useState(emptyProfile);
-  const [status, setStatus] = useState(null);
   const [savingId, setSavingId] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const apiBaseUrl = "/api";
+  const { showToast } = useToast();
 
   const loadProfiles = useCallback(() => {
     setIsLoading(true);
@@ -64,20 +64,16 @@ export default function ProfilesPage() {
 
   const handleCreate = async (event) => {
     event.preventDefault();
-    setStatus(null);
 
     if (profiles.length >= 2) {
-      setStatus({
-        tone: "error",
-        message: "Only two profiles are supported.",
-      });
+      showToast("Only two profiles are supported.", { tone: "error" });
       return;
     }
 
     const defaultSplit = parsePercent(form.splitPercent);
 
     if (!form.displayName.trim() || defaultSplit === null) {
-      setStatus({ tone: "error", message: "Add a name and valid split." });
+      showToast("Add a name and valid split.", { tone: "error" });
       return;
     }
 
@@ -98,20 +94,19 @@ export default function ProfilesPage() {
 
       setForm(emptyProfile);
       loadProfiles();
-      setStatus({ tone: "success", message: "Profile created." });
+      showToast("Profile created.");
     } catch (error) {
-      setStatus({ tone: "error", message: error.message });
+      showToast(error.message, { tone: "error" });
     }
   };
 
   const handleSave = async (profile) => {
-    setStatus(null);
     setSavingId(profile.id);
 
     const defaultSplit = parsePercent(profile.splitPercent);
 
     if (!profile.display_name.trim() || defaultSplit === null) {
-      setStatus({ tone: "error", message: "Enter name and split 0-100." });
+      showToast("Enter name and split 0-100.", { tone: "error" });
       setSavingId(null);
       return;
     }
@@ -131,10 +126,10 @@ export default function ProfilesPage() {
         throw new Error(errorBody.error || "Failed to update profile");
       }
 
-      setStatus({ tone: "success", message: "Profile updated." });
+      showToast("Profile updated.");
       loadProfiles();
     } catch (error) {
-      setStatus({ tone: "error", message: error.message });
+      showToast(error.message, { tone: "error" });
     } finally {
       setSavingId(null);
     }
@@ -309,7 +304,6 @@ export default function ProfilesPage() {
         )}
       </section>
 
-      <StatusMessage status={status} />
     </main>
   );
 }

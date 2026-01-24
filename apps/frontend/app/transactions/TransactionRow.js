@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import SelectField from "../shared/SelectField";
 import { formatCurrency, formatDayOfMonth } from "../shared/format";
 import { normalizeNumberInput } from "../shared/inputs";
+import { useToast } from "../shared/ToastProvider";
 
 const amountClassFor = (type) => {
   if (type === "INCOME") {
@@ -60,6 +61,7 @@ export default function TransactionRow({
   }));
 
   const amountClass = amountClassFor(transaction.type);
+  const { showToast } = useToast();
   const dayLabel = formatDayOfMonth(transaction.date);
   const payerLabel = useMemo(() => {
     const profileMatch = profiles.find((profile) => profile.id === transaction.payer_id);
@@ -219,9 +221,12 @@ export default function TransactionRow({
               ? null
               : undefined,
       });
+      showToast("Transaction updated.");
       handleCloseModal();
     } catch (saveError) {
-      setError(saveError.message || "Failed to update transaction.");
+      showToast(saveError.message || "Failed to update transaction.", {
+        tone: "error",
+      });
     }
   };
 
@@ -235,9 +240,12 @@ export default function TransactionRow({
     try {
       setError("");
       await onDelete(transaction.id);
+      showToast("Transaction deleted.");
       handleCloseModal();
     } catch (deleteError) {
-      setError(deleteError.message || "Failed to delete transaction.");
+      showToast(deleteError.message || "Failed to delete transaction.", {
+        tone: "error",
+      });
     }
   };
 
@@ -500,4 +508,3 @@ export default function TransactionRow({
     </div>
   );
 }
-
