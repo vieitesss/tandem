@@ -1,3 +1,5 @@
+set dotenv-load
+
 frontend_dir := "apps/frontend"
 backend_dir := "apps/backend"
 frontend_image := "ghcr.io/vieitesss/tandem-frontend"
@@ -72,6 +74,21 @@ _release app_dir app_name version prerelease:
       ;;
   esac
 
+  if [[ "{{app_name}}" == "frontend" ]]; then
+    supabase_url="${NEXT_PUBLIC_SUPABASE_URL:-${SUPABASE_URL}}"
+    supabase_anon_key="${NEXT_PUBLIC_SUPABASE_ANON_KEY:-${SUPABASE_ANON_KEY}}"
+    if [[ -z "${supabase_url}" || -z "${supabase_anon_key}" ]]; then
+      echo "NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY (or SUPABASE_URL/SUPABASE_ANON_KEY) must be set for frontend releases."
+      exit 1
+    fi
+    build_args=(
+      --build-arg "NEXT_PUBLIC_SUPABASE_URL=${supabase_url}"
+      --build-arg "NEXT_PUBLIC_SUPABASE_ANON_KEY=${supabase_anon_key}"
+    )
+  else
+    build_args=()
+  fi
+
   tmp_file=$(mktemp)
   jq --arg version "${release_version}" '.version = $version' "{{app_dir}}/package.json" > "$tmp_file"
   mv "$tmp_file" "{{app_dir}}/package.json"
@@ -82,9 +99,9 @@ _release app_dir app_name version prerelease:
   git push origin HEAD
   git push origin "{{app_name}}-v${release_version}"
   if [[ "{{prerelease}}" == "true" ]]; then
-    docker buildx build --platform linux/arm64 -t "${image_name}:${image_version}" --push "{{app_dir}}"
+    docker buildx build --platform linux/arm64 "${build_args[@]}" -t "${image_name}:${image_version}" --push "{{app_dir}}"
   else
-    docker buildx build --platform linux/arm64 -t "${image_name}:${image_version}" -t "${image_name}:latest" --push "{{app_dir}}"
+    docker buildx build --platform linux/arm64 "${build_args[@]}" -t "${image_name}:${image_version}" -t "${image_name}:latest" --push "{{app_dir}}"
     gh release create "{{app_name}}-v${release_version}" --generate-notes
   fi
   echo "Created tag {{app_name}}-v${release_version}"

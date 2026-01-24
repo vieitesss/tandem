@@ -99,6 +99,12 @@ SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 SUPABASE_ANON_KEY=your_anon_key
 ```
 
+### Frontend Docker builds
+Next.js inlines `NEXT_PUBLIC_*` values at build time. For frontend Docker releases, export
+`NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` (or set `SUPABASE_URL` and
+`SUPABASE_ANON_KEY`) before running `just release-frontend` so the browser bundle can connect
+to Supabase Realtime.
+
 For local dev without Docker, also set:
 - Backend: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` in your shell env
 - Frontend: `API_BASE_URL=http://localhost:4000` (for example in `apps/frontend/.env.local`)
