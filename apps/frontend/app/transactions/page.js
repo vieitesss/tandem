@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import IconLinkButton from "../shared/IconLinkButton";
 import SelectField from "../shared/SelectField";
 import Tooltip from "../shared/Tooltip";
+import { fetchJson } from "../shared/api";
 import { formatCurrency, formatMonthLabel, formatShortDate } from "../shared/format";
 import { useRealtimeUpdates } from "../shared/useRealtimeUpdates";
 import {
@@ -120,9 +121,8 @@ export default function TransactionsPage() {
   const fetchTransactions = useCallback(() => {
     setStatus({ state: "loading", message: "" });
 
-    return fetch(`${apiBaseUrl}/transactions${queryString}`)
-      .then((response) => response.json())
-      .then((data) => {
+    return fetchJson(`${apiBaseUrl}/transactions${queryString}`)
+      .then(({ data }) => {
         setTransactions(Array.isArray(data) ? data : []);
         setStatus({ state: "idle", message: "" });
       })
@@ -137,18 +137,16 @@ export default function TransactionsPage() {
   }, [fetchTransactions]);
 
   useEffect(() => {
-    fetch(`${apiBaseUrl}/profiles`)
-      .then((response) => response.json())
-      .then((data) => {
+    fetchJson(`${apiBaseUrl}/profiles`)
+      .then(({ data }) => {
         setProfiles(Array.isArray(data) ? data : []);
       })
       .catch(() => setProfiles([]));
   }, [apiBaseUrl]);
 
   useEffect(() => {
-    fetch(`${apiBaseUrl}/categories`)
-      .then((response) => response.json())
-      .then((data) => {
+    fetchJson(`${apiBaseUrl}/categories`)
+      .then(({ data }) => {
         if (Array.isArray(data) && data.length > 0) {
           setCategories(data);
         }
@@ -167,9 +165,10 @@ export default function TransactionsPage() {
 
     setDebtSummary({ state: "loading", message: "", data: null });
 
-    return fetch(`${apiBaseUrl}/debt-summary?from=${encodeURIComponent(debtFromDate)}`)
-      .then((response) => response.json())
-      .then((data) => {
+    return fetchJson(
+      `${apiBaseUrl}/debt-summary?from=${encodeURIComponent(debtFromDate)}`
+    )
+      .then(({ data }) => {
         if (data?.error) {
           setDebtSummary({ state: "error", message: data.error, data: null });
           return;

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import InsightCard from "../shared/InsightCard";
 import IconLinkButton from "../shared/IconLinkButton";
+import { fetchJson } from "../shared/api";
 import { useRealtimeUpdates } from "../shared/useRealtimeUpdates";
 import TimelineViz from "./TimelineViz";
 import Tooltip from "../shared/Tooltip";
@@ -24,9 +25,8 @@ export default function TimelinePage() {
 
   const fetchTimeline = useCallback(() => {
     setStatus("loading");
-    return fetch(`${apiBaseUrl}/timeline`)
-      .then((response) => response.json())
-      .then((data) => {
+    return fetchJson(`${apiBaseUrl}/timeline`)
+      .then(({ data }) => {
         setTimeline({
           summary: data?.summary || null,
           insights: data?.insights || null,

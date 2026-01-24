@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import IconLinkButton from "../shared/IconLinkButton";
+import { fetchJson } from "../shared/api";
 import { useRealtimeUpdates } from "../shared/useRealtimeUpdates";
 import Tooltip from "../shared/Tooltip";
 import { formatCurrency, formatShortDate } from "../shared/format";
@@ -65,9 +66,10 @@ export default function DebtBreakdownPage() {
 
     setDebtSummary({ state: "loading", message: "", data: null });
 
-    return fetch(`${apiBaseUrl}/debt-summary?from=${encodeURIComponent(debtFromDate)}`)
-      .then((response) => response.json())
-      .then((data) => {
+    return fetchJson(
+      `${apiBaseUrl}/debt-summary?from=${encodeURIComponent(debtFromDate)}`
+    )
+      .then(({ data }) => {
         if (data?.error) {
           setDebtSummary({ state: "error", message: data.error, data: null });
           return;
