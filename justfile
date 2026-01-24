@@ -74,20 +74,7 @@ _release app_dir app_name version prerelease:
       ;;
   esac
 
-  if [[ "{{app_name}}" == "frontend" ]]; then
-    supabase_url="${NEXT_PUBLIC_SUPABASE_URL:-${SUPABASE_URL}}"
-    supabase_anon_key="${NEXT_PUBLIC_SUPABASE_ANON_KEY:-${SUPABASE_ANON_KEY}}"
-    if [[ -z "${supabase_url}" || -z "${supabase_anon_key}" ]]; then
-      echo "NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY (or SUPABASE_URL/SUPABASE_ANON_KEY) must be set for frontend releases."
-      exit 1
-    fi
-    build_args=(
-      --build-arg "NEXT_PUBLIC_SUPABASE_URL=${supabase_url}"
-      --build-arg "NEXT_PUBLIC_SUPABASE_ANON_KEY=${supabase_anon_key}"
-    )
-  else
-    build_args=()
-  fi
+  build_args=()
 
   tmp_file=$(mktemp)
   jq --arg version "${release_version}" '.version = $version' "{{app_dir}}/package.json" > "$tmp_file"
