@@ -8,12 +8,17 @@ services:
       PORT: 4000
       SUPABASE_URL: ${SUPABASE_URL}
       SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      PGLITE_DATA_DIR: ${PGLITE_DATA_DIR:-}
+      PGLITE_SNAPSHOT_PATH: ${PGLITE_SNAPSHOT_PATH:-}
+      PGLITE_SNAPSHOT_INTERVAL_MS: ${PGLITE_SNAPSHOT_INTERVAL_MS:-}
       CORS_ORIGIN: http://localhost:3000
     ports:
       - "4000:4000"
+    command: sh -c "bun install && bun dev"
     volumes:
       - ./apps/backend:/app
       - /app/node_modules
+      - ./data:/data
     healthcheck:
       test: >
         bun -e "fetch('http://localhost:4000/health').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"
