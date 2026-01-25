@@ -9,6 +9,7 @@ alias f := release-frontend
 alias b := release-backend
 alias fd := release-frontend-dev
 alias bd := release-backend-dev
+alias pdd := push-dev-images
 
 _default:
   @just --list
@@ -24,6 +25,20 @@ release-frontend-dev version:
 
 release-backend-dev version:
   @just _release {{backend_dir}} backend {{version}} true
+
+push-dev-images:
+  #!/usr/bin/env bash
+  if ! command -v docker >/dev/null 2>&1; then
+    echo "docker is required to build dev images."
+    exit 1
+  fi
+
+  commit_sha=$(git rev-parse --short=8 HEAD)
+  frontend_tag="{{frontend_image}}:dev-${commit_sha}"
+  backend_tag="{{backend_image}}:dev-${commit_sha}"
+
+  docker buildx build --platform linux/arm64 -t "${frontend_tag}" --push "{{frontend_dir}}"
+  docker buildx build --platform linux/arm64 -t "${backend_tag}" --push "{{backend_dir}}"
 
 _release app_dir app_name version prerelease:
   #!/usr/bin/env bash
