@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { getSupabaseClient } from "./supabaseClient";
-
 export const useRealtimeUpdates = ({
   tables,
   onRefresh,
@@ -9,7 +7,6 @@ export const useRealtimeUpdates = ({
   preserveScroll = false,
 }) => {
   const [hasRealtimeUpdate, setHasRealtimeUpdate] = useState(false);
-  const [supabaseClient, setSupabaseClient] = useState(null);
   const tablesKey = useMemo(() => {
     if (!Array.isArray(tables)) {
       return "";
@@ -56,21 +53,7 @@ export const useRealtimeUpdates = ({
   }, [onRefresh, preserveScroll]);
 
   useEffect(() => {
-    let isMounted = true;
-
-    getSupabaseClient().then((client) => {
-      if (isMounted) {
-        setSupabaseClient(client);
-      }
-    });
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!supabaseClient || tablesList.length === 0) {
+    if (tablesList.length === 0) {
       return undefined;
     }
 
@@ -83,23 +66,19 @@ export const useRealtimeUpdates = ({
       setHasRealtimeUpdate(true);
     };
 
-    const channelId = channelName || `realtime-updates-${tablesKey}`;
-    let channel = supabaseClient.channel(channelId);
+    const params = new URLSearchParams();
+    params.set("tables", tablesList.join(","));
+    if (channelName) {
+      params.set("channel", channelName);
+    }
 
-    tablesList.forEach((table) => {
-      channel = channel.on(
-        "postgres_changes",
-        { event: "*", schema: "public", table },
-        handleRealtimeChange
-      );
-    });
-
-    channel.subscribe();
+    const eventSource = new EventSource(`/api/realtime?${params.toString()}`);
+    eventSource.onmessage = handleRealtimeChange;
 
     return () => {
-      supabaseClient.removeChannel(channel);
+      eventSource.close();
     };
-  }, [channelName, refreshNow, supabaseClient, tablesKey, tablesList]);
+  }, [channelName, refreshNow, tablesKey, tablesList]);
 
   useEffect(() => {
     if (typeof document === "undefined") {
