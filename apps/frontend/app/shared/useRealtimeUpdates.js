@@ -6,6 +6,9 @@ export const useRealtimeUpdates = ({
   channelName,
   preserveScroll = false,
 }) => {
+  const [resolvedBaseUrl, setResolvedBaseUrl] = useState(() => {
+    return process.env.NEXT_PUBLIC_SSE_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL || null;
+  });
   const [hasRealtimeUpdate, setHasRealtimeUpdate] = useState(false);
   const tablesKey = useMemo(() => {
     if (!Array.isArray(tables)) {
@@ -53,7 +56,38 @@ export const useRealtimeUpdates = ({
   }, [onRefresh, preserveScroll]);
 
   useEffect(() => {
-    if (tablesList.length === 0) {
+    if (resolvedBaseUrl !== null) {
+      return undefined;
+    }
+
+    let isActive = true;
+
+    fetch("/api/runtime-config")
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => {
+        if (!isActive) {
+          return;
+        }
+
+        const baseUrl =
+          typeof data?.sse_base_url === "string" && data.sse_base_url.length > 0
+            ? data.sse_base_url
+            : "";
+        setResolvedBaseUrl(baseUrl);
+      })
+      .catch(() => {
+        if (isActive) {
+          setResolvedBaseUrl("");
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [resolvedBaseUrl]);
+
+  useEffect(() => {
+    if (tablesList.length === 0 || resolvedBaseUrl === null) {
       return undefined;
     }
 
@@ -72,13 +106,21 @@ export const useRealtimeUpdates = ({
       params.set("channel", channelName);
     }
 
-    const eventSource = new EventSource(`/api/realtime?${params.toString()}`);
+    const realtimeUrl = resolvedBaseUrl
+      ? (() => {
+          const targetUrl = new URL("/realtime", resolvedBaseUrl);
+          targetUrl.search = params.toString();
+          return targetUrl.toString();
+        })()
+      : `/api/realtime?${params.toString()}`;
+
+    const eventSource = new EventSource(realtimeUrl);
     eventSource.onmessage = handleRealtimeChange;
 
     return () => {
       eventSource.close();
     };
-  }, [channelName, refreshNow, tablesKey, tablesList]);
+  }, [channelName, refreshNow, tablesKey, tablesList, resolvedBaseUrl]);
 
   useEffect(() => {
     if (typeof document === "undefined") {
