@@ -136,7 +136,7 @@ const createPgliteAdapter = ({ pg, emitChange }) => {
         [profile.display_name, profile.default_split]
       );
       notify("profiles");
-      return { data: rows[0] || null, error: null };
+      return { data: rows?.[0] ?? null, error: null };
     } catch (error) {
       return { data: null, error: normalizeError(error) };
     }
@@ -260,7 +260,7 @@ const createPgliteAdapter = ({ pg, emitChange }) => {
         ]
       );
       notify("transactions");
-      return { data: normalizeRowDates(rows[0]) || null, error: null };
+      return { data: normalizeRowDates(rows?.[0]) ?? null, error: null };
     } catch (error) {
       return { data: null, error: normalizeError(error) };
     }
@@ -272,7 +272,7 @@ const createPgliteAdapter = ({ pg, emitChange }) => {
         "SELECT id, type, amount, payer_id, split_mode, beneficiary_id FROM transactions WHERE id = $1",
         [id]
       );
-      return { data: normalizeRowDates(rows[0]) || null, error: null };
+      return { data: normalizeRowDates(rows?.[0]) ?? null, error: null };
     } catch (error) {
       return { data: null, error: normalizeError(error) };
     }
@@ -292,7 +292,7 @@ const createPgliteAdapter = ({ pg, emitChange }) => {
         [...params, id]
       );
       notify("transactions");
-      return { data: rows[0] || null, error: null };
+      return { data: rows?.[0] ?? null, error: null };
     } catch (error) {
       return { data: null, error: normalizeError(error) };
     }
@@ -436,7 +436,7 @@ const createPgliteAdapter = ({ pg, emitChange }) => {
         [...params, id]
       );
       notify("categories");
-      return { data: rows[0] || null, error: null };
+      return { data: rows?.[0] ?? null, error: null };
     } catch (error) {
       return { data: null, error: normalizeError(error) };
     }
@@ -448,7 +448,7 @@ const createPgliteAdapter = ({ pg, emitChange }) => {
         "SELECT id, is_default FROM categories WHERE id = $1",
         [id]
       );
-      return { data: rows[0] || null, error: null };
+      return { data: rows?.[0] ?? null, error: null };
     } catch (error) {
       return { data: null, error: normalizeError(error) };
     }
