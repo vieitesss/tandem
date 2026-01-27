@@ -416,7 +416,7 @@ const createPgliteAdapter = ({ pg, emitChange }) => {
       }
 
       notify("categories");
-      return { data: rows[0], error: null };
+      return { data: rows[0] || null, error: null };
     } catch (error) {
       return { data: null, error: normalizeError(error) };
     }

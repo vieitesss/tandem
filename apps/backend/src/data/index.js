@@ -82,7 +82,9 @@ const createDataAdapter = async ({ emitChange } = {}) => {
     const pgOptions = snapshotBlob ? { loadDataDir: snapshotBlob } : undefined;
 
     const pg = await PGlite.create(pgliteDataDir, pgOptions);
-    await loadSchema(pg);
+    if (!hasExistingData) {
+      await loadSchema(pg);
+    }
     return {
       adapter: createPgliteAdapter({ pg, emitChange }),
       mode: "local",
