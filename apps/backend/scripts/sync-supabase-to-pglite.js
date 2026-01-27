@@ -233,9 +233,20 @@ const clearLocalData = async (pg) => {
 };
 
 const resetSequence = async (pg, table) => {
-  await pg.query(
-    `SELECT setval(pg_get_serial_sequence('${table}', 'id'), COALESCE((SELECT MAX(id) FROM ${table}), 0), true)`
-  );
+  const allowedTables = TABLES.map((t) => t.name);
+  if (!allowedTables.includes(table)) {
+    throw new Error(`Invalid table name for resetSequence: ${table}`);
+  }
+
+  const sql = `
+    SELECT setval(
+      pg_get_serial_sequence($1, 'id'),
+      COALESCE((SELECT MAX(id) FROM ${table}), 0),
+      true
+    )
+  `;
+
+  await pg.query(sql, [table]);
 };
 
 const parseArgs = () => {
