@@ -6,6 +6,7 @@ const { createRealtimeBus } = require("./realtime");
 const {
   scheduleSnapshots,
   resolveSnapshotPath,
+  getSnapshotStatus,
   DEFAULT_SNAPSHOT_INTERVAL_MS,
 } = require("./snapshot");
 
@@ -14,6 +15,7 @@ const { PORT = 4000, CORS_ORIGIN } = process.env;
 const app = express();
 const realtimeBus = createRealtimeBus();
 let db = null;
+let dbMode = null;
 app.use(cors({ origin: CORS_ORIGIN || "*" }));
 app.use(express.json());
 
@@ -144,7 +146,16 @@ const getMonthStart = () => {
 const expenseSplitModes = new Set(["custom", "none", "owed"]);
 
 app.get("/health", (_req, res) => {
-  res.json({ status: "ok" });
+  const response = {
+    status: "ok",
+    database: dbMode,
+  };
+
+  if (dbMode === "local") {
+    response.snapshot = getSnapshotStatus();
+  }
+
+  res.json(response);
 });
 
 app.get("/profiles", async (_req, res) => {
@@ -1314,6 +1325,7 @@ const startServer = async () => {
     emitChange: realtimeBus.emitChange,
   });
   db = adapter;
+  dbMode = mode;
 
   if (mode === "local" && pg) {
     const snapshotPath = String(process.env.PGLITE_SNAPSHOT_PATH || "").trim();

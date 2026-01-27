@@ -1,6 +1,7 @@
 const path = require("path");
 const { mkdir, readFile, readdir, stat } = require("fs/promises");
 const { createClient } = require("@supabase/supabase-js");
+const { normalizeDataDir, resolveDataDir } = require("../src/utils/paths");
 
 const PAGE_SIZE = 1000;
 const INSERT_CHUNK_SIZE = 500;
@@ -57,24 +58,7 @@ const TABLES = [
   },
 ];
 
-const normalizeDataDir = (dataDir) => {
-  if (!dataDir) {
-    return "";
-  }
 
-  return String(dataDir).startsWith("file://")
-    ? String(dataDir).replace("file://", "")
-    : String(dataDir);
-};
-
-const resolveDataDir = (dataDir, baseDir) => {
-  const normalized = normalizeDataDir(dataDir);
-  if (!normalized) {
-    return "";
-  }
-
-  return path.isAbsolute(normalized) ? normalized : path.resolve(baseDir, normalized);
-};
 
 const ensureDataDir = async (dataDir) => {
   if (!dataDir) {
