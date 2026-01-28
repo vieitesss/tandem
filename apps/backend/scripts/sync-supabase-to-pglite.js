@@ -216,16 +216,19 @@ const clearLocalData = async (pg) => {
   await pg.query("DELETE FROM categories");
 };
 
+const quoteIdentifier = (value) => `"${String(value).replace(/"/g, '""')}"`;
+
 const resetSequence = async (pg, table) => {
   const allowedTables = TABLES.map((t) => t.name);
   if (!allowedTables.includes(table)) {
     throw new Error(`Invalid table name for resetSequence: ${table}`);
   }
 
+  const quotedTable = quoteIdentifier(table);
   const sql = `
     SELECT setval(
       pg_get_serial_sequence($1, 'id'),
-      COALESCE((SELECT MAX(id) FROM ${table}), 0),
+      COALESCE((SELECT MAX(id) FROM ${quotedTable}), 0),
       true
     )
   `;
