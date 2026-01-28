@@ -1,5 +1,6 @@
 const path = require("path");
 const { mkdir, rename, writeFile, unlink, readdir, stat } = require("fs/promises");
+const { normalizeDataDir } = require("./utils/paths");
 
 const DEFAULT_SNAPSHOT_INTERVAL_MS = 60 * 60 * 1000;
 const MAX_SNAPSHOT_BACKUPS = 3;
@@ -148,9 +149,7 @@ const resolveSnapshotPath = (dataDir) => {
     return null;
   }
 
-  const normalizedDataDir = String(dataDir).startsWith("file://")
-    ? String(dataDir).replace("file://", "")
-    : dataDir;
+  const normalizedDataDir = normalizeDataDir(dataDir);
   const resolvedDataDir = path.resolve(process.cwd(), normalizedDataDir);
   return path.join(path.dirname(resolvedDataDir), "tandem-db.tar");
 };

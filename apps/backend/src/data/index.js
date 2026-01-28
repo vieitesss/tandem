@@ -147,7 +147,7 @@ const createDataAdapter = async ({ emitChange } = {}) => {
       : await loadSnapshotBlob(resolvedSnapshotPath);
     const pgOptions = snapshotBlob ? { loadDataDir: snapshotBlob } : undefined;
 
-    const pg = await PGlite.create(pgliteDataDir, pgOptions);
+    const pg = await PGlite.create(resolvedDataDir, pgOptions);
     if (!hasExistingData) {
       if (!snapshotBlob) {
         console.log("Starting with empty PGlite database (no existing data or snapshot)");
