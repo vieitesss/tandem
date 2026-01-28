@@ -106,13 +106,14 @@ export const useRealtimeUpdates = ({
       params.set("channel", channelName);
     }
 
-    const realtimeUrl = resolvedBaseUrl
-      ? (() => {
-          const targetUrl = new URL("/realtime", resolvedBaseUrl);
-          targetUrl.search = params.toString();
-          return targetUrl.toString();
-        })()
-      : `/api/realtime?${params.toString()}`;
+    let realtimeUrl;
+    if (resolvedBaseUrl) {
+      const targetUrl = new URL("/realtime", resolvedBaseUrl);
+      targetUrl.search = params.toString();
+      realtimeUrl = targetUrl.toString();
+    } else {
+      realtimeUrl = `/api/realtime?${params.toString()}`;
+    }
 
     const eventSource = new EventSource(realtimeUrl);
     eventSource.onmessage = handleRealtimeChange;
