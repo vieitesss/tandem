@@ -107,7 +107,7 @@ const scheduleSnapshots = ({ pg, snapshotPath, intervalMs }) => {
       snapshotStatus.consecutiveFailures++;
 
       if (retryCount < MAX_RETRY_ATTEMPTS) {
-        const delayMs = RETRY_DELAY_MS * Math.pow(2, retryCount);
+        const delayMs = RETRY_DELAY_MS * (2 ** retryCount);
         console.warn(
           `Failed to snapshot PGlite data (attempt ${retryCount + 1}/${MAX_RETRY_ATTEMPTS + 1}): ${error.message}. Retrying in ${delayMs}ms...`
         );

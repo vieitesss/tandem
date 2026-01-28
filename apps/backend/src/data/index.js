@@ -73,9 +73,9 @@ const acquireLock = async (dataDir) => {
     const existingLock = await readFile(lockPath, "utf8");
     const existing = JSON.parse(existingLock);
 
-    // Check if process is still running (simple check, not cross-platform)
+    // Check if process is still running (Unix-only; may not work reliably on Windows)
     try {
-      process.kill(existing.pid, 0); // Signal 0 checks if process exists
+      process.kill(existing.pid, 0); // On Unix, signal 0 checks if process exists
       throw new Error(
         `PGlite database at ${dataDir} is already in use by process ${existing.pid} (started ${existing.timestamp}). ` +
           `PGlite does not support concurrent access. Stop the other process or use a different data directory.`
