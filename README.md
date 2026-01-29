@@ -87,12 +87,13 @@ For production-style self-hosting with Docker images, see `SELF_HOSTING.md`.
 
 ### Prerequisites
 - Bun installed.
-- A Supabase project with the tables used by the backend.
+- Either a Supabase project OR a local PGlite database.
 
-### Supabase schema
+### Database setup
+
+#### Option 1: Supabase (cloud)
 Run `apps/backend/sql/schema.sql` in the Supabase SQL editor to create the full schema and default categories.
 
-### Environment variables
 Create a `.env` file in the repo root with:
 
 ```
@@ -101,16 +102,49 @@ SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 SUPABASE_ANON_KEY=your_anon_key
 ```
 
-### Frontend Docker builds
-Next.js inlines `NEXT_PUBLIC_*` values at build time, but the app can also read Supabase
-credentials at runtime via `/api/config`. For public images or self-hosting, provide
-`SUPABASE_URL` and `SUPABASE_ANON_KEY` to the frontend container so realtime connects without
-rebundling. If you build your own image, you can still export `NEXT_PUBLIC_SUPABASE_URL` and
-`NEXT_PUBLIC_SUPABASE_ANON_KEY` before running `just release-frontend` to inline them.
+#### Option 2: PGlite (local)
+Create a `.env` file in the repo root with:
 
-For local dev without Docker, also set:
-- Backend: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` in your shell env
-- Frontend: `API_BASE_URL=http://localhost:4000` (for example in `apps/frontend/.env.local`)
+```
+PGLITE_DATA_DIR=./data/tandem-db
+```
+
+Optional PGlite settings:
+```
+PGLITE_SNAPSHOT_PATH=./data/tandem-db.tar
+PGLITE_SNAPSHOT_INTERVAL_MS=3600000
+```
+
+**Note**: If both PGlite and Supabase credentials are configured, PGlite takes precedence.
+
+The backend will automatically create the schema when using PGlite.
+
+##### Migrating data from Supabase to PGlite
+
+To sync data from an existing Supabase project to your local PGlite database:
+
+```bash
+cd apps/backend
+bun run sync-supabase
+```
+
+**Migration modes:**
+- **Merge mode** (default): Keeps existing local data and adds/updates with Supabase data
+- **Replace mode**: Use `--replace` flag to clear all local data before syncing
+
+```bash
+# Replace all local data with Supabase data
+bun run sync-supabase --replace
+```
+
+**Important notes:**
+- Always backup your data before using `--replace` mode
+- The sync is one-way (Supabase → PGlite)
+- To reverse migration (PGlite → Supabase), manually export and import data
+- PGlite does not support concurrent access - ensure only one backend instance accesses the database
+
+### Frontend configuration
+For local dev without Docker, set `API_BASE_URL=http://localhost:4000` in `apps/frontend/.env.local`.
 
 ### Run with Docker Compose
 ```
@@ -153,4 +187,10 @@ bun dev
 - Liquidation: A transfer to settle up with the other partner.
 
 ## API overview
-The frontend proxies requests through `/api/...` using `API_BASE_URL` (defaults to `http://localhost:4000`). The backend stores data in Supabase tables `profiles`, `transactions`, `transaction_splits`, and `categories`.
+The frontend proxies requests through `/api/...` using `API_BASE_URL` (defaults to `http://localhost:4000`). The backend stores data in either Supabase (cloud) or PGlite (local) tables: `profiles`, `transactions`, `transaction_splits`, and `categories`.
+
+## Realtime updates
+The app uses Server-Sent Events (SSE) for real-time updates instead of Supabase Realtime. When data changes on the backend, connected clients receive automatic refresh notifications via the `/realtime` endpoint.
+
+## Database operations
+For detailed information about database safety, backups, migrations, and troubleshooting, see [DATABASE_OPERATIONS.md](DATABASE_OPERATIONS.md).

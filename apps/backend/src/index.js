@@ -1,26 +1,57 @@
 const express = require("express");
 const cors = require("cors");
-const { createClient } = require("@supabase/supabase-js");
 
+const { createDataAdapter } = require("./data");
+const { createRealtimeBus } = require("./realtime");
 const {
-  SUPABASE_URL,
-  SUPABASE_SERVICE_ROLE_KEY,
-  PORT = 4000,
-  CORS_ORIGIN,
-} = process.env;
+  scheduleSnapshots,
+  resolveSnapshotPath,
+  getSnapshotStatus,
+  DEFAULT_SNAPSHOT_INTERVAL_MS,
+} = require("./snapshot");
 
-if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-  console.error("Missing Supabase credentials.");
-  process.exit(1);
-}
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-  auth: { persistSession: false },
-});
+const { PORT = 4000, CORS_ORIGIN } = process.env;
 
 const app = express();
+const realtimeBus = createRealtimeBus();
+let db = null;
+let dbMode = null;
 app.use(cors({ origin: CORS_ORIGIN || "*" }));
 app.use(express.json());
+
+app.get("/realtime", (req, res) => {
+  const tablesParam = req.query.tables;
+  const tables = Array.isArray(tablesParam)
+    ? tablesParam
+    : typeof tablesParam === "string"
+      ? tablesParam.split(",")
+      : [];
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+
+  if (typeof res.flushHeaders === "function") {
+    res.flushHeaders();
+  }
+
+  const send = (payload) => {
+    res.write(`data: ${JSON.stringify(payload)}\n\n`);
+  };
+
+  send({ type: "connected" });
+
+  const unsubscribe = realtimeBus.subscribe(tables, send);
+  const keepAlive = setInterval(() => {
+    res.write(": ping\n\n");
+  }, 25000);
+
+  req.on("close", () => {
+    clearInterval(keepAlive);
+    unsubscribe();
+    res.end();
+  });
+});
 
 const normalizeId = (value) => {
   if (value === undefined || value === null || value === "") {
@@ -39,15 +70,11 @@ const normalizeId = (value) => {
 const roundAmount = (value) => Number(Number(value || 0).toFixed(2));
 
 const getProfileCount = async () => {
-  const { count, error } = await supabase
-    .from("profiles")
-    .select("id", { count: "exact", head: true });
-
-  if (error) {
-    return { error };
+  if (!db) {
+    return { count: 0, error: { message: "Database not ready." } };
   }
 
-  return { count: count || 0 };
+  return db.getProfileCount();
 };
 
 /**
@@ -119,14 +146,20 @@ const getMonthStart = () => {
 const expenseSplitModes = new Set(["custom", "none", "owed"]);
 
 app.get("/health", (_req, res) => {
-  res.json({ status: "ok" });
+  const response = {
+    status: "ok",
+    database: dbMode,
+  };
+
+  if (dbMode === "local") {
+    response.snapshot = getSnapshotStatus();
+  }
+
+  res.json(response);
 });
 
 app.get("/profiles", async (_req, res) => {
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("id, display_name, default_split")
-    .order("display_name", { ascending: true });
+  const { data, error } = await db.listProfiles();
 
   if (error) {
     return res.status(500).json({ error: error.message });
@@ -152,19 +185,13 @@ app.post("/profiles/setup", async (req, res) => {
     return res.status(400).json({ error: "Profiles already exist." });
   }
 
-  const { error: splitsClearError } = await supabase
-    .from("transaction_splits")
-    .delete()
-    .neq("id", 0);
+  const { error: splitsClearError } = await db.clearTransactionSplits();
 
   if (splitsClearError) {
     return res.status(500).json({ error: splitsClearError.message });
   }
 
-  const { error: transactionsClearError } = await supabase
-    .from("transactions")
-    .delete()
-    .neq("id", 0);
+  const { error: transactionsClearError } = await db.clearTransactions();
 
   if (transactionsClearError) {
     return res.status(500).json({ error: transactionsClearError.message });
@@ -208,10 +235,7 @@ app.post("/profiles/setup", async (req, res) => {
       .json({ error: "Default splits must total 1." });
   }
 
-  const { data, error } = await supabase
-    .from("profiles")
-    .insert(normalizedProfiles)
-    .select("id");
+  const { data, error } = await db.insertProfiles(normalizedProfiles);
 
   if (error) {
     return res.status(500).json({ error: error.message });
@@ -248,14 +272,10 @@ app.post("/profiles", async (req, res) => {
       .json({ error: "Default split must be between 0 and 1." });
   }
 
-  const { data, error } = await supabase
-    .from("profiles")
-    .insert({
-      display_name,
-      default_split: normalizedSplit,
-    })
-    .select("id")
-    .single();
+  const { data, error } = await db.insertProfile({
+    display_name,
+    default_split: normalizedSplit,
+  });
 
   if (error) {
     return res.status(500).json({ error: error.message });
@@ -295,10 +315,7 @@ app.patch("/profiles/:id", async (req, res) => {
     return res.status(400).json({ error: "No updates provided." });
   }
 
-  const { error } = await supabase
-    .from("profiles")
-    .update(updates)
-    .eq("id", profileId);
+  const { error } = await db.updateProfile(profileId, updates);
 
   if (error) {
     return res.status(500).json({ error: error.message });
@@ -310,18 +327,8 @@ app.patch("/profiles/:id", async (req, res) => {
 app.get("/transactions", async (req, res) => {
   const { type, category, month } = req.query || {};
 
-  let query = supabase
-    .from("transactions")
-    .select("id, payer_id, beneficiary_id, split_mode, amount, category, date, note, type")
-    .order("date", { ascending: false });
-
-  if (type && type !== "ALL") {
-    query = query.eq("type", type);
-  }
-
-  if (category && category !== "ALL") {
-    query = query.eq("category", category);
-  }
+  let startDate = null;
+  let endDate = null;
 
   if (month) {
     const match = String(month).match(/^(\d{4})-(\d{2})$/);
@@ -337,12 +344,16 @@ app.get("/transactions", async (req, res) => {
     const end = new Date(start);
     end.setUTCMonth(end.getUTCMonth() + 1);
 
-    query = query
-      .gte("date", start.toISOString().slice(0, 10))
-      .lt("date", end.toISOString().slice(0, 10));
+    startDate = start.toISOString().slice(0, 10);
+    endDate = end.toISOString().slice(0, 10);
   }
 
-  const { data: transactions, error } = await query;
+  const { data: transactions, error } = await db.listTransactions({
+    type,
+    category,
+    startDate,
+    endDate,
+  });
 
   if (error) {
     return res.status(500).json({ error: error.message });
@@ -359,10 +370,7 @@ app.get("/transactions", async (req, res) => {
   let profilesById = new Map();
 
   if (payerIds.length > 0) {
-    const { data: profiles, error: profileError } = await supabase
-      .from("profiles")
-      .select("id, display_name")
-      .in("id", payerIds);
+    const { data: profiles, error: profileError } = await db.listProfilesByIds(payerIds);
 
     if (profileError) {
       return res.status(500).json({ error: profileError.message });
@@ -391,10 +399,7 @@ app.get("/debt-summary", async (req, res) => {
 
   const fromDate = normalizedFrom || getMonthStart();
 
-  const { data: profiles, error: profilesError } = await supabase
-    .from("profiles")
-    .select("id, display_name")
-    .order("display_name", { ascending: true });
+  const { data: profiles, error: profilesError } = await db.listProfiles();
 
   if (profilesError) {
     return res.status(500).json({ error: profilesError.message });
@@ -435,11 +440,8 @@ app.get("/debt-summary", async (req, res) => {
     });
   }
 
-  const { data: transactions, error: transactionsError } = await supabase
-    .from("transactions")
-    .select("id, payer_id, beneficiary_id, split_mode, amount, date, type, note, category")
-    .gte("date", fromDate)
-    .order("date", { ascending: false });
+  const { data: transactions, error: transactionsError } =
+    await db.listTransactionsSince(fromDate);
 
   if (transactionsError) {
     return res.status(500).json({ error: transactionsError.message });
@@ -530,10 +532,8 @@ app.get("/debt-summary", async (req, res) => {
 
   if (customTransactions.size > 0) {
     const customIds = Array.from(customTransactions.keys());
-    const { data: splits, error: splitsError } = await supabase
-      .from("transaction_splits")
-      .select("transaction_id, user_id, amount")
-      .in("transaction_id", customIds);
+    const { data: splits, error: splitsError } =
+      await db.listTransactionSplitsByTransactionIds(customIds);
 
     if (splitsError) {
       return res.status(500).json({ error: splitsError.message });
@@ -720,20 +720,16 @@ app.post("/transactions", async (req, res) => {
         ? normalizedBeneficiaryId
         : null;
 
-  const { data: transaction, error: transactionError } = await supabase
-    .from("transactions")
-    .insert({
-      payer_id: payerForInsert,
-      beneficiary_id: beneficiaryForInsert,
-      split_mode: splitModeForInsert,
-      amount,
-      category: categoryForInsert,
-      date,
-      note,
-      type,
-    })
-    .select("id, split_mode")
-    .single();
+  const { data: transaction, error: transactionError } = await db.insertTransaction({
+    payer_id: payerForInsert,
+    beneficiary_id: beneficiaryForInsert,
+    split_mode: splitModeForInsert,
+    amount,
+    category: categoryForInsert,
+    date,
+    note,
+    type,
+  });
 
   if (transactionError) {
     return res.status(500).json({ error: transactionError.message });
@@ -771,9 +767,7 @@ app.post("/transactions", async (req, res) => {
       };
     });
 
-    const { error: splitsError } = await supabase
-      .from("transaction_splits")
-      .insert(splitRows);
+    const { error: splitsError } = await db.insertTransactionSplits(splitRows);
 
     if (splitsError) {
       return res.status(500).json({ error: splitsError.message });
@@ -793,11 +787,8 @@ app.patch("/transactions/:id", async (req, res) => {
     return res.status(400).json({ error: "Transaction id must be a number." });
   }
 
-  const { data: existing, error: existingError } = await supabase
-    .from("transactions")
-    .select("id, type, amount, payer_id, split_mode, beneficiary_id")
-    .eq("id", transactionId)
-    .single();
+  const { data: existing, error: existingError } =
+    await db.getTransactionById(transactionId);
 
   if (existingError) {
     return res.status(500).json({ error: existingError.message });
@@ -919,12 +910,10 @@ app.patch("/transactions/:id", async (req, res) => {
     return res.status(400).json({ error: "No updates provided." });
   }
 
-  const { data: updated, error: updateError } = await supabase
-    .from("transactions")
-    .update(updates)
-    .eq("id", transactionId)
-    .select("id, payer_id, beneficiary_id, split_mode, amount, category, date, note, type")
-    .single();
+  const { data: updated, error: updateError } = await db.updateTransaction(
+    transactionId,
+    updates
+  );
 
   if (updateError) {
     return res.status(500).json({ error: updateError.message });
@@ -935,10 +924,8 @@ app.patch("/transactions/:id", async (req, res) => {
     existing.split_mode === "custom" &&
     updated.split_mode !== "custom"
   ) {
-    const { error: deleteError } = await supabase
-      .from("transaction_splits")
-      .delete()
-      .eq("transaction_id", transactionId);
+    const { error: deleteError } =
+      await db.deleteTransactionSplitsByTransactionId(transactionId);
 
     if (deleteError) {
       return res.status(500).json({ error: deleteError.message });
@@ -949,10 +936,8 @@ app.patch("/transactions/:id", async (req, res) => {
     existing.type === "EXPENSE" && updated.split_mode === "custom";
 
   if (shouldUpdateSplits && amount !== undefined) {
-    const { data: splits, error: splitsError } = await supabase
-      .from("transaction_splits")
-      .select("id, user_id, amount")
-      .eq("transaction_id", transactionId);
+    const { data: splits, error: splitsError } =
+      await db.listTransactionSplitsByTransactionId(transactionId);
 
     if (splitsError) {
       return res.status(500).json({ error: splitsError.message });
@@ -966,18 +951,15 @@ app.patch("/transactions/:id", async (req, res) => {
         const proportions = splits.map(split => (Number(split.amount || 0) / total) * 100);
         const allocatedAmounts = allocateAmount(updated.amount, proportions);
 
-        const splitUpdates = splits.map((split, index) => {
-          return supabase
-            .from("transaction_splits")
-            .update({ amount: allocatedAmounts[index] })
-            .eq("id", split.id);
-        });
-
-        const splitResults = await Promise.all(splitUpdates);
-        const splitError = splitResults.find((result) => result.error);
+        const splitUpdates = splits.map((split, index) => ({
+          id: split.id,
+          amount: allocatedAmounts[index],
+        }));
+        const { error: splitError } =
+          await db.updateTransactionSplitAmounts(splitUpdates);
 
         if (splitError) {
-          return res.status(500).json({ error: splitError.error.message });
+          return res.status(500).json({ error: splitError.message });
         }
       }
     }
@@ -986,17 +968,15 @@ app.patch("/transactions/:id", async (req, res) => {
   let payerName = null;
 
   if (updated.payer_id) {
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("display_name")
-      .eq("id", updated.payer_id)
-      .single();
+    const { data: profiles, error: profileError } = await db.listProfilesByIds([
+      updated.payer_id,
+    ]);
 
     if (profileError) {
       return res.status(500).json({ error: profileError.message });
     }
 
-    payerName = profile ? profile.display_name : null;
+    payerName = profiles && profiles[0] ? profiles[0].display_name : null;
   }
 
   return res.json({ ...updated, payer_name: payerName });
@@ -1010,11 +990,8 @@ app.delete("/transactions/:id", async (req, res) => {
     return res.status(400).json({ error: "Transaction id must be a number." });
   }
 
-  const { data: existing, error: existingError } = await supabase
-    .from("transactions")
-    .select("id")
-    .eq("id", transactionId)
-    .single();
+  const { data: existing, error: existingError } =
+    await db.getTransactionById(transactionId);
 
   if (existingError) {
     return res.status(500).json({ error: existingError.message });
@@ -1024,19 +1001,14 @@ app.delete("/transactions/:id", async (req, res) => {
     return res.status(404).json({ error: "Transaction not found." });
   }
 
-  const { error: splitsError } = await supabase
-    .from("transaction_splits")
-    .delete()
-    .eq("transaction_id", transactionId);
+  const { error: splitsError } =
+    await db.deleteTransactionSplitsByTransactionId(transactionId);
 
   if (splitsError) {
     return res.status(500).json({ error: splitsError.message });
   }
 
-  const { error: deleteError } = await supabase
-    .from("transactions")
-    .delete()
-    .eq("id", transactionId);
+  const { error: deleteError } = await db.deleteTransaction(transactionId);
 
   if (deleteError) {
     return res.status(500).json({ error: deleteError.message });
@@ -1049,69 +1021,46 @@ app.delete("/transactions/:id", async (req, res) => {
 
 // GET /categories/init - Initialize categories table (run once)
 app.get("/categories/init", async (req, res) => {
-  // First try to create the table
-  const createTableSql = `
-    create table if not exists categories (
-      id bigint generated by default as identity primary key,
-      label text not null unique,
-      icon text not null,
-      is_default boolean default false,
-      created_at timestamptz default now()
-    )
-  `;
-
-  const { error: tableError } = await supabase.rpc('exec_sql', { sql: createTableSql }).catch(() => ({ error: null }));
-  
   // Try to insert default categories (will skip if they already exist due to unique constraint)
   const defaultCategories = [
-    { label: 'Groceries', icon: '🛒', is_default: true },
-    { label: 'Rent', icon: '🏠', is_default: true },
-    { label: 'Utilities', icon: '💡', is_default: true },
-    { label: 'Restaurants', icon: '🍽️', is_default: true },
-    { label: 'Transport', icon: '🚗', is_default: true },
-    { label: 'Health', icon: '🩺', is_default: true },
-    { label: 'Entertainment', icon: '🎬', is_default: true },
-    { label: 'Travel', icon: '✈️', is_default: true },
-    { label: 'Shopping', icon: '🛍️', is_default: true },
-    { label: 'Subscriptions', icon: '📦', is_default: true },
-    { label: 'Salary', icon: '💼', is_default: true },
-    { label: 'Freelance', icon: '🧑‍💻', is_default: true },
-    { label: 'Gifts', icon: '🎁', is_default: true },
-    { label: 'Pets', icon: '🐾', is_default: true },
-    { label: 'Education', icon: '🎓', is_default: true },
-    { label: 'Insurance', icon: '🛡️', is_default: true },
-    { label: 'Home', icon: '🧹', is_default: true },
-    { label: 'Kids', icon: '🧸', is_default: true },
-    { label: 'Taxes', icon: '🧾', is_default: true },
-    { label: 'Other', icon: '🧩', is_default: true },
+    { label: "Groceries", icon: "🛒", is_default: true },
+    { label: "Rent", icon: "🏠", is_default: true },
+    { label: "Utilities", icon: "💡", is_default: true },
+    { label: "Restaurants", icon: "🍽️", is_default: true },
+    { label: "Transport", icon: "🚗", is_default: true },
+    { label: "Health", icon: "🩺", is_default: true },
+    { label: "Entertainment", icon: "🎬", is_default: true },
+    { label: "Travel", icon: "✈️", is_default: true },
+    { label: "Shopping", icon: "🛍️", is_default: true },
+    { label: "Subscriptions", icon: "📦", is_default: true },
+    { label: "Salary", icon: "💼", is_default: true },
+    { label: "Freelance", icon: "🧑‍💻", is_default: true },
+    { label: "Gifts", icon: "🎁", is_default: true },
+    { label: "Pets", icon: "🐾", is_default: true },
+    { label: "Education", icon: "🎓", is_default: true },
+    { label: "Insurance", icon: "🛡️", is_default: true },
+    { label: "Home", icon: "🧹", is_default: true },
+    { label: "Kids", icon: "🧸", is_default: true },
+    { label: "Taxes", icon: "🧾", is_default: true },
+    { label: "Other", icon: "🧩", is_default: true },
   ];
 
-  let inserted = 0;
-  for (const category of defaultCategories) {
-    const { error } = await supabase
-      .from('categories')
-      .insert([category])
-      .select();
-    
-    if (!error) {
-      inserted++;
-    }
+  const { data, error } = await db.insertCategoriesIfMissing(defaultCategories);
+
+  if (error) {
+    return res.status(500).json({ error: error.message });
   }
 
-  return res.json({ 
-    message: 'Categories initialized', 
-    inserted,
-    total: defaultCategories.length
+  return res.json({
+    message: "Categories initialized",
+    inserted: data?.length || 0,
+    total: defaultCategories.length,
   });
 });
 
 // GET /categories - Fetch all categories
 app.get("/categories", async (req, res) => {
-  const { data, error } = await supabase
-    .from("categories")
-    .select("id, label, icon, is_default")
-    .order("is_default", { ascending: false })
-    .order("label", { ascending: true });
+  const { data, error } = await db.listCategories();
 
   if (error) {
     return res.status(500).json({ error: error.message });
@@ -1132,17 +1081,11 @@ app.post("/categories", async (req, res) => {
     return res.status(400).json({ error: "Icon is required." });
   }
 
-  const { data, error } = await supabase
-    .from("categories")
-    .insert([
-      {
-        label: label.trim(),
-        icon: icon.trim(),
-        is_default: false,
-      },
-    ])
-    .select("id, label, icon, is_default")
-    .single();
+  const { data, error } = await db.insertCategory({
+    label: label.trim(),
+    icon: icon.trim(),
+    is_default: false,
+  });
 
   if (error) {
     if (error.code === "23505") {
@@ -1176,12 +1119,7 @@ app.patch("/categories/:id", async (req, res) => {
     updates.icon = icon.trim();
   }
 
-  const { data, error } = await supabase
-    .from("categories")
-    .update(updates)
-    .eq("id", categoryId)
-    .select("id, label, icon, is_default")
-    .single();
+  const { data, error } = await db.updateCategory(categoryId, updates);
 
   if (error) {
     if (error.code === "23505") {
@@ -1206,11 +1144,7 @@ app.delete("/categories/:id", async (req, res) => {
   }
 
   // Check if it's a default category
-  const { data: existing, error: fetchError } = await supabase
-    .from("categories")
-    .select("is_default")
-    .eq("id", categoryId)
-    .single();
+  const { data: existing, error: fetchError } = await db.getCategoryById(categoryId);
 
   if (fetchError) {
     return res.status(500).json({ error: fetchError.message });
@@ -1220,10 +1154,7 @@ app.delete("/categories/:id", async (req, res) => {
     return res.status(404).json({ error: "Category not found." });
   }
 
-  const { error } = await supabase
-    .from("categories")
-    .delete()
-    .eq("id", categoryId);
+  const { error } = await db.deleteCategory(categoryId);
 
   if (error) {
     return res.status(500).json({ error: error.message });
@@ -1237,10 +1168,8 @@ app.delete("/categories/:id", async (req, res) => {
 // GET /timeline - Get relationship financial timeline with insights and milestones
 app.get("/timeline", async (req, res) => {
   // Fetch all transactions ordered by date
-  const { data: transactions, error: transactionsError } = await supabase
-    .from("transactions")
-    .select("id, amount, date, type, category, payer_id, beneficiary_id")
-    .order("date", { ascending: true });
+  const { data: transactions, error: transactionsError } =
+    await db.listTimelineTransactions();
 
   if (transactionsError) {
     return res.status(500).json({ error: transactionsError.message });
@@ -1391,6 +1320,30 @@ app.get("/timeline", async (req, res) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`Backend listening on ${PORT}`);
+const startServer = async () => {
+  const { adapter, mode, pg } = await createDataAdapter({
+    emitChange: realtimeBus.emitChange,
+  });
+  db = adapter;
+  dbMode = mode;
+
+  if (mode === "local" && pg) {
+    const snapshotPath = String(process.env.PGLITE_SNAPSHOT_PATH || "").trim();
+    const resolvedPath = snapshotPath || resolveSnapshotPath(process.env.PGLITE_DATA_DIR);
+    scheduleSnapshots({
+      pg,
+      snapshotPath: resolvedPath,
+      intervalMs:
+        Number(process.env.PGLITE_SNAPSHOT_INTERVAL_MS) || DEFAULT_SNAPSHOT_INTERVAL_MS,
+    });
+  }
+
+  app.listen(PORT, () => {
+    console.log(`Backend listening on ${PORT} (${mode})`);
+  });
+};
+
+startServer().catch((error) => {
+  console.error("Failed to start backend:", error);
+  process.exit(1);
 });

@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { getSupabaseClient } from "./supabaseClient";
-
 export const useRealtimeUpdates = ({
   tables,
   onRefresh,
   channelName,
   preserveScroll = false,
 }) => {
+  const [resolvedBaseUrl, setResolvedBaseUrl] = useState(() => {
+    return process.env.NEXT_PUBLIC_SSE_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL || null;
+  });
   const [hasRealtimeUpdate, setHasRealtimeUpdate] = useState(false);
-  const [supabaseClient, setSupabaseClient] = useState(null);
   const tablesKey = useMemo(() => {
     if (!Array.isArray(tables)) {
       return "";
@@ -56,21 +56,38 @@ export const useRealtimeUpdates = ({
   }, [onRefresh, preserveScroll]);
 
   useEffect(() => {
-    let isMounted = true;
+    if (resolvedBaseUrl !== null) {
+      return undefined;
+    }
 
-    getSupabaseClient().then((client) => {
-      if (isMounted) {
-        setSupabaseClient(client);
-      }
-    });
+    let isActive = true;
+
+    fetch("/api/runtime-config")
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => {
+        if (!isActive) {
+          return;
+        }
+
+        const baseUrl =
+          typeof data?.sse_base_url === "string" && data.sse_base_url.length > 0
+            ? data.sse_base_url
+            : "";
+        setResolvedBaseUrl(baseUrl);
+      })
+      .catch(() => {
+        if (isActive) {
+          setResolvedBaseUrl("");
+        }
+      });
 
     return () => {
-      isMounted = false;
+      isActive = false;
     };
-  }, []);
+  }, [resolvedBaseUrl]);
 
   useEffect(() => {
-    if (!supabaseClient || tablesList.length === 0) {
+    if (tablesList.length === 0 || resolvedBaseUrl === null) {
       return undefined;
     }
 
@@ -83,23 +100,28 @@ export const useRealtimeUpdates = ({
       setHasRealtimeUpdate(true);
     };
 
-    const channelId = channelName || `realtime-updates-${tablesKey}`;
-    let channel = supabaseClient.channel(channelId);
+    const params = new URLSearchParams();
+    params.set("tables", tablesList.join(","));
+    if (channelName) {
+      params.set("channel", channelName);
+    }
 
-    tablesList.forEach((table) => {
-      channel = channel.on(
-        "postgres_changes",
-        { event: "*", schema: "public", table },
-        handleRealtimeChange
-      );
-    });
+    let realtimeUrl;
+    if (resolvedBaseUrl) {
+      const targetUrl = new URL("/realtime", resolvedBaseUrl);
+      targetUrl.search = params.toString();
+      realtimeUrl = targetUrl.toString();
+    } else {
+      realtimeUrl = `/api/realtime?${params.toString()}`;
+    }
 
-    channel.subscribe();
+    const eventSource = new EventSource(realtimeUrl);
+    eventSource.onmessage = handleRealtimeChange;
 
     return () => {
-      supabaseClient.removeChannel(channel);
+      eventSource.close();
     };
-  }, [channelName, refreshNow, supabaseClient, tablesKey, tablesList]);
+  }, [channelName, refreshNow, tablesKey, tablesList, resolvedBaseUrl]);
 
   useEffect(() => {
     if (typeof document === "undefined") {

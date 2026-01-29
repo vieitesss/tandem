@@ -28,4 +28,9 @@ Core workflow:
 3. `agent-browser click @e1` / `fill @e2 "text"` - Interact using refs
 4. Re-snapshot after page changes
 
-Remove any changes mave to the database after running commands.
+Remove any changes made to the database after running commands.
+
+## Important instructions
+- Do not update the main supabase database.
+- By default, update the local pglite database.
+- If i ever need to update a supabase database, it must be the dev supabase, that you can access with the credentials in .env.demo.
