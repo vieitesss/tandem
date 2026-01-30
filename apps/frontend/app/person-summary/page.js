@@ -127,63 +127,61 @@ export default function PersonSummaryPage() {
                       </div>
 
                       <div className="space-y-2">
+                        {/* Outflows */}
                         <div className="flex items-center justify-between">
-                          <span
-                            className="text-sm text-cream-100/60"
-                            title="Total expenses paid (including liquidation payments)"
-                          >
-                            Spent
+                          <span className="text-sm text-cream-100/60">
+                            Expenses
                           </span>
                           <span className="text-sm font-mono text-cream-100">
-                            {formatCurrency(profile.spent_total)}
+                            {formatCurrency(profile.expenses_total)}
                           </span>
                         </div>
                         <div className="flex items-center justify-between">
                           <span className="text-sm text-cream-100/60">
-                            Income
-                          </span>
-                          <span className="text-sm font-mono text-sage-400">
-                            {formatCurrency(profile.income_total)}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span
-                            className="text-sm text-cream-100/60"
-                            title="Money received from liquidations"
-                          >
-                            Liquidations received
-                          </span>
-                          <span className="text-sm font-mono text-sage-400">
-                            {formatCurrency(profile.liquidation_received_total)}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span
-                            className="text-sm text-cream-100/60"
-                            title="Money paid out for liquidations (included in Spent)"
-                          >
                             Liquidations paid
                           </span>
-                          <span className="text-sm font-mono text-coral-400">
+                          <span className="text-sm font-mono text-cream-100">
                             {formatCurrency(profile.liquidations_paid_total)}
                           </span>
                         </div>
                         <div className="flex items-center justify-between border-t border-cream-500/10 pt-2">
-                          <span
-                            className="text-sm font-semibold text-cream-100"
-                            title="Income + Liquidations received"
-                          >
-                            Earned total
+                          <span className="text-sm font-semibold text-cream-100">
+                            Total spent
                           </span>
                           <span className="text-sm font-mono font-semibold text-cream-50">
-                            {formatCurrency(profile.earned_total)}
+                            {formatCurrency(profile.total_spent)}
+                          </span>
+                        </div>
+
+                        {/* Inflows */}
+                        <div className="flex items-center justify-between pt-2">
+                          <span className="text-sm text-cream-100/60">
+                            Income
+                          </span>
+                          <span className="text-sm font-mono text-cream-100">
+                            {formatCurrency(profile.income_total)}
                           </span>
                         </div>
                         <div className="flex items-center justify-between">
-                          <span
-                            className="text-sm font-semibold text-cream-200"
-                            title="Earned total - Spent total"
-                          >
+                          <span className="text-sm text-cream-100/60">
+                            Liquidations received
+                          </span>
+                          <span className="text-sm font-mono text-cream-100">
+                            {formatCurrency(profile.liquidations_received_total)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between border-t border-cream-500/10 pt-2">
+                          <span className="text-sm font-semibold text-cream-100">
+                            Total income
+                          </span>
+                          <span className="text-sm font-mono font-semibold text-cream-50">
+                            {formatCurrency(profile.total_income)}
+                          </span>
+                        </div>
+
+                        {/* Net */}
+                        <div className="flex items-center justify-between border-t border-cream-500/10 pt-2">
+                          <span className="text-sm font-semibold text-cream-200">
                             Net
                           </span>
                           <span
