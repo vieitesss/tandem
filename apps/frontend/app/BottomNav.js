@@ -5,15 +5,6 @@ import { usePathname } from "next/navigation";
 
 const navItems = [
   {
-    href: "/timeline",
-    label: "Timeline",
-    icon: (
-      <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-        <path d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" />
-      </svg>
-    ),
-  },
-  {
     href: "/transactions",
     label: "Transactions",
     icon: (
@@ -24,7 +15,7 @@ const navItems = [
   },
   {
     href: "/",
-    label: "Add transaction",
+    label: "Add",
     isPrimary: true,
     icon: (
       <svg className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
@@ -33,17 +24,8 @@ const navItems = [
     ),
   },
   {
-    href: "/categories",
-    label: "Categories",
-    icon: (
-      <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-        <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-      </svg>
-    ),
-  },
-  {
     href: "/profiles",
-    label: "Profiles",
+    label: "Person",
     icon: (
       <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
         <path d="M10 10a3 3 0 100-6 3 3 0 000 6z" />
@@ -60,13 +42,12 @@ export default function BottomNav() {
     if (href === "/") {
       return pathname === "/";
     }
-
     return pathname.startsWith(href);
   };
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-50 px-4 pb-[calc(0.5rem+env(safe-area-inset-bottom))] md:hidden">
-      <div className="mx-auto flex max-w-sm items-center justify-between rounded-3xl border border-cream-500/15 bg-obsidian-800/60 px-6 py-2.5 shadow-elevated backdrop-blur-xl glass">
+      <div className="mx-auto flex max-w-xs items-center justify-between rounded-3xl border border-cream-500/15 bg-obsidian-800/60 px-6 py-2.5 shadow-elevated backdrop-blur-xl">
         {navItems.map((item) => {
           const active = isActive(item.href);
 
