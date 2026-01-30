@@ -128,7 +128,10 @@ export default function PersonSummaryPage() {
 
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
-                          <span className="text-sm text-cream-100/60">
+                          <span
+                            className="text-sm text-cream-100/60"
+                            title="Total expenses paid (including liquidation payments)"
+                          >
                             Spent
                           </span>
                           <span className="text-sm font-mono text-cream-100">
@@ -144,15 +147,32 @@ export default function PersonSummaryPage() {
                           </span>
                         </div>
                         <div className="flex items-center justify-between">
-                          <span className="text-sm text-cream-100/60">
-                            Liquidation received
+                          <span
+                            className="text-sm text-cream-100/60"
+                            title="Money received from liquidations"
+                          >
+                            Liquidations received
                           </span>
                           <span className="text-sm font-mono text-sage-400">
-                            {formatCurrency(profile.liquidation_total)}
+                            {formatCurrency(profile.liquidation_received_total)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span
+                            className="text-sm text-cream-100/60"
+                            title="Money paid out for liquidations (included in Spent)"
+                          >
+                            Liquidations paid
+                          </span>
+                          <span className="text-sm font-mono text-coral-400">
+                            {formatCurrency(profile.liquidations_paid_total)}
                           </span>
                         </div>
                         <div className="flex items-center justify-between border-t border-cream-500/10 pt-2">
-                          <span className="text-sm font-semibold text-cream-100">
+                          <span
+                            className="text-sm font-semibold text-cream-100"
+                            title="Income + Liquidations received"
+                          >
                             Earned total
                           </span>
                           <span className="text-sm font-mono font-semibold text-cream-50">
@@ -160,7 +180,10 @@ export default function PersonSummaryPage() {
                           </span>
                         </div>
                         <div className="flex items-center justify-between">
-                          <span className="text-sm font-semibold text-cream-200">
+                          <span
+                            className="text-sm font-semibold text-cream-200"
+                            title="Earned total - Spent total"
+                          >
                             Net
                           </span>
                           <span
