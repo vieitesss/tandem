@@ -1163,6 +1163,114 @@ app.delete("/categories/:id", async (req, res) => {
   return res.json({ id: categoryId });
 });
 
+// ===== PERSON MONTHLY SUMMARY =====
+
+// GET /person-monthly-summary - Get monthly financial summary per person
+app.get("/person-monthly-summary", async (_req, res) => {
+  const { data: profiles, error: profilesError } = await db.listProfiles();
+
+  if (profilesError) {
+    return res.status(500).json({ error: profilesError.message });
+  }
+
+  const { data: transactions, error: transactionsError } =
+    await db.listTimelineTransactions();
+
+  if (transactionsError) {
+    return res.status(500).json({ error: transactionsError.message });
+  }
+
+  if (!transactions || transactions.length === 0) {
+    return res.json({
+      profiles: profiles || [],
+      monthly_summary: [],
+    });
+  }
+
+  // Group transactions by month and profile
+  const monthlyMap = new Map();
+
+  transactions.forEach((t) => {
+    const monthKey = t.date.slice(0, 7); // YYYY-MM
+
+    if (!monthlyMap.has(monthKey)) {
+      monthlyMap.set(monthKey, new Map());
+    }
+
+    const profileMap = monthlyMap.get(monthKey);
+
+    // Initialize profile entries if not exists
+    if (t.payer_id && !profileMap.has(t.payer_id)) {
+      profileMap.set(t.payer_id, {
+        profile_id: t.payer_id,
+        spent_total: 0,
+        income_total: 0,
+        liquidation_total: 0,
+      });
+    }
+
+    if (t.beneficiary_id && !profileMap.has(t.beneficiary_id)) {
+      profileMap.set(t.beneficiary_id, {
+        profile_id: t.beneficiary_id,
+        spent_total: 0,
+        income_total: 0,
+        liquidation_total: 0,
+      });
+    }
+
+    // Aggregate based on transaction type
+    if (t.type === "EXPENSE" && t.payer_id) {
+      const profileData = profileMap.get(t.payer_id);
+      profileData.spent_total = roundAmount(
+        profileData.spent_total + Number(t.amount)
+      );
+    }
+
+    if (t.type === "INCOME" && t.payer_id) {
+      const profileData = profileMap.get(t.payer_id);
+      profileData.income_total = roundAmount(
+        profileData.income_total + Number(t.amount)
+      );
+    }
+
+    if (t.type === "LIQUIDATION" && t.beneficiary_id) {
+      const profileData = profileMap.get(t.beneficiary_id);
+      profileData.liquidation_total = roundAmount(
+        profileData.liquidation_total + Number(t.amount)
+      );
+    }
+  });
+
+  // Convert to sorted array (newest month first)
+  const monthlySummary = Array.from(monthlyMap.entries())
+    .sort((a, b) => b[0].localeCompare(a[0]))
+    .map(([month, profileMap]) => {
+      const profiles = Array.from(profileMap.values()).map((p) => {
+        const earned_total = roundAmount(p.income_total + p.liquidation_total);
+        const net_total = roundAmount(earned_total - p.spent_total);
+
+        return {
+          profile_id: p.profile_id,
+          spent_total: p.spent_total,
+          income_total: p.income_total,
+          liquidation_total: p.liquidation_total,
+          earned_total,
+          net_total,
+        };
+      });
+
+      return {
+        month,
+        profiles,
+      };
+    });
+
+  return res.json({
+    profiles: profiles || [],
+    monthly_summary: monthlySummary,
+  });
+});
+
 // ===== TIMELINE =====
 
 // GET /timeline - Get relationship financial timeline with insights and milestones
