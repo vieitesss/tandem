@@ -230,12 +230,7 @@ export default function DebtBreakdownPage() {
                 className="title-icon-media"
               />
             </div>
-            <div>
-              <p className="text-xs uppercase tracking-wider text-cream-100/50 font-semibold">
-                Debt Breakdown
-              </p>
-              <h1 className="text-2xl font-display font-semibold text-cream-50 tracking-tight md:text-3xl">{debtLine}</h1>
-            </div>
+            <h1 className="text-2xl font-display font-semibold text-cream-50 tracking-tight md:text-3xl">Debt Breakdown</h1>
           </div>
           <DesktopHeaderActions currentPage="" />
         </div>
@@ -247,6 +242,9 @@ export default function DebtBreakdownPage() {
             </p>
             <p className="text-xs text-cream-100/60 font-medium">
               Net = what was paid - what had to be paid - what was received
+            </p>
+            <p className="text-xs text-cream-100/60 font-medium">
+              {debtLine}
             </p>
             <p className="text-xs text-cream-100/60 font-medium">
               From {formatShortDate(debtFromDate)} onward

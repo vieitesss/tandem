@@ -72,14 +72,9 @@ export default function TimelinePage() {
                 className="title-icon-media"
               />
             </div>
-            <div>
-              <p className="text-xs uppercase tracking-wider text-cream-100/50 font-semibold">
-                Timeline
-              </p>
-              <h1 className="text-3xl font-display font-semibold tracking-tight text-cream-50 md:text-4xl">
-                Timeline
-              </h1>
-            </div>
+            <h1 className="text-3xl font-display font-semibold tracking-tight text-cream-50 md:text-4xl">
+              Timeline
+            </h1>
           </div>
           <DesktopHeaderActions currentPage="" />
         </div>

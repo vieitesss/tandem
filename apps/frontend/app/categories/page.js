@@ -133,14 +133,9 @@ export default function CategoriesPage() {
                 className="title-icon-media"
               />
             </div>
-            <div>
-              <p className="text-xs uppercase tracking-wider text-cream-100/50 font-semibold">
-                Categories
-              </p>
-              <h1 className="text-3xl font-display font-semibold tracking-tight text-cream-50 md:text-4xl">
-                Categories
-              </h1>
-            </div>
+            <h1 className="text-3xl font-display font-semibold tracking-tight text-cream-50 md:text-4xl">
+              Categories
+            </h1>
           </div>
           <DesktopHeaderActions currentPage="" />
         </div>

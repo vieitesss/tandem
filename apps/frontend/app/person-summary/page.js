@@ -69,14 +69,9 @@ export default function PersonSummaryPage() {
             <div className="title-icon flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-cream-500/20 to-cream-600/10 border border-cream-500/20 shadow-glow-sm md:h-12 md:w-12">
               <img src="/icon.png" alt="Tandem" className="title-icon-media" />
             </div>
-            <div>
-              <p className="text-xs uppercase tracking-wider text-cream-100/50 font-semibold">
-                Summary
-              </p>
-              <h1 className="text-3xl font-display font-semibold tracking-tight text-cream-50 md:text-4xl">
-                Summary
-              </h1>
-            </div>
+            <h1 className="text-3xl font-display font-semibold tracking-tight text-cream-50 md:text-4xl">
+              Summary
+            </h1>
           </div>
           <DesktopHeaderActions currentPage="" />
         </div>
