@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import IconLinkButton from "../shared/IconLinkButton";
+import DesktopHeaderActions from "../shared/DesktopHeaderActions";
 import { fetchJson } from "../shared/api";
 import { useRealtimeUpdates } from "../shared/useRealtimeUpdates";
 import Tooltip from "../shared/Tooltip";
@@ -237,19 +237,7 @@ export default function DebtBreakdownPage() {
               <h1 className="text-2xl font-display font-semibold text-cream-50 tracking-tight md:text-3xl">{debtLine}</h1>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <IconLinkButton href="/transactions" label="Back to transactions">
-              <svg
-                className="h-5 w-5"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-                aria-hidden="true"
-              >
-                <path d="M7.75 4.75a.75.75 0 00-1.06 0l-4 4a.75.75 0 000 1.06l4 4a.75.75 0 001.06-1.06L5.06 10l2.69-2.69a.75.75 0 000-1.06z" />
-                <path d="M17.25 10a.75.75 0 01-.75.75H5.5a.75.75 0 010-1.5h11a.75.75 0 01.75.75z" />
-              </svg>
-            </IconLinkButton>
-          </div>
+          <DesktopHeaderActions currentPage="" />
         </div>
         <div className="flex flex-wrap items-end justify-between gap-4 rounded-2xl border border-cream-500/15 bg-obsidian-800/40 p-6 shadow-card backdrop-blur-sm">
           <div className="space-y-2">

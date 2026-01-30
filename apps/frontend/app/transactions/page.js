@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import IconLinkButton from "../shared/IconLinkButton";
+import DesktopHeaderActions from "../shared/DesktopHeaderActions";
+import SecondaryActions, { SecondaryLink } from "../shared/SecondaryActions";
 import SelectField from "../shared/SelectField";
 import Tooltip from "../shared/Tooltip";
 import { fetchJson } from "../shared/api";
@@ -328,43 +329,41 @@ export default function TransactionsPage() {
             </div>
             <h1 className="text-3xl font-display font-semibold tracking-tight text-cream-50 md:text-4xl">Transactions</h1>
           </div>
-          <div className="hidden items-center gap-2 text-cream-300 md:flex">
-            <IconLinkButton href="/timeline" label="View timeline">
-              <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" />
-              </svg>
-            </IconLinkButton>
-            <IconLinkButton href="/" label="Add transaction">
-              <svg
-                className="h-5 w-5"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-                aria-hidden="true"
-              >
-                <path d="M10 4.5a.75.75 0 01.75.75v3h3a.75.75 0 010 1.5h-3v3a.75.75 0 01-1.5 0v-3h-3a.75.75 0 010-1.5h3v-3A.75.75 0 0110 4.5z" />
-              </svg>
-            </IconLinkButton>
-            <IconLinkButton href="/categories" label="Manage categories">
-              <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-              </svg>
-            </IconLinkButton>
-            <IconLinkButton href="/profiles" label="Manage profiles">
-              <svg
-                className="h-5 w-5"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-                aria-hidden="true"
-              >
-                <path d="M10 10a3 3 0 100-6 3 3 0 000 6z" />
-                <path d="M4.5 16a5.5 5.5 0 0111 0v.5h-11V16z" />
-              </svg>
-            </IconLinkButton>
-          </div>
+          <DesktopHeaderActions currentPage="transactions" />
         </div>
         <p className="text-sm text-cream-100/60 font-medium tracking-wide">
           Review every transaction and filter by month, type, category, or payer
         </p>
+        <SecondaryActions>
+          <SecondaryLink
+            href="/timeline"
+            label="Timeline"
+            icon={
+              <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" />
+              </svg>
+            }
+          />
+          <SecondaryLink
+            href="/person-summary"
+            label="Person Summary"
+            icon={
+              <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M2 10a8 8 0 018-8v8h8a8 8 0 11-16 0z" />
+                <path d="M12 2.252A8.014 8.014 0 0117.748 8H12V2.252z" />
+              </svg>
+            }
+          />
+          <SecondaryLink
+            href="/debt-breakdown"
+            label="Debt Breakdown"
+            icon={
+              <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
+              </svg>
+            }
+          />
+        </SecondaryActions>
       </header>
 
       {hasRealtimeUpdate ? (
@@ -396,14 +395,6 @@ export default function TransactionsPage() {
             <p className="text-xs text-cream-100/60 font-medium">
               From {formatShortDate(debtFromDate)} onward
             </p>
-            <Link
-              className="inline-block text-xs font-semibold uppercase tracking-wider text-cream-400 hover:text-cream-300 transition-colors duration-200"
-              href={`/debt-breakdown?from=${encodeURIComponent(debtFromDate)}`}
-            >
-              See Breakdown →
-            </Link>
-
-
           </div>
           <label className="space-y-2 text-xs font-medium text-cream-200 tracking-wide">
             From date

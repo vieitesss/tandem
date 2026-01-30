@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 import ProfileSetup from "./profiles/ProfileSetup";
-import IconLinkButton from "./shared/IconLinkButton";
+import DesktopHeaderActions from "./shared/DesktopHeaderActions";
 import TransactionForm from "./transactions/TransactionForm";
 
 export default function Home() {
@@ -40,7 +40,7 @@ export default function Home() {
               <img src="/icon.png" alt="Tandem" className="h-7 w-7 md:h-8 md:w-8" />
             </div>
             <h1 className="text-3xl font-display font-semibold tracking-tight text-cream-50 md:text-4xl">
-              Add Transaction
+              Add
             </h1>
           </div>
           <p className="text-sm text-cream-100/60 font-medium tracking-wide">
@@ -60,7 +60,7 @@ export default function Home() {
               <img src="/icon.png" alt="Tandem" className="h-7 w-7 md:h-8 md:w-8" />
             </div>
             <h1 className="text-3xl font-display font-semibold tracking-tight text-cream-50 md:text-4xl">
-              Add Transaction
+              Add
             </h1>
           </div>
           <p className="text-sm text-coral-300 font-medium">
@@ -84,7 +84,7 @@ export default function Home() {
               <img src="/icon.png" alt="Tandem" className="h-7 w-7 md:h-8 md:w-8" />
             </div>
             <h1 className="text-3xl font-display font-semibold tracking-tight text-cream-50 md:text-4xl">
-              Profile setup needed
+              Add
             </h1>
           </div>
           <p className="text-sm text-cream-100/60 font-medium tracking-wide">
@@ -126,42 +126,10 @@ export default function Home() {
               />
             </div>
             <h1 className="text-3xl font-display font-semibold tracking-tight text-cream-50 md:text-4xl">
-              Add Transaction
+              Add
             </h1>
           </div>
-          <div className="hidden items-center gap-2 md:flex">
-            <IconLinkButton href="/timeline" label="View timeline">
-              <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" />
-              </svg>
-            </IconLinkButton>
-            <IconLinkButton href="/transactions" label="View transactions">
-              <svg
-                className="h-5 w-5"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-                aria-hidden="true"
-              >
-                <path d="M5 4.75a.75.75 0 00-.75.75v9.5a.75.75 0 00.75.75h10a.75.75 0 00.75-.75V5.5a.75.75 0 00-.75-.75H5zm1.75 2h6.5a.75.75 0 010 1.5h-6.5a.75.75 0 010-1.5zm0 3h6.5a.75.75 0 010 1.5h-6.5a.75.75 0 010-1.5zm0 3h4a.75.75 0 010 1.5h-4a.75.75 0 010-1.5z" />
-              </svg>
-            </IconLinkButton>
-            <IconLinkButton href="/categories" label="Manage categories">
-              <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-              </svg>
-            </IconLinkButton>
-            <IconLinkButton href="/profiles" label="Manage profiles">
-              <svg
-                className="h-5 w-5"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-                aria-hidden="true"
-              >
-                <path d="M10 10a3 3 0 100-6 3 3 0 000 6z" />
-                <path d="M4.5 16a5.5 5.5 0 0111 0v.5h-11V16z" />
-              </svg>
-            </IconLinkButton>
-          </div>
+          <DesktopHeaderActions currentPage="home" />
         </div>
         <p className="text-sm text-cream-100/60 font-medium tracking-wide">
           Record expenses, income, and settlements with ease
