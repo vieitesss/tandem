@@ -1205,7 +1205,8 @@ app.get("/person-monthly-summary", async (_req, res) => {
         profile_id: t.payer_id,
         spent_total: 0,
         income_total: 0,
-        liquidation_total: 0,
+        liquidation_received_total: 0,
+        liquidations_paid_total: 0,
       });
     }
 
@@ -1214,7 +1215,8 @@ app.get("/person-monthly-summary", async (_req, res) => {
         profile_id: t.beneficiary_id,
         spent_total: 0,
         income_total: 0,
-        liquidation_total: 0,
+        liquidation_received_total: 0,
+        liquidations_paid_total: 0,
       });
     }
 
@@ -1233,11 +1235,25 @@ app.get("/person-monthly-summary", async (_req, res) => {
       );
     }
 
-    if (t.type === "LIQUIDATION" && t.beneficiary_id) {
-      const profileData = profileMap.get(t.beneficiary_id);
-      profileData.liquidation_total = roundAmount(
-        profileData.liquidation_total + Number(t.amount)
-      );
+    if (t.type === "LIQUIDATION") {
+      // Track liquidations received by beneficiary
+      if (t.beneficiary_id) {
+        const profileData = profileMap.get(t.beneficiary_id);
+        profileData.liquidation_received_total = roundAmount(
+          profileData.liquidation_received_total + Number(t.amount)
+        );
+      }
+      // Track liquidations paid by payer and include in spent_total
+      if (t.payer_id) {
+        const profileData = profileMap.get(t.payer_id);
+        profileData.liquidations_paid_total = roundAmount(
+          profileData.liquidations_paid_total + Number(t.amount)
+        );
+        // Liquidation payments are outflows and should be included in spent_total
+        profileData.spent_total = roundAmount(
+          profileData.spent_total + Number(t.amount)
+        );
+      }
     }
   });
 
@@ -1246,14 +1262,15 @@ app.get("/person-monthly-summary", async (_req, res) => {
     .sort((a, b) => b[0].localeCompare(a[0]))
     .map(([month, profileMap]) => {
       const profiles = Array.from(profileMap.values()).map((p) => {
-        const earned_total = roundAmount(p.income_total + p.liquidation_total);
+        const earned_total = roundAmount(p.income_total + p.liquidation_received_total);
         const net_total = roundAmount(earned_total - p.spent_total);
 
         return {
           profile_id: p.profile_id,
           spent_total: p.spent_total,
           income_total: p.income_total,
-          liquidation_total: p.liquidation_total,
+          liquidation_received_total: p.liquidation_received_total,
+          liquidations_paid_total: p.liquidations_paid_total,
           earned_total,
           net_total,
         };
