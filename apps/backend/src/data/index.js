@@ -62,7 +62,16 @@ const loadSchema = async (pg) => {
 };
 
 const acquireLock = async (dataDir) => {
-  const lockPath = path.join(dataDir, ".pglite.lock");
+  const absoluteDataDir = path.isAbsolute(dataDir)
+    ? dataDir
+    : path.resolve(process.cwd(), dataDir);
+
+  // Store lock file outside PGlite data dir to avoid conflicts.
+  // If the data dir is at the filesystem root, fall back to the data dir itself.
+  const parentDir = path.dirname(absoluteDataDir);
+  const lockDir =
+    parentDir === path.parse(absoluteDataDir).root ? absoluteDataDir : parentDir;
+  const lockPath = path.join(lockDir, ".tandem.lock");
   const lockInfo = {
     pid: process.pid,
     timestamp: new Date().toISOString(),

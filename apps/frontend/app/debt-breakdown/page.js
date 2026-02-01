@@ -6,7 +6,7 @@ import DesktopHeaderActions from "../shared/DesktopHeaderActions";
 import { fetchJson } from "../shared/api";
 import { useRealtimeUpdates } from "../shared/useRealtimeUpdates";
 import Tooltip from "../shared/Tooltip";
-import { formatCurrency, formatShortDate } from "../shared/format";
+import { formatCurrency, formatMonthLabel } from "../shared/format";
 
 const getTitleForTransaction = (transaction) => {
   if (!transaction) {
@@ -30,12 +30,28 @@ const sortByDateDesc = (left, right) => {
   return rightDate - leftDate;
 };
 
-export default function DebtBreakdownPage() {
-  const [debtFromDate, setDebtFromDate] = useState(() => {
-    const now = new Date();
-    const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-    return start.toISOString().slice(0, 10);
+const getMonthKey = (dateString) => {
+  if (!dateString) return "unknown";
+  return dateString.slice(0, 7);
+};
+
+const groupByMonth = (items) => {
+  const groups = new Map();
+
+  items.forEach((item) => {
+    const monthKey = getMonthKey(item.date);
+    if (!groups.has(monthKey)) {
+      groups.set(monthKey, []);
+    }
+    groups.get(monthKey).push(item);
   });
+
+  return Array.from(groups.keys())
+    .sort((a, b) => b.localeCompare(a))
+    .map((month) => ({ month, items: groups.get(month) }));
+};
+
+export default function DebtBreakdownPage() {
   const [debtSummary, setDebtSummary] = useState({
     state: "idle",
     message: "",
@@ -44,31 +60,10 @@ export default function DebtBreakdownPage() {
 
   const apiBaseUrl = "/api";
 
-  useEffect(() => {
-    const updateFromParam = () => {
-      const params = new URLSearchParams(window.location.search);
-      const fromParam = params.get("from");
-      if (fromParam) {
-        setDebtFromDate(fromParam);
-      }
-    };
-
-    updateFromParam();
-
-    window.addEventListener("popstate", updateFromParam);
-    return () => window.removeEventListener("popstate", updateFromParam);
-  }, []);
-
   const fetchDebtSummary = useCallback(() => {
-    if (!debtFromDate) {
-      return null;
-    }
-
     setDebtSummary({ state: "loading", message: "", data: null });
 
-    return fetchJson(
-      `${apiBaseUrl}/debt-summary?from=${encodeURIComponent(debtFromDate)}`
-    )
+    return fetchJson(`${apiBaseUrl}/debt-summary`)
       .then(({ data }) => {
         if (data?.error) {
           setDebtSummary({ state: "error", message: data.error, data: null });
@@ -84,7 +79,7 @@ export default function DebtBreakdownPage() {
           data: null,
         });
       });
-  }, [apiBaseUrl, debtFromDate]);
+  }, [apiBaseUrl]);
 
   useEffect(() => {
     fetchDebtSummary();
@@ -143,12 +138,12 @@ export default function DebtBreakdownPage() {
     [debtProfiles]
   );
 
-  const customSplitRows = useMemo(() => {
+  const customSplitRowsByMonth = useMemo(() => {
     const rows = Array.isArray(debtDetails.custom_splits)
       ? debtDetails.custom_splits
       : [];
 
-    return rows
+    const processedRows = rows
       .map((transaction) => {
         const splitTotal = Array.isArray(transaction.splits)
           ? transaction.splits.reduce((sum, split) => sum + Number(split.amount || 0), 0)
@@ -174,14 +169,16 @@ export default function DebtBreakdownPage() {
         };
       })
       .sort(sortByDateDesc);
+
+    return groupByMonth(processedRows);
   }, [debtDetails.custom_splits, profileMap]);
 
-  const owedRows = useMemo(() => {
+  const owedRowsByMonth = useMemo(() => {
     const rows = Array.isArray(debtDetails.owed_transactions)
       ? debtDetails.owed_transactions
       : [];
 
-    return rows
+    const processedRows = rows
       .map((transaction) => ({
         ...transaction,
         payerName: profileMap.get(transaction.payer_id)?.display_name || "Unknown",
@@ -189,12 +186,14 @@ export default function DebtBreakdownPage() {
           profileMap.get(transaction.beneficiary_id)?.display_name || "Unknown",
       }))
       .sort(sortByDateDesc);
+
+    return groupByMonth(processedRows);
   }, [debtDetails.owed_transactions, profileMap]);
 
-  const liquidationRows = useMemo(() => {
+  const liquidationRowsByMonth = useMemo(() => {
     const rows = Array.isArray(debtDetails.liquidations) ? debtDetails.liquidations : [];
 
-    return rows
+    const processedRows = rows
       .map((transaction) => ({
         ...transaction,
         payerName: profileMap.get(transaction.payer_id)?.display_name || "Unknown",
@@ -202,6 +201,8 @@ export default function DebtBreakdownPage() {
           profileMap.get(transaction.beneficiary_id)?.display_name || "Unknown",
       }))
       .sort(sortByDateDesc);
+
+    return groupByMonth(processedRows);
   }, [debtDetails.liquidations, profileMap]);
 
   let debtLine = "All settled up.";
@@ -246,23 +247,8 @@ export default function DebtBreakdownPage() {
             <p className="text-xs text-cream-100/60 font-medium">
               {debtLine}
             </p>
-            <p className="text-xs text-cream-100/60 font-medium">
-              From {formatShortDate(debtFromDate)} onward
-            </p>
+            <p className="text-xs text-cream-100/60 font-medium">All-time</p>
           </div>
-          <label className="space-y-2 text-xs font-medium text-cream-200 tracking-wide">
-            From date
-            <input
-              className="w-full min-w-[180px] rounded-lg border border-cream-500/20 bg-obsidian-900/70 px-3 py-2 text-sm text-cream-50 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30 transition-all duration-200"
-              type="date"
-              value={debtFromDate}
-              onChange={(event) => {
-                if (event.target.value) {
-                  setDebtFromDate(event.target.value);
-                }
-              }}
-            />
-          </label>
         </div>
       </header>
 
@@ -383,51 +369,60 @@ export default function DebtBreakdownPage() {
               How custom splits are shared
             </h2>
           </div>
-          {customSplitRows.length === 0 ? (
+          {customSplitRowsByMonth.length === 0 ? (
             <p className="text-sm text-cream-100/60 font-medium">No custom split expenses yet.</p>
           ) : (
-            <div className="space-y-3">
-              {customSplitRows.map((transaction) => (
-                <div
-                  key={transaction.id}
-                  className="space-y-2 rounded-xl border border-cream-500/10 bg-obsidian-800/55 p-4"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-                    <div>
-                      <p className="text-cream-50 font-medium">
-                        {getTitleForTransaction(transaction)}
-                      </p>
-                      <p className="text-xs text-cream-100/50 font-medium">
-                        {formatShortDate(transaction.date)} - Paid by {" "}
-                        {profileMap.get(transaction.payer_id)?.display_name ||
-                          transaction.payer_id ||
-                          "Unknown"}
-                      </p>
-                    </div>
-                    <div className="text-sm font-mono font-semibold text-cream-50">
-                      {formatCurrency(transaction.amount)}
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    {transaction.splits.length === 0 ? (
-                      <p className="text-xs text-cream-100/50 font-medium">
-                        No custom split rows recorded.
-                      </p>
-                    ) : (
-                      transaction.splits.map((split) => (
-                        <div
-                          key={`${transaction.id}-${split.id}`}
-                          className="flex items-center justify-between text-xs text-cream-100/60 font-medium"
-                        >
-                          <span>
-                            {split.name} - {split.percent}% share
-                          </span>
-                          <span className="text-cream-50 font-mono">
-                            {formatCurrency(split.amount)}
-                          </span>
+            <div className="space-y-6">
+              {customSplitRowsByMonth.map(({ month, items }) => (
+                <div key={month} className="space-y-3">
+                  <h3 className="text-sm font-display font-semibold text-cream-100/70 tracking-tight">
+                    {month === "unknown" ? "Unknown date" : formatMonthLabel(month)}
+                  </h3>
+                  <div className="space-y-3">
+                    {items.map((transaction) => (
+                      <div
+                        key={transaction.id}
+                        className="space-y-2 rounded-xl border border-cream-500/10 bg-obsidian-800/55 p-4"
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                          <div>
+                            <p className="text-cream-50 font-medium">
+                              {getTitleForTransaction(transaction)}
+                            </p>
+                            <p className="text-xs text-cream-100/50 font-medium">
+                              Paid by{" "}
+                              {profileMap.get(transaction.payer_id)?.display_name ||
+                                transaction.payer_id ||
+                                "Unknown"}
+                            </p>
+                          </div>
+                          <div className="text-sm font-mono font-semibold text-cream-50">
+                            {formatCurrency(transaction.amount)}
+                          </div>
                         </div>
-                      ))
-                    )}
+                        <div className="space-y-2">
+                          {transaction.splits.length === 0 ? (
+                            <p className="text-xs text-cream-100/50 font-medium">
+                              No custom split rows recorded.
+                            </p>
+                          ) : (
+                            transaction.splits.map((split) => (
+                              <div
+                                key={`${transaction.id}-${split.id}`}
+                                className="flex items-center justify-between text-xs text-cream-100/60 font-medium"
+                              >
+                                <span>
+                                  {split.name} - {split.percent}% share
+                                </span>
+                                <span className="text-cream-50 font-mono">
+                                  {formatCurrency(split.amount)}
+                                </span>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               ))}
@@ -447,28 +442,36 @@ export default function DebtBreakdownPage() {
                 Expenses paid for someone else
               </h2>
             </div>
-            {owedRows.length === 0 ? (
+            {owedRowsByMonth.length === 0 ? (
               <p className="text-sm text-cream-100/60 font-medium">No owed transactions.</p>
             ) : (
-              <div className="space-y-3">
-                {owedRows.map((transaction) => (
-                  <div
-                    key={transaction.id}
-                    className="rounded-xl border border-cream-500/10 bg-obsidian-800/55 p-3"
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-                      <div>
-                        <p className="text-cream-50 font-medium">
-                          {getTitleForTransaction(transaction)}
-                        </p>
-                        <p className="text-xs text-cream-100/50 font-medium">
-                          {formatShortDate(transaction.date)} - Paid by {" "}
-                          {transaction.payerName} for {transaction.beneficiaryName}
-                        </p>
-                      </div>
-                      <div className="text-sm font-mono font-semibold text-cream-50">
-                        {formatCurrency(transaction.amount)}
-                      </div>
+              <div className="space-y-6">
+                {owedRowsByMonth.map(({ month, items }) => (
+                  <div key={month} className="space-y-3">
+                    <h3 className="text-sm font-display font-semibold text-cream-100/70 tracking-tight">
+                      {month === "unknown" ? "Unknown date" : formatMonthLabel(month)}
+                    </h3>
+                    <div className="space-y-3">
+                      {items.map((transaction) => (
+                        <div
+                          key={transaction.id}
+                          className="rounded-xl border border-cream-500/10 bg-obsidian-800/55 p-3"
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                            <div>
+                              <p className="text-cream-50 font-medium">
+                                {getTitleForTransaction(transaction)}
+                              </p>
+                              <p className="text-xs text-cream-100/50 font-medium">
+                                Paid by {transaction.payerName} for {transaction.beneficiaryName}
+                              </p>
+                            </div>
+                            <div className="text-sm font-mono font-semibold text-cream-50">
+                              {formatCurrency(transaction.amount)}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 ))}
@@ -485,28 +488,36 @@ export default function DebtBreakdownPage() {
                 Payments that settled up
               </h2>
             </div>
-            {liquidationRows.length === 0 ? (
+            {liquidationRowsByMonth.length === 0 ? (
               <p className="text-sm text-cream-100/60 font-medium">No liquidations yet.</p>
             ) : (
-              <div className="space-y-3">
-                {liquidationRows.map((transaction) => (
-                  <div
-                    key={transaction.id}
-                    className="rounded-xl border border-cream-500/10 bg-obsidian-800/55 p-3"
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-                      <div>
-                        <p className="text-cream-50 font-medium">
-                          {getTitleForTransaction(transaction)}
-                        </p>
-                        <p className="text-xs text-cream-100/50 font-medium">
-                          {formatShortDate(transaction.date)} - {" "}
-                          {transaction.payerName} paid {transaction.beneficiaryName}
-                        </p>
-                      </div>
-                      <div className="text-sm font-mono font-semibold text-cream-50">
-                        {formatCurrency(transaction.amount)}
-                      </div>
+              <div className="space-y-6">
+                {liquidationRowsByMonth.map(({ month, items }) => (
+                  <div key={month} className="space-y-3">
+                    <h3 className="text-sm font-display font-semibold text-cream-100/70 tracking-tight">
+                      {month === "unknown" ? "Unknown date" : formatMonthLabel(month)}
+                    </h3>
+                    <div className="space-y-3">
+                      {items.map((transaction) => (
+                        <div
+                          key={transaction.id}
+                          className="rounded-xl border border-cream-500/10 bg-obsidian-800/55 p-3"
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                            <div>
+                              <p className="text-cream-50 font-medium">
+                                {getTitleForTransaction(transaction)}
+                              </p>
+                              <p className="text-xs text-cream-100/50 font-medium">
+                                {transaction.payerName} paid {transaction.beneficiaryName}
+                              </p>
+                            </div>
+                            <div className="text-sm font-mono font-semibold text-cream-50">
+                              {formatCurrency(transaction.amount)}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 ))}
