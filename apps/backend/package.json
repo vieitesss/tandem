@@ -8,7 +8,8 @@
   "scripts": {
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
-    "sync-supabase": "node scripts/sync-supabase-to-pglite.js"
+    "sync-supabase": "node scripts/sync-supabase-to-pglite.js",
+    "seed-demo": "node scripts/seed-pglite-demo.js"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.3.4",

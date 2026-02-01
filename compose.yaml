@@ -6,15 +6,15 @@ services:
     env_file: .env
     environment:
       PORT: 4000
-      SUPABASE_URL: ${SUPABASE_URL}
-      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
-      PGLITE_DATA_DIR: ${PGLITE_DATA_DIR:-}
-      PGLITE_SNAPSHOT_PATH: ${PGLITE_SNAPSHOT_PATH:-}
-      PGLITE_SNAPSHOT_INTERVAL_MS: ${PGLITE_SNAPSHOT_INTERVAL_MS:-}
+      SUPABASE_URL: ""
+      SUPABASE_SERVICE_ROLE_KEY: ""
+      PGLITE_DATA_DIR: /data/tandem-db
+      PGLITE_SNAPSHOT_PATH: /data/tandem-db.tar
+      PGLITE_SNAPSHOT_INTERVAL_MS: 3600000
       CORS_ORIGIN: http://localhost:3000
     ports:
       - "4000:4000"
-    command: sh -c "bun install && bun dev"
+    command: sh -c "bun install && bun run seed-demo && bun dev"
     volumes:
       - ./apps/backend:/app
       - /app/node_modules
