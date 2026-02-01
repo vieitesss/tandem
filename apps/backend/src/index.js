@@ -119,30 +119,6 @@ const addAmount = (map, profileId, amount) => {
   map.set(profileId, next);
 };
 
-const normalizeDateParam = (value) => {
-  if (!value) {
-    return null;
-  }
-
-  const match = String(value).match(/^\d{4}-\d{2}-\d{2}$/);
-  if (!match) {
-    return null;
-  }
-
-  const date = new Date(`${value}T00:00:00Z`);
-  if (Number.isNaN(date.getTime())) {
-    return null;
-  }
-
-  return date.toISOString().slice(0, 10);
-};
-
-const getMonthStart = () => {
-  const now = new Date();
-  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-  return start.toISOString().slice(0, 10);
-};
-
 const expenseSplitModes = new Set(["custom", "none", "owed"]);
 
 app.get("/health", (_req, res) => {
@@ -389,15 +365,7 @@ app.get("/transactions", async (req, res) => {
   return res.json(response);
 });
 
-app.get("/debt-summary", async (req, res) => {
-  const { from } = req.query || {};
-  const normalizedFrom = normalizeDateParam(from);
-
-  if (from && !normalizedFrom) {
-    return res.status(400).json({ error: "From date must be YYYY-MM-DD." });
-  }
-
-  const fromDate = normalizedFrom || getMonthStart();
+app.get("/debt-summary", async (_req, res) => {
 
   const { data: profiles, error: profilesError } = await db.listProfiles();
 
@@ -420,7 +388,7 @@ app.get("/debt-summary", async (req, res) => {
 
   if (!profiles || profiles.length === 0) {
     return res.json({
-      from_date: fromDate,
+      from_date: null,
       profiles: [],
       expenses_by_profile: {},
       custom_split_paid_by_profile: {},
@@ -441,7 +409,7 @@ app.get("/debt-summary", async (req, res) => {
   }
 
   const { data: transactions, error: transactionsError } =
-    await db.listTransactionsSince(fromDate);
+    await db.listTransactions({});
 
   if (transactionsError) {
     return res.status(500).json({ error: transactionsError.message });
@@ -630,7 +598,7 @@ app.get("/debt-summary", async (req, res) => {
   }
 
   return res.json({
-    from_date: fromDate,
+    from_date: null,
     profiles,
     expenses_by_profile: Object.fromEntries(expensesByProfile),
     custom_split_paid_by_profile: Object.fromEntries(customSplitPaidByProfile),

@@ -1,14 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import DesktopHeaderActions from "../shared/DesktopHeaderActions";
 import SecondaryActions, { SecondaryLink } from "../shared/SecondaryActions";
 import SelectField from "../shared/SelectField";
-import Tooltip from "../shared/Tooltip";
 import { fetchJson } from "../shared/api";
-import { formatCurrency, formatMonthLabel, formatShortDate } from "../shared/format";
+import { formatCurrency, formatMonthLabel } from "../shared/format";
 import { useRealtimeUpdates } from "../shared/useRealtimeUpdates";
 import {
   categoryOptions,
@@ -30,11 +28,6 @@ export default function TransactionsPage() {
   const [categories, setCategories] = useState(categoryOptions);
   const [savingId, setSavingId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
-  const [debtFromDate, setDebtFromDate] = useState(() => {
-    const now = new Date();
-    const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-    return start.toISOString().slice(0, 10);
-  });
   const [debtSummary, setDebtSummary] = useState({
     state: "idle",
     message: "",
@@ -183,15 +176,9 @@ export default function TransactionsPage() {
   }, [categories]);
 
   const fetchDebtSummary = useCallback(() => {
-    if (!debtFromDate) {
-      return null;
-    }
-
     setDebtSummary({ state: "loading", message: "", data: null });
 
-    return fetchJson(
-      `${apiBaseUrl}/debt-summary?from=${encodeURIComponent(debtFromDate)}`
-    )
+    return fetchJson(`${apiBaseUrl}/debt-summary`)
       .then(({ data }) => {
         if (data?.error) {
           setDebtSummary({ state: "error", message: data.error, data: null });
@@ -207,7 +194,7 @@ export default function TransactionsPage() {
           data: null,
         });
       });
-  }, [apiBaseUrl, debtFromDate]);
+  }, [apiBaseUrl]);
 
   useEffect(() => {
     fetchDebtSummary();
@@ -276,48 +263,8 @@ export default function TransactionsPage() {
     }
   };
 
+  const debtBalance = debtSummary.data?.balance || {};
   const debtProfiles = debtSummary.data?.profiles || [];
-  const debtExpenses = debtSummary.data?.expenses_by_profile || {};
-  const debtCustomSplitPaid = debtSummary.data?.custom_split_paid_by_profile || {};
-   const debtCustomSplitShare = debtSummary.data?.custom_split_share_by_profile || {};
-   const debtCustomSplitTotal = Number(
-     debtSummary.data?.total_custom_split_expenses || 0
-   );
-   const debtOwedTransactions = debtSummary.data?.owed_transactions_by_profile || {};
-   const debtOwedPaid = debtSummary.data?.owed_paid_by_profile || {};
-   const debtLiquidations = debtSummary.data?.liquidations_by_profile || {};
-   const debtLiquidationsReceived =
-     debtSummary.data?.liquidations_received_by_profile || {};
-   const debtNet = debtSummary.data?.net_by_profile || {};
-   const debtBalance = debtSummary.data?.balance || {};
-  const debtProfileLabels = debtProfiles.map((profile) => {
-    const expenses = Number(debtExpenses[profile.id] || 0);
-    const customSplitPaid = Number(debtCustomSplitPaid[profile.id] || 0);
-    const customSplitShare = Number(debtCustomSplitShare[profile.id] || 0);
-    const owedTransactions = Number(debtOwedTransactions[profile.id] || 0);
-    const owedPaid = Number(debtOwedPaid[profile.id] || 0);
-    const liquidationsPaid = Number(debtLiquidations[profile.id] || 0);
-    const liquidationsReceived = Number(debtLiquidationsReceived[profile.id] || 0);
-    const paidTotal = customSplitPaid + owedPaid + liquidationsPaid;
-    const toPayTotal = customSplitShare + owedTransactions;
-    const receivedTotal = liquidationsReceived;
-
-    return {
-      ...profile,
-      expenses,
-      customSplitPaid,
-      customSplitShare,
-      owedTransactions,
-      owedPaid,
-      liquidationsPaid,
-      liquidationsReceived,
-      paidTotal,
-      toPayTotal,
-      receivedTotal,
-      net: Number(debtNet[profile.id] || 0),
-    };
-  });
-
 
   const debtProfilesById = new Map(
     debtProfiles.map((profile) => [profile.id, profile])
@@ -407,143 +354,20 @@ export default function TransactionsPage() {
       ) : null}
 
       <section className="space-y-4 rounded-2xl border border-cream-500/15 bg-obsidian-800/40 p-6 shadow-card backdrop-blur-sm animate-slide-up stagger-1">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="space-y-2">
-            <p className="text-xs uppercase tracking-wider text-cream-100/50 font-semibold">
-              Debt Summary
-            </p>
-            <h2 className="text-xl font-display font-semibold text-cream-50 tracking-tight">
-              {debtLine}
-            </h2>
-            <p className="text-xs text-cream-100/60 font-medium">
-              From {formatShortDate(debtFromDate)} onward
-            </p>
-          </div>
-          <label className="space-y-2 text-xs font-medium text-cream-200 tracking-wide">
-            From date
-            <input
-              className="w-full min-w-[180px] rounded-lg border border-cream-500/20 bg-obsidian-950/80 px-3 py-2 text-sm text-cream-50 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30 transition-all duration-200"
-              type="date"
-              value={debtFromDate}
-              onChange={(event) => {
-                if (event.target.value) {
-                  setDebtFromDate(event.target.value);
-                }
-              }}
-            />
-          </label>
-        </div>
-        <div className="flex items-center justify-between rounded-xl border border-cream-500/15 bg-obsidian-950/40 px-4 py-3 text-sm">
-          <span className="text-cream-100/60 font-medium">Total custom split expenses</span>
-          <span className="text-cream-50 font-mono font-semibold">{formatCurrency(debtCustomSplitTotal)}</span>
+        <div className="space-y-2">
+          <p className="text-xs uppercase tracking-wider text-cream-100/50 font-semibold">
+            Debt Summary
+          </p>
+          <h2 className="text-xl font-display font-semibold text-cream-50 tracking-tight">
+            {debtLine}
+          </h2>
+          <p className="text-xs text-cream-100/60 font-medium">All-time</p>
         </div>
         {debtSummary.state === "loading" ? (
           <p className="text-sm text-cream-100/60 font-medium">Loading debt summary...</p>
         ) : null}
         {debtSummary.state === "error" ? (
           <p className="text-sm text-coral-300 font-medium">{debtSummary.message}</p>
-        ) : null}
-        {debtSummary.state === "idle" ? (
-          <div className="space-y-3">
-            <p className="text-xs text-cream-100/40 font-medium">
-              Net = what was paid - what had to be paid - what was received
-            </p>
-            <div className="grid gap-4 text-sm md:grid-cols-2">
-              {debtProfileLabels.map((profile) => (
-                <div
-                  key={profile.id}
-                  className="space-y-3 rounded-2xl border border-cream-500/10 bg-obsidian-950/40 p-4 transition-all duration-300 hover:border-cream-500/20"
-                >
-                  <div className="text-xs font-bold uppercase tracking-wider text-cream-500/80">
-                    {profile.display_name || profile.id}
-                  </div>
-                  
-                  <div className="space-y-2 rounded-xl border border-cream-500/5 bg-obsidian-900/40 p-3">
-                    <div className="text-[10px] font-bold uppercase tracking-widest text-cream-100/30">
-                      What was paid
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <Tooltip label="Total amount this person paid on transactions split as custom.">
-                        <span className="text-cream-100/60">Custom split paid</span>
-                      </Tooltip>
-                      <span className="text-cream-100 font-mono">
-                        {formatCurrency(profile.customSplitPaid)}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-cream-100/60">Owed paid (for others)</span>
-                      <span className="text-cream-100 font-mono">
-                        {formatCurrency(profile.owedPaid)}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-cream-100/60">Liquidations paid</span>
-                      <span className="text-cream-100 font-mono">
-                        {formatCurrency(profile.owedPaid)}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between border-t border-cream-500/10 pt-2 mt-1">
-                      <span className="font-semibold text-cream-50">Paid total</span>
-                      <span className="font-bold text-cream-50 font-mono">
-                        {formatCurrency(profile.paidTotal)}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2 rounded-xl border border-cream-500/5 bg-obsidian-900/40 p-3">
-                    <div className="text-[10px] font-bold uppercase tracking-widest text-cream-100/30">
-                      What had to be paid
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <Tooltip label="Total share this person should cover based on custom split percentages.">
-                        <span className="text-cream-100/60">Custom split share</span>
-                      </Tooltip>
-                      <span className="text-cream-100 font-mono">
-                        {formatCurrency(profile.customSplitShare)}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-cream-100/60">Owed expenses</span>
-                      <span className="text-cream-100 font-mono">
-                        {formatCurrency(profile.owedTransactions)}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between border-t border-cream-500/10 pt-2 mt-1">
-                      <span className="font-semibold text-cream-50">To pay total</span>
-                      <span className="font-bold text-cream-50 font-mono">
-                        {formatCurrency(profile.toPayTotal)}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2 rounded-xl border border-cream-500/5 bg-obsidian-900/40 p-3">
-                    <div className="text-[10px] font-bold uppercase tracking-widest text-cream-100/30">
-                      What was received
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-cream-100/60">Liquidations received</span>
-                      <span className="text-cream-100 font-mono">
-                        {formatCurrency(profile.liquidationsReceived)}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between border-t border-cream-500/10 pt-2 mt-1">
-                      <span className="font-semibold text-cream-50">Received total</span>
-                      <span className="font-bold text-cream-50 font-mono">
-                        {formatCurrency(profile.receivedTotal)}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between border-t border-cream-500/15 pt-3 mt-2">
-                    <span className="font-display font-semibold text-cream-200">Person net</span>
-                    <span className={`font-display font-bold ${profile.net >= 0 ? 'text-sage-400' : 'text-coral-400'}`}>
-                      {formatCurrency(profile.net)}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
         ) : null}
       </section>
 
