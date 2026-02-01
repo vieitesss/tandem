@@ -1,7 +1,7 @@
 const path = require("path");
 const { mkdir, readFile, readdir, stat } = require("fs/promises");
 const { createClient } = require("@supabase/supabase-js");
-const { normalizeDataDir, resolveDataDir } = require("../src/utils/paths");
+const { resolveDataDir } = require("../src/utils/paths");
 
 const PAGE_SIZE = 1000;
 const INSERT_CHUNK_SIZE = 500;
@@ -179,7 +179,8 @@ const fetchAllRows = async ({ supabase, table }) => {
   const data = [];
   let from = 0;
 
-  while (true) {
+  let hasMore = true;
+  while (hasMore) {
     let query = supabase
       .from(table.name)
       .select(columns)
@@ -195,12 +196,14 @@ const fetchAllRows = async ({ supabase, table }) => {
     }
 
     if (!batch || batch.length === 0) {
-      break;
+      hasMore = false;
+      continue;
     }
 
     data.push(...batch);
     if (batch.length < PAGE_SIZE) {
-      break;
+      hasMore = false;
+      continue;
     }
 
     from += PAGE_SIZE;
