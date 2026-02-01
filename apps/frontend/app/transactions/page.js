@@ -121,7 +121,7 @@ export default function TransactionsPage() {
 
     filteredTransactions.forEach((transaction) => {
       const type = transaction.type;
-      if (type && totals.hasOwnProperty(type)) {
+      if (type && Object.prototype.hasOwnProperty.call(totals, type)) {
         totals[type] += Number(transaction.amount) || 0;
       }
     });
