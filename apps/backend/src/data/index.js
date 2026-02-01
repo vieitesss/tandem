@@ -68,9 +68,9 @@ const acquireLock = async (dataDir) => {
 
   // Store lock file outside PGlite data dir to avoid conflicts.
   // If the data dir is at the filesystem root, fall back to the data dir itself.
-  const parsedPath = path.parse(absoluteDataDir);
   const parentDir = path.dirname(absoluteDataDir);
-  const lockDir = parentDir === parsedPath.root ? absoluteDataDir : parentDir;
+  const lockDir =
+    parentDir === path.parse(absoluteDataDir).root ? absoluteDataDir : parentDir;
   const lockPath = path.join(lockDir, ".tandem.lock");
   const lockInfo = {
     pid: process.pid,
