@@ -1,0 +1,154 @@
+const express = require("express");
+const { normalizeId } = require("../lib/ids");
+
+const createCategoriesRouter = ({ db }) => {
+  const router = express.Router();
+
+  // GET /categories/init - Initialize categories table (run once)
+  router.get("/categories/init", async (_req, res) => {
+    // Try to insert default categories (will skip if they already exist due to unique constraint)
+    const defaultCategories = [
+      { label: "Groceries", icon: "🛒", is_default: true },
+      { label: "Rent", icon: "🏠", is_default: true },
+      { label: "Utilities", icon: "💡", is_default: true },
+      { label: "Restaurants", icon: "🍽️", is_default: true },
+      { label: "Transport", icon: "🚗", is_default: true },
+      { label: "Health", icon: "🩺", is_default: true },
+      { label: "Entertainment", icon: "🎬", is_default: true },
+      { label: "Travel", icon: "✈️", is_default: true },
+      { label: "Shopping", icon: "🛍️", is_default: true },
+      { label: "Subscriptions", icon: "📦", is_default: true },
+      { label: "Salary", icon: "💼", is_default: true },
+      { label: "Freelance", icon: "🧑‍💻", is_default: true },
+      { label: "Gifts", icon: "🎁", is_default: true },
+      { label: "Pets", icon: "🐾", is_default: true },
+      { label: "Education", icon: "🎓", is_default: true },
+      { label: "Insurance", icon: "🛡️", is_default: true },
+      { label: "Home", icon: "🧹", is_default: true },
+      { label: "Kids", icon: "🧸", is_default: true },
+      { label: "Taxes", icon: "🧾", is_default: true },
+      { label: "Other", icon: "🧩", is_default: true },
+    ];
+
+    const { data, error } = await db.insertCategoriesIfMissing(defaultCategories);
+
+    if (error) {
+      return res.status(500).json({ error: error.message });
+    }
+
+    return res.json({
+      message: "Categories initialized",
+      inserted: data?.length || 0,
+      total: defaultCategories.length,
+    });
+  });
+
+  // GET /categories - Fetch all categories
+  router.get("/categories", async (_req, res) => {
+    const { data, error } = await db.listCategories();
+
+    if (error) {
+      return res.status(500).json({ error: error.message });
+    }
+
+    return res.json(data);
+  });
+
+  // POST /categories - Create a new category
+  router.post("/categories", async (req, res) => {
+    const { label, icon } = req.body;
+
+    if (!label || !label.trim()) {
+      return res.status(400).json({ error: "Label is required." });
+    }
+
+    if (!icon || !icon.trim()) {
+      return res.status(400).json({ error: "Icon is required." });
+    }
+
+    const { data, error } = await db.insertCategory({
+      label: label.trim(),
+      icon: icon.trim(),
+      is_default: false,
+    });
+
+    if (error) {
+      if (error.code === "23505") {
+        return res.status(400).json({ error: "Category already exists." });
+      }
+      return res.status(500).json({ error: error.message });
+    }
+
+    return res.status(201).json(data);
+  });
+
+  // PATCH /categories/:id - Update a category
+  router.patch("/categories/:id", async (req, res) => {
+    const categoryId = normalizeId(req.params.id);
+
+    if (!categoryId || Number.isNaN(categoryId)) {
+      return res.status(400).json({ error: "Invalid category ID." });
+    }
+
+    const { label, icon } = req.body;
+
+    if (!label && !icon) {
+      return res.status(400).json({ error: "No updates provided." });
+    }
+
+    const updates = {};
+    if (label) {
+      updates.label = label.trim();
+    }
+    if (icon) {
+      updates.icon = icon.trim();
+    }
+
+    const { data, error } = await db.updateCategory(categoryId, updates);
+
+    if (error) {
+      if (error.code === "23505") {
+        return res.status(400).json({ error: "Category label already exists." });
+      }
+      return res.status(500).json({ error: error.message });
+    }
+
+    if (!data) {
+      return res.status(404).json({ error: "Category not found." });
+    }
+
+    return res.json(data);
+  });
+
+  // DELETE /categories/:id - Delete a category
+  router.delete("/categories/:id", async (req, res) => {
+    const categoryId = normalizeId(req.params.id);
+
+    if (!categoryId || Number.isNaN(categoryId)) {
+      return res.status(400).json({ error: "Invalid category ID." });
+    }
+
+    // Check if it's a default category
+    const { data: existing, error: fetchError } = await db.getCategoryById(categoryId);
+
+    if (fetchError) {
+      return res.status(500).json({ error: fetchError.message });
+    }
+
+    if (!existing) {
+      return res.status(404).json({ error: "Category not found." });
+    }
+
+    const { error } = await db.deleteCategory(categoryId);
+
+    if (error) {
+      return res.status(500).json({ error: error.message });
+    }
+
+    return res.json({ id: categoryId });
+  });
+
+  return router;
+};
+
+module.exports = { createCategoriesRouter };
