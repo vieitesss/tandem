@@ -53,6 +53,43 @@ app.get("/realtime", (req, res) => {
   });
 });
 
+app.get("/changes", async (req, res) => {
+  if (!db || typeof db.getChangesSince !== "function") {
+    return res.status(500).json({ error: "Database not ready." });
+  }
+
+  const sinceParam = req.query.since;
+  const since = Number(sinceParam ?? 0);
+
+  if (Number.isNaN(since) || since < 0) {
+    return res.status(400).json({ error: "Since cursor must be a non-negative number." });
+  }
+
+  const tablesParam = req.query.tables;
+  const tables = Array.isArray(tablesParam)
+    ? tablesParam
+    : typeof tablesParam === "string"
+      ? tablesParam.split(",")
+      : [];
+  const normalizedTables = tables
+    .map((table) => String(table || "").trim())
+    .filter((table) => table.length > 0);
+
+  const { latest_id, has_changes, error } = await db.getChangesSince({
+    since,
+    tables: normalizedTables,
+  });
+
+  if (error) {
+    return res.status(500).json({ error: error.message });
+  }
+
+  return res.json({
+    latest_id: latest_id || 0,
+    has_changes: Boolean(has_changes),
+  });
+});
+
 const normalizeId = (value) => {
   if (value === undefined || value === null || value === "") {
     return null;

@@ -70,6 +70,21 @@ const createPgliteAdapter = ({ pg, emitChange }) => {
     }
   };
 
+  const logChange = async (tableName, rowId, action) => {
+    try {
+      const { rows } = await pg.query(
+        "INSERT INTO changes (table_name, row_id, action) VALUES ($1, $2, $3) RETURNING id",
+        [tableName, rowId ?? null, action]
+      );
+      return rows?.[0]?.id ?? null;
+    } catch (error) {
+      console.warn(
+        `Failed to log change for ${tableName}: ${error?.message || "Unknown error"}`
+      );
+      return null;
+    }
+  };
+
   const getProfileCount = async () => {
     try {
       const { rows } = await pg.query("SELECT COUNT(*)::int AS count FROM profiles");
@@ -122,6 +137,7 @@ const createPgliteAdapter = ({ pg, emitChange }) => {
         `INSERT INTO profiles (display_name, default_split) VALUES ${values} RETURNING id`,
         params
       );
+      await logChange("profiles", null, "insert");
       notify("profiles");
       return { data: normalizeRows(rows), error: null };
     } catch (error) {
@@ -135,6 +151,8 @@ const createPgliteAdapter = ({ pg, emitChange }) => {
         "INSERT INTO profiles (display_name, default_split) VALUES ($1, $2) RETURNING id",
         [profile.display_name, profile.default_split]
       );
+      const profileId = rows?.[0]?.id ?? null;
+      await logChange("profiles", profileId, "insert");
       notify("profiles");
       return { data: rows?.[0] ?? null, error: null };
     } catch (error) {
@@ -155,6 +173,7 @@ const createPgliteAdapter = ({ pg, emitChange }) => {
         }`,
         [...params, id]
       );
+      await logChange("profiles", id, "update");
       notify("profiles");
       return { error: null };
     } catch (error) {
@@ -165,6 +184,7 @@ const createPgliteAdapter = ({ pg, emitChange }) => {
   const clearTransactionSplits = async () => {
     try {
       await pg.query("DELETE FROM transaction_splits");
+      await logChange("transaction_splits", null, "delete");
       notify("transaction_splits");
       return { error: null };
     } catch (error) {
@@ -175,6 +195,7 @@ const createPgliteAdapter = ({ pg, emitChange }) => {
   const clearTransactions = async () => {
     try {
       await pg.query("DELETE FROM transactions");
+      await logChange("transactions", null, "delete");
       notify("transactions");
       return { error: null };
     } catch (error) {
@@ -259,6 +280,8 @@ const createPgliteAdapter = ({ pg, emitChange }) => {
           payload.type,
         ]
       );
+      const transactionId = rows?.[0]?.id ?? null;
+      await logChange("transactions", transactionId, "insert");
       notify("transactions");
       return { data: normalizeRowDates(rows?.[0]) ?? null, error: null };
     } catch (error) {
@@ -291,6 +314,7 @@ const createPgliteAdapter = ({ pg, emitChange }) => {
         } RETURNING id, payer_id, beneficiary_id, split_mode, amount, category, date, note, type`,
         [...params, id]
       );
+      await logChange("transactions", id, "update");
       notify("transactions");
       return { data: rows?.[0] ?? null, error: null };
     } catch (error) {
@@ -301,6 +325,7 @@ const createPgliteAdapter = ({ pg, emitChange }) => {
   const deleteTransaction = async (id) => {
     try {
       await pg.query("DELETE FROM transactions WHERE id = $1", [id]);
+      await logChange("transactions", id, "delete");
       notify("transactions");
       return { error: null };
     } catch (error) {
@@ -352,6 +377,7 @@ const createPgliteAdapter = ({ pg, emitChange }) => {
         `INSERT INTO transaction_splits (transaction_id, user_id, amount) VALUES ${values}`,
         params
       );
+      await logChange("transaction_splits", null, "insert");
       notify("transaction_splits");
       return { error: null };
     } catch (error) {
@@ -373,6 +399,7 @@ const createPgliteAdapter = ({ pg, emitChange }) => {
           ]);
         }
       });
+      await logChange("transaction_splits", null, "update");
       notify("transaction_splits");
       return { error: null };
     } catch (error) {
@@ -383,6 +410,7 @@ const createPgliteAdapter = ({ pg, emitChange }) => {
   const deleteTransactionSplitsByTransactionId = async (id) => {
     try {
       await pg.query("DELETE FROM transaction_splits WHERE transaction_id = $1", [id]);
+      await logChange("transaction_splits", null, "delete");
       notify("transaction_splits");
       return { error: null };
     } catch (error) {
@@ -415,6 +443,7 @@ const createPgliteAdapter = ({ pg, emitChange }) => {
         };
       }
 
+      await logChange("categories", rows?.[0]?.id ?? null, "insert");
       notify("categories");
       return { data: rows[0] || null, error: null };
     } catch (error) {
@@ -435,8 +464,12 @@ const createPgliteAdapter = ({ pg, emitChange }) => {
         } RETURNING id, label, icon, is_default`,
         [...params, id]
       );
+      const updatedCategory = rows?.[0] ?? null;
+      if (updatedCategory) {
+        await logChange("categories", updatedCategory.id ?? id, "update");
+      }
       notify("categories");
-      return { data: rows?.[0] ?? null, error: null };
+      return { data: updatedCategory, error: null };
     } catch (error) {
       return { data: null, error: normalizeError(error) };
     }
@@ -457,6 +490,7 @@ const createPgliteAdapter = ({ pg, emitChange }) => {
   const deleteCategory = async (id) => {
     try {
       await pg.query("DELETE FROM categories WHERE id = $1", [id]);
+      await logChange("categories", id, "delete");
       notify("categories");
       return { error: null };
     } catch (error) {
@@ -481,11 +515,59 @@ const createPgliteAdapter = ({ pg, emitChange }) => {
         params
       );
       if (rows && rows.length > 0) {
+        await logChange("categories", null, "insert");
         notify("categories");
       }
       return { data: rows, error: null };
     } catch (error) {
       return { data: null, error: normalizeError(error) };
+    }
+  };
+
+  const getChangesSince = async ({ since, tables }) => {
+    const normalizedSince = Number(since || 0);
+    if (Number.isNaN(normalizedSince) || normalizedSince < 0) {
+      return {
+        latest_id: 0,
+        has_changes: false,
+        error: normalizeError("Invalid since cursor."),
+      };
+    }
+
+    try {
+      const tableFilters = [];
+      const tableParams = [];
+
+      if (tables && tables.length > 0) {
+        tableParams.push(tables);
+        tableFilters.push(`table_name = ANY($${tableParams.length}::text[])`);
+      }
+
+      const latestQuery = `SELECT MAX(id)::bigint AS latest_id FROM changes${
+        tableFilters.length ? ` WHERE ${tableFilters.join(" AND ")}` : ""
+      }`;
+      const { rows: latestRows } = await pg.query(latestQuery, tableParams);
+      const latestId = latestRows?.[0]?.latest_id
+        ? Number(latestRows[0].latest_id)
+        : 0;
+
+      const changeFilters = ["id > $1"];
+      const changeParams = [normalizedSince];
+
+      if (tables && tables.length > 0) {
+        changeParams.push(tables);
+        changeFilters.push(`table_name = ANY($${changeParams.length}::text[])`);
+      }
+
+      const changeQuery = `SELECT 1 FROM changes WHERE ${changeFilters.join(
+        " AND "
+      )} LIMIT 1`;
+      const { rows: changeRows } = await pg.query(changeQuery, changeParams);
+      const hasChanges = Array.isArray(changeRows) && changeRows.length > 0;
+
+      return { latest_id: latestId, has_changes: hasChanges, error: null };
+    } catch (error) {
+      return { latest_id: 0, has_changes: false, error: normalizeError(error) };
     }
   };
 
@@ -516,6 +598,7 @@ const createPgliteAdapter = ({ pg, emitChange }) => {
     getCategoryById,
     deleteCategory,
     insertCategoriesIfMissing,
+    getChangesSince,
   };
 };
 

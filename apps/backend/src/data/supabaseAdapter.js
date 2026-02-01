@@ -5,6 +5,34 @@ const createSupabaseAdapter = ({ supabase, emitChange }) => {
     }
   };
 
+  const logChange = async (tableName, rowId, action) => {
+    try {
+      const { data, error } = await supabase
+        .from("changes")
+        .insert({
+          table_name: tableName,
+          row_id: rowId ?? null,
+          action,
+        })
+        .select("id")
+        .single();
+
+      if (error) {
+        console.warn(
+          `Failed to log change for ${tableName}: ${error.message || "Unknown error"}`
+        );
+        return null;
+      }
+
+      return data?.id ?? null;
+    } catch (error) {
+      console.warn(
+        `Failed to log change for ${tableName}: ${error?.message || "Unknown error"}`
+      );
+      return null;
+    }
+  };
+
   const getProfileCount = async () => {
     const { count, error } = await supabase
       .from("profiles")
@@ -42,6 +70,7 @@ const createSupabaseAdapter = ({ supabase, emitChange }) => {
       .select("id");
 
     if (!error) {
+      await logChange("profiles", null, "insert");
       notify("profiles");
     }
 
@@ -56,6 +85,7 @@ const createSupabaseAdapter = ({ supabase, emitChange }) => {
       .single();
 
     if (!error) {
+      await logChange("profiles", data?.id ?? null, "insert");
       notify("profiles");
     }
 
@@ -69,6 +99,7 @@ const createSupabaseAdapter = ({ supabase, emitChange }) => {
       .eq("id", id);
 
     if (!error) {
+      await logChange("profiles", id, "update");
       notify("profiles");
     }
 
@@ -79,6 +110,7 @@ const createSupabaseAdapter = ({ supabase, emitChange }) => {
     const { error } = await supabase.from("transaction_splits").delete().neq("id", 0);
 
     if (!error) {
+      await logChange("transaction_splits", null, "delete");
       notify("transaction_splits");
     }
 
@@ -89,6 +121,7 @@ const createSupabaseAdapter = ({ supabase, emitChange }) => {
     const { error } = await supabase.from("transactions").delete().neq("id", 0);
 
     if (!error) {
+      await logChange("transactions", null, "delete");
       notify("transactions");
     }
 
@@ -148,6 +181,7 @@ const createSupabaseAdapter = ({ supabase, emitChange }) => {
       .single();
 
     if (!error) {
+      await logChange("transactions", data?.id ?? null, "insert");
       notify("transactions");
     }
 
@@ -173,6 +207,7 @@ const createSupabaseAdapter = ({ supabase, emitChange }) => {
       .single();
 
     if (!error) {
+      await logChange("transactions", data?.id ?? id, "update");
       notify("transactions");
     }
 
@@ -183,6 +218,7 @@ const createSupabaseAdapter = ({ supabase, emitChange }) => {
     const { error } = await supabase.from("transactions").delete().eq("id", id);
 
     if (!error) {
+      await logChange("transactions", id, "delete");
       notify("transactions");
     }
 
@@ -219,6 +255,7 @@ const createSupabaseAdapter = ({ supabase, emitChange }) => {
     const { error } = await supabase.from("transaction_splits").insert(rows);
 
     if (!error) {
+      await logChange("transaction_splits", null, "insert");
       notify("transaction_splits");
     }
 
@@ -237,6 +274,7 @@ const createSupabaseAdapter = ({ supabase, emitChange }) => {
     const splitError = results.find((result) => result.error);
 
     if (!splitError) {
+      await logChange("transaction_splits", null, "update");
       notify("transaction_splits");
     }
 
@@ -250,6 +288,7 @@ const createSupabaseAdapter = ({ supabase, emitChange }) => {
       .eq("transaction_id", id);
 
     if (!error) {
+      await logChange("transaction_splits", null, "delete");
       notify("transaction_splits");
     }
 
@@ -274,6 +313,7 @@ const createSupabaseAdapter = ({ supabase, emitChange }) => {
       .single();
 
     if (!error) {
+      await logChange("categories", data?.id ?? null, "insert");
       notify("categories");
     }
 
@@ -289,6 +329,9 @@ const createSupabaseAdapter = ({ supabase, emitChange }) => {
       .single();
 
     if (!error) {
+      if (data) {
+        await logChange("categories", data.id ?? id, "update");
+      }
       notify("categories");
     }
 
@@ -309,6 +352,7 @@ const createSupabaseAdapter = ({ supabase, emitChange }) => {
     const { error } = await supabase.from("categories").delete().eq("id", id);
 
     if (!error) {
+      await logChange("categories", id, "delete");
       notify("categories");
     }
 
@@ -326,10 +370,57 @@ const createSupabaseAdapter = ({ supabase, emitChange }) => {
       .select("id");
 
     if (!error && data && data.length > 0) {
+      await logChange("categories", null, "insert");
       notify("categories");
     }
 
     return { data, error };
+  };
+
+  const getChangesSince = async ({ since, tables }) => {
+    const normalizedSince = Number(since || 0);
+    if (Number.isNaN(normalizedSince) || normalizedSince < 0) {
+      return {
+        latest_id: 0,
+        has_changes: false,
+        error: { message: "Invalid since cursor." },
+      };
+    }
+
+    let latestQuery = supabase
+      .from("changes")
+      .select("id")
+      .order("id", { ascending: false })
+      .limit(1);
+
+    if (tables && tables.length > 0) {
+      latestQuery = latestQuery.in("table_name", tables);
+    }
+
+    const { data: latestData, error: latestError } = await latestQuery;
+    if (latestError) {
+      return { latest_id: 0, has_changes: false, error: latestError };
+    }
+
+    const latestId = latestData && latestData[0] ? Number(latestData[0].id || 0) : 0;
+
+    let hasQuery = supabase
+      .from("changes")
+      .select("id")
+      .gt("id", normalizedSince)
+      .limit(1);
+
+    if (tables && tables.length > 0) {
+      hasQuery = hasQuery.in("table_name", tables);
+    }
+
+    const { data: hasData, error: hasError } = await hasQuery;
+    if (hasError) {
+      return { latest_id: latestId, has_changes: false, error: hasError };
+    }
+
+    const hasChanges = Array.isArray(hasData) && hasData.length > 0;
+    return { latest_id: latestId, has_changes: hasChanges, error: null };
   };
 
   return {
@@ -359,6 +450,7 @@ const createSupabaseAdapter = ({ supabase, emitChange }) => {
     getCategoryById,
     deleteCategory,
     insertCategoriesIfMissing,
+    getChangesSince,
   };
 };
 

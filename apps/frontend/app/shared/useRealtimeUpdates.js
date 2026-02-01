@@ -10,6 +10,7 @@ export const useRealtimeUpdates = ({
     return process.env.NEXT_PUBLIC_SSE_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL || null;
   });
   const [hasRealtimeUpdate, setHasRealtimeUpdate] = useState(false);
+  const [changeCursor, setChangeCursor] = useState(0);
   const tablesKey = useMemo(() => {
     if (!Array.isArray(tables)) {
       return "";
@@ -21,6 +22,26 @@ export const useRealtimeUpdates = ({
     () => (tablesKey ? tablesKey.split("|") : []),
     [tablesKey]
   );
+  const storageKey = useMemo(() => {
+    return tablesKey ? `realtime:changes:${tablesKey}` : "realtime:changes:all";
+  }, [tablesKey]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+
+    const stored = window.localStorage.getItem(storageKey);
+    const parsed = Number(stored);
+
+    if (Number.isNaN(parsed) || parsed < 0) {
+      setChangeCursor(0);
+      return undefined;
+    }
+
+    setChangeCursor(parsed);
+    return undefined;
+  }, [storageKey]);
 
   const refreshNow = useCallback(() => {
     setHasRealtimeUpdate(false);
@@ -54,6 +75,68 @@ export const useRealtimeUpdates = ({
 
     return refreshResult;
   }, [onRefresh, preserveScroll]);
+
+  const storeCursor = useCallback(
+    (next) => {
+      const normalized = Number(next);
+      if (Number.isNaN(normalized) || normalized < 0) {
+        return;
+      }
+
+      setChangeCursor(normalized);
+
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(storageKey, String(normalized));
+      }
+    },
+    [storageKey]
+  );
+
+  const checkForChanges = useCallback(async () => {
+    if (tablesList.length === 0) {
+      return null;
+    }
+
+    const params = new URLSearchParams();
+    params.set("since", String(changeCursor || 0));
+    params.set("tables", tablesList.join(","));
+
+    try {
+      const response = await fetch(`/api/changes?${params.toString()}`);
+      if (!response.ok) {
+        return null;
+      }
+
+      const data = await response.json();
+      const latestId = Number(data?.latest_id || 0);
+      const hasChanges = Boolean(data?.has_changes);
+      return { latestId, hasChanges };
+    } catch (error) {
+      return null;
+    }
+  }, [changeCursor, tablesList]);
+
+  const refreshFromChanges = useCallback(async () => {
+    const result = await checkForChanges();
+    if (!result) {
+      await refreshNow();
+      return;
+    }
+
+    const { latestId, hasChanges } = result;
+
+    try {
+      if (hasChanges) {
+        await refreshNow();
+      }
+    } catch (error) {
+      return;
+    }
+
+    if (latestId > 0 && latestId !== changeCursor) {
+      storeCursor(latestId);
+    }
+  }, [checkForChanges, refreshNow, changeCursor, storeCursor]);
 
   useEffect(() => {
     if (resolvedBaseUrl !== null) {
@@ -93,7 +176,7 @@ export const useRealtimeUpdates = ({
 
     const handleRealtimeChange = () => {
       if (typeof document !== "undefined" && document.visibilityState === "visible") {
-        refreshNow();
+        refreshFromChanges();
         return;
       }
 
@@ -121,7 +204,16 @@ export const useRealtimeUpdates = ({
     return () => {
       eventSource.close();
     };
-  }, [channelName, refreshNow, tablesKey, tablesList, resolvedBaseUrl]);
+  }, [channelName, refreshFromChanges, tablesKey, tablesList, resolvedBaseUrl]);
+
+  useEffect(() => {
+    if (tablesList.length === 0) {
+      return undefined;
+    }
+
+    refreshFromChanges();
+    return undefined;
+  }, [refreshFromChanges, tablesKey, tablesList.length]);
 
   useEffect(() => {
     if (typeof document === "undefined") {
@@ -130,7 +222,8 @@ export const useRealtimeUpdates = ({
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible" && hasRealtimeUpdate) {
-        refreshNow();
+        setHasRealtimeUpdate(false);
+        refreshFromChanges();
       }
     };
 
@@ -139,7 +232,7 @@ export const useRealtimeUpdates = ({
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [hasRealtimeUpdate, refreshNow]);
+  }, [hasRealtimeUpdate, refreshFromChanges]);
 
   return { hasRealtimeUpdate, refreshNow };
 };
