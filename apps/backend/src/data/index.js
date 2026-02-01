@@ -62,7 +62,8 @@ const loadSchema = async (pg) => {
 };
 
 const acquireLock = async (dataDir) => {
-  const lockPath = path.join(dataDir, ".pglite.lock");
+  // Store lock file outside PGlite data dir to avoid conflicts
+  const lockPath = path.join(dataDir, "..", ".tandem.lock");
   const lockInfo = {
     pid: process.pid,
     timestamp: new Date().toISOString(),
