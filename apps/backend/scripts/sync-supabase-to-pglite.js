@@ -197,13 +197,13 @@ const fetchAllRows = async ({ supabase, table }) => {
 
     if (!batch || batch.length === 0) {
       hasMore = false;
-      continue;
+      break;
     }
 
     data.push(...batch);
     if (batch.length < PAGE_SIZE) {
       hasMore = false;
-      continue;
+      break;
     }
 
     from += PAGE_SIZE;
