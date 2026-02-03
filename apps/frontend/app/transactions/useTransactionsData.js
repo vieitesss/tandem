@@ -447,7 +447,6 @@ export const useTransactionsData = ({ onRefreshExtras } = {}) => {
       filters.month,
       refreshCurrentView,
       refreshMonthOptions,
-      showExternalToast,
     ]
   );
 
