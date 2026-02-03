@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import DesktopHeaderActions from "../shared/DesktopHeaderActions";
 import SecondaryActions, { SecondaryLink } from "../shared/SecondaryActions";
@@ -24,6 +24,10 @@ export default function TransactionsPage() {
     payerId: "",
     split: "ALL",
   });
+  const filtersRef = useRef(filters);
+  const hasAppliedDefaultMonth = useRef(false);
+  const defaultMonthRequestId = useRef(0);
+  const skipNextFetch = useRef(false);
   const [profiles, setProfiles] = useState([]);
   const [categories, setCategories] = useState(categoryOptions);
   const [savingId, setSavingId] = useState(null);
@@ -92,6 +96,63 @@ export default function TransactionsPage() {
     return Array.from(months).sort((a, b) => b.localeCompare(a));
   }, [transactions]);
 
+  useEffect(() => {
+    filtersRef.current = filters;
+  }, [filters]);
+
+  useEffect(() => {
+    if (
+      hasAppliedDefaultMonth.current ||
+      filters.month ||
+      monthOptions.length === 0 ||
+      status.state !== "idle"
+    ) {
+      return;
+    }
+
+    const defaultMonth = monthOptions[0];
+    defaultMonthRequestId.current += 1;
+    const requestId = defaultMonthRequestId.current;
+    const params = new URLSearchParams();
+
+    params.set("month", defaultMonth);
+    if (filters.type && filters.type !== "ALL") {
+      params.set("type", filters.type);
+    }
+    if (filters.category && filters.category !== "All") {
+      params.set("category", filters.category);
+    }
+
+    fetchJson(`${apiBaseUrl}/transactions?${params.toString()}`)
+      .then(({ data }) => {
+        if (
+          requestId !== defaultMonthRequestId.current ||
+          filtersRef.current.month ||
+          hasAppliedDefaultMonth.current
+        ) {
+          return;
+        }
+
+        hasAppliedDefaultMonth.current = true;
+        skipNextFetch.current = true;
+        setTransactions(Array.isArray(data) ? data : []);
+        setFilters((current) => ({
+          ...current,
+          month: defaultMonth,
+        }));
+      })
+      .catch(() => {
+        // Keep existing list; do not apply default if the fetch fails.
+      });
+  }, [
+    apiBaseUrl,
+    filters.category,
+    filters.month,
+    filters.type,
+    monthOptions,
+    status.state,
+  ]);
+
   const groupedTransactions = useMemo(() => {
     const groups = new Map();
 
@@ -150,6 +211,11 @@ export default function TransactionsPage() {
   }, [apiBaseUrl, queryString]);
 
   useEffect(() => {
+    if (skipNextFetch.current) {
+      skipNextFetch.current = false;
+      return;
+    }
+
     fetchTransactions();
   }, [fetchTransactions]);
 
