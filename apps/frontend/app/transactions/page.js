@@ -7,12 +7,21 @@ import SecondaryActions, { SecondaryLink } from "../shared/SecondaryActions";
 import SelectField from "../shared/SelectField";
 import { fetchJson } from "../shared/api";
 import { formatCurrency, formatMonthLabel } from "../shared/format";
+import { useToast } from "../shared/ToastProvider";
 import { useRealtimeUpdates } from "../shared/useRealtimeUpdates";
 import {
   categoryOptions,
   typeOptions,
 } from "../shared/transactions";
 import TransactionRow from "./TransactionRow";
+import {
+  getCache,
+  getLastUpdatedAt,
+  getLastUpdatedMonth,
+  notifyTransactionsUpdated,
+  setCache,
+  subscribeToTransactionsUpdates,
+} from "./transactionsCache";
 
 export default function TransactionsPage() {
   const [transactions, setTransactions] = useState([]);
@@ -24,14 +33,25 @@ export default function TransactionsPage() {
     payerId: "",
     split: "ALL",
   });
-  const filtersRef = useRef(filters);
-  const hasAppliedDefaultMonth = useRef(false);
-  const defaultMonthRequestId = useRef(0);
   const skipNextFetch = useRef(false);
   const [profiles, setProfiles] = useState([]);
   const [categories, setCategories] = useState(categoryOptions);
   const [savingId, setSavingId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
+  const [monthOptions, setMonthOptions] = useState([]);
+  const [allMonthsSelected, setAllMonthsSelected] = useState(false);
+  const [hasInitialized, setHasInitialized] = useState(false);
+  const initRequestId = useRef(0);
+  const latestMonthRequestId = useRef(0);
+  const latestMonthChecked = useRef(false);
+  const cacheApplied = useRef(false);
+  const shouldRefreshOnInit = useRef(false);
+  const lastSeenUpdate = useRef(0);
+  const lastRefreshAt = useRef(0);
+  const lastNotifiedUpdate = useRef(0);
+  const lastNotifiedMonth = useRef("");
+  const pendingToast = useRef(null);
+  const { showToast } = useToast();
   const [debtSummary, setDebtSummary] = useState({
     state: "idle",
     message: "",
@@ -39,6 +59,7 @@ export default function TransactionsPage() {
   });
 
   const apiBaseUrl = "/api";
+  const queryStringRef = useRef("");
 
   const queryString = useMemo(() => {
     const params = new URLSearchParams();
@@ -84,74 +105,238 @@ export default function TransactionsPage() {
     });
   }, [filters.payerId, filters.split, transactions]);
 
-  const monthOptions = useMemo(() => {
-    const months = new Set();
-
-    transactions.forEach((transaction) => {
-      if (transaction.date) {
-        months.add(transaction.date.slice(0, 7));
-      }
-    });
-
-    return Array.from(months).sort((a, b) => b.localeCompare(a));
-  }, [transactions]);
+  useEffect(() => {
+    queryStringRef.current = queryString;
+  }, [queryString]);
 
   useEffect(() => {
-    filtersRef.current = filters;
-  }, [filters]);
-
-  useEffect(() => {
-    if (
-      hasAppliedDefaultMonth.current ||
-      filters.month ||
-      monthOptions.length === 0 ||
-      status.state !== "idle"
-    ) {
+    if (cacheApplied.current || hasInitialized) {
       return;
     }
 
-    const defaultMonth = monthOptions[0];
-    defaultMonthRequestId.current += 1;
-    const requestId = defaultMonthRequestId.current;
-    const params = new URLSearchParams();
-
-    params.set("month", defaultMonth);
-    if (filters.type && filters.type !== "ALL") {
-      params.set("type", filters.type);
+    cacheApplied.current = true;
+    lastSeenUpdate.current = getLastUpdatedAt();
+    const cached = getCache();
+    if (cached) {
+      const cachedTimestamp = Number(cached.lastUpdatedAt || 0);
+      const latestTimestamp = getLastUpdatedAt();
+      shouldRefreshOnInit.current =
+        latestTimestamp > 0 && latestTimestamp > cachedTimestamp;
+      skipNextFetch.current = true;
+      setTransactions(Array.isArray(cached.transactions) ? cached.transactions : []);
+      setMonthOptions(Array.isArray(cached.monthOptions) ? cached.monthOptions : []);
+      setFilters((current) => ({
+        ...current,
+        month: cached.selectedMonth || "",
+      }));
+      setAllMonthsSelected(Boolean(cached.allMonthsSelected));
+      setStatus({ state: "idle", message: "" });
+      setHasInitialized(true);
+      lastSeenUpdate.current = Math.max(cachedTimestamp, latestTimestamp);
+      lastRefreshAt.current = Date.now();
+      return;
     }
-    if (filters.category && filters.category !== "All") {
-      params.set("category", filters.category);
-    }
 
-    fetchJson(`${apiBaseUrl}/transactions?${params.toString()}`)
-      .then(({ data }) => {
-        if (
-          requestId !== defaultMonthRequestId.current ||
-          filtersRef.current.month ||
-          hasAppliedDefaultMonth.current
-        ) {
+    initRequestId.current += 1;
+    const requestId = initRequestId.current;
+
+    setStatus({ state: "loading", message: "" });
+
+    Promise.all([
+      fetchJson(`${apiBaseUrl}/transactions/months`),
+      fetchJson(`${apiBaseUrl}/transactions/latest-month`),
+    ])
+      .then(([monthsResponse, latestResponse]) => {
+        if (requestId !== initRequestId.current) {
           return;
         }
 
-        hasAppliedDefaultMonth.current = true;
-        skipNextFetch.current = true;
-        setTransactions(Array.isArray(data) ? data : []);
-        setFilters((current) => ({
-          ...current,
-          month: defaultMonth,
-        }));
+        const months = Array.isArray(monthsResponse.data) ? monthsResponse.data : [];
+        const latestMonth = latestResponse.data?.latest_month || null;
+        const normalizedMonths =
+          months.length > 0 ? months : latestMonth ? [latestMonth] : [];
+
+        setMonthOptions(normalizedMonths);
+
+        if (!latestMonth) {
+          setStatus({ state: "idle", message: "" });
+          setHasInitialized(true);
+          setCache({
+            transactions: [],
+            monthOptions: normalizedMonths,
+            selectedMonth: "",
+            allMonthsSelected: false,
+            lastUpdatedAt: Date.now(),
+          });
+          lastSeenUpdate.current = getLastUpdatedAt();
+          lastRefreshAt.current = Date.now();
+          return;
+        }
+
+        fetchJson(`${apiBaseUrl}/transactions?month=${latestMonth}`)
+          .then(({ data }) => {
+            if (requestId !== initRequestId.current) {
+              return;
+            }
+
+            skipNextFetch.current = true;
+            const nextTransactions = Array.isArray(data) ? data : [];
+            setTransactions(nextTransactions);
+            setFilters((current) => ({
+              ...current,
+              month: latestMonth,
+            }));
+            setAllMonthsSelected(false);
+            setStatus({ state: "idle", message: "" });
+            setCache({
+              transactions: nextTransactions,
+              monthOptions: normalizedMonths,
+              selectedMonth: latestMonth,
+              allMonthsSelected: false,
+              lastUpdatedAt: Date.now(),
+            });
+            lastSeenUpdate.current = getLastUpdatedAt();
+            lastRefreshAt.current = Date.now();
+          })
+          .catch(() => {
+            if (requestId !== initRequestId.current) {
+              return;
+            }
+
+            setStatus({ state: "error", message: "Failed to load transactions." });
+          })
+          .finally(() => {
+            if (requestId === initRequestId.current) {
+              setHasInitialized(true);
+              lastRefreshAt.current = Date.now();
+            }
+          });
       })
       .catch(() => {
-        // Keep existing list; do not apply default if the fetch fails.
+        if (requestId !== initRequestId.current) {
+          return;
+        }
+
+        setStatus({ state: "idle", message: "" });
+        setHasInitialized(true);
+        lastRefreshAt.current = Date.now();
       });
-  }, [
-    apiBaseUrl,
-    filters.category,
-    filters.month,
-    filters.type,
-    monthOptions,
-    status.state,
-  ]);
+  }, [apiBaseUrl, hasInitialized]);
+
+  const refreshLatestMonth = useCallback(
+    ({ force = false } = {}) => {
+      if (allMonthsSelected && !force) {
+        return Promise.resolve();
+      }
+
+      latestMonthRequestId.current += 1;
+      const requestId = latestMonthRequestId.current;
+
+      return fetchJson(`${apiBaseUrl}/transactions/latest-month`)
+        .then(({ data }) => {
+          if (requestId !== latestMonthRequestId.current) {
+            return null;
+          }
+
+          const latestMonth = data?.latest_month || null;
+          const currentMonth = filters.month || "";
+
+          if (!latestMonth) {
+            skipNextFetch.current = true;
+            setMonthOptions([]);
+            setTransactions([]);
+            setFilters((current) => ({
+              ...current,
+              month: "",
+            }));
+            setAllMonthsSelected(false);
+            setStatus({ state: "idle", message: "" });
+            setCache({
+              transactions: [],
+              monthOptions: [],
+              selectedMonth: "",
+              allMonthsSelected: false,
+              lastUpdatedAt: Date.now(),
+            });
+            lastRefreshAt.current = Date.now();
+            return null;
+          }
+
+          if (!force && latestMonth <= currentMonth) {
+            return null;
+          }
+
+          setStatus({ state: "loading", message: "" });
+
+          return Promise.all([
+            fetchJson(`${apiBaseUrl}/transactions/months`),
+            fetchJson(`${apiBaseUrl}/transactions?month=${latestMonth}`),
+          ])
+            .then(([monthsResponse, transactionsResponse]) => {
+              if (requestId !== latestMonthRequestId.current) {
+                return null;
+              }
+
+              const months = Array.isArray(monthsResponse.data)
+                ? monthsResponse.data
+                : [];
+              const normalizedMonths =
+                months.length > 0 ? months : [latestMonth];
+              const nextTransactions = Array.isArray(transactionsResponse.data)
+                ? transactionsResponse.data
+                : [];
+
+              skipNextFetch.current = true;
+              setMonthOptions(normalizedMonths);
+              setTransactions(nextTransactions);
+              setFilters((current) => ({
+                ...current,
+                month: latestMonth,
+              }));
+              setAllMonthsSelected(false);
+              setStatus({ state: "idle", message: "" });
+              setCache({
+                transactions: nextTransactions,
+                monthOptions: normalizedMonths,
+                selectedMonth: latestMonth,
+                allMonthsSelected: false,
+                lastUpdatedAt: Date.now(),
+              });
+              lastRefreshAt.current = Date.now();
+              return null;
+            })
+            .catch(() => {
+              if (requestId !== latestMonthRequestId.current) {
+                return null;
+              }
+
+              setStatus({ state: "error", message: "Failed to load transactions." });
+              return null;
+            });
+        })
+        .catch(() => null);
+    },
+    [allMonthsSelected, apiBaseUrl, filters.month]
+  );
+
+  const refreshMonthOptions = useCallback(() => {
+    return fetchJson(`${apiBaseUrl}/transactions/months`)
+      .then(({ data }) => {
+        if (!Array.isArray(data)) {
+          return;
+        }
+
+        setMonthOptions(data);
+        setCache({
+          transactions,
+          monthOptions: data,
+          selectedMonth: filters.month,
+          allMonthsSelected,
+          lastUpdatedAt: Date.now(),
+        });
+      })
+      .catch(() => {});
+  }, [allMonthsSelected, apiBaseUrl, filters.month, transactions]);
 
   const groupedTransactions = useMemo(() => {
     const groups = new Map();
@@ -198,26 +383,238 @@ export default function TransactionsPage() {
 
   const fetchTransactions = useCallback(() => {
     setStatus({ state: "loading", message: "" });
+    const requestQueryString = queryString;
 
-    return fetchJson(`${apiBaseUrl}/transactions${queryString}`)
+    return fetchJson(`${apiBaseUrl}/transactions${requestQueryString}`)
       .then(({ data }) => {
-        setTransactions(Array.isArray(data) ? data : []);
+        if (requestQueryString !== queryStringRef.current) {
+          return;
+        }
+
+        const nextTransactions = Array.isArray(data) ? data : [];
+        setTransactions(nextTransactions);
         setStatus({ state: "idle", message: "" });
+        setCache({
+          transactions: nextTransactions,
+          monthOptions,
+          selectedMonth: filters.month,
+          allMonthsSelected,
+          lastUpdatedAt: Date.now(),
+        });
+        lastSeenUpdate.current = getLastUpdatedAt();
+        lastRefreshAt.current = Date.now();
+
+        if (
+          filters.month &&
+          !allMonthsSelected &&
+          nextTransactions.length === 0
+        ) {
+          refreshLatestMonth({ force: true });
+        }
       })
       .catch(() => {
+        if (requestQueryString !== queryStringRef.current) {
+          return;
+        }
+
         setStatus({ state: "error", message: "Failed to load transactions." });
         setTransactions([]);
       });
-  }, [apiBaseUrl, queryString]);
+  }, [
+    allMonthsSelected,
+    apiBaseUrl,
+    filters.month,
+    monthOptions,
+    queryString,
+    refreshLatestMonth,
+  ]);
 
   useEffect(() => {
+    if (!hasInitialized) {
+      return;
+    }
+
+    if (!filters.month && !allMonthsSelected) {
+      return;
+    }
+
     if (skipNextFetch.current) {
       skipNextFetch.current = false;
       return;
     }
 
     fetchTransactions();
-  }, [fetchTransactions]);
+  }, [allMonthsSelected, fetchTransactions, filters.month, hasInitialized]);
+
+  const refreshCurrentView = useCallback(() => {
+    if (!hasInitialized) {
+      return Promise.resolve();
+    }
+
+    if (!filters.month && !allMonthsSelected) {
+      return refreshLatestMonth({ force: true });
+    }
+
+    return fetchTransactions();
+  }, [
+    allMonthsSelected,
+    fetchTransactions,
+    filters.month,
+    hasInitialized,
+    refreshLatestMonth,
+  ]);
+
+  const showExternalToast = useCallback(
+    (month, timestamp) => {
+      if (!month) {
+        return;
+      }
+
+      const monthLabel = formatMonthLabel(month);
+      showToast(`New transactions in ${monthLabel}.`);
+      lastNotifiedUpdate.current = timestamp;
+      lastNotifiedMonth.current = month;
+    },
+    [showToast]
+  );
+
+  const handleExternalUpdate = useCallback(
+    (updatedMonth) => {
+      const latestTimestamp = getLastUpdatedAt();
+      if (latestTimestamp <= lastSeenUpdate.current) {
+        return;
+      }
+
+      lastSeenUpdate.current = latestTimestamp;
+      refreshMonthOptions();
+
+      if (allMonthsSelected) {
+        refreshCurrentView();
+        return;
+      }
+
+      if (updatedMonth && updatedMonth !== filters.month) {
+        if (
+          latestTimestamp > lastNotifiedUpdate.current ||
+          updatedMonth !== lastNotifiedMonth.current
+        ) {
+          const isVisible =
+            typeof document === "undefined" ||
+            document.visibilityState === "visible";
+
+          if (isVisible) {
+            showExternalToast(updatedMonth, latestTimestamp);
+          } else {
+            pendingToast.current = {
+              month: updatedMonth,
+              timestamp: latestTimestamp,
+            };
+          }
+        }
+        return;
+      }
+
+      refreshCurrentView();
+    },
+    [
+      allMonthsSelected,
+      filters.month,
+      refreshCurrentView,
+      refreshMonthOptions,
+      showExternalToast,
+    ]
+  );
+
+  const refreshOnFocus = useCallback(() => {
+    if (!hasInitialized) {
+      return;
+    }
+
+    const now = Date.now();
+    if (now - lastRefreshAt.current < 2000) {
+      return;
+    }
+
+    if (pendingToast.current) {
+      const { month, timestamp } = pendingToast.current;
+      if (
+        timestamp > lastNotifiedUpdate.current ||
+        month !== lastNotifiedMonth.current
+      ) {
+        showExternalToast(month, timestamp);
+      }
+      pendingToast.current = null;
+    }
+
+    handleExternalUpdate(getLastUpdatedMonth());
+  }, [handleExternalUpdate, hasInitialized, showExternalToast]);
+
+  useEffect(() => {
+    if (!hasInitialized) {
+      return;
+    }
+
+    if (latestMonthChecked.current) {
+      return;
+    }
+
+    latestMonthChecked.current = true;
+    refreshLatestMonth();
+  }, [hasInitialized, refreshLatestMonth]);
+
+  useEffect(() => {
+    if (!hasInitialized) {
+      return;
+    }
+
+    if (!shouldRefreshOnInit.current) {
+      return;
+    }
+
+    shouldRefreshOnInit.current = false;
+    refreshCurrentView();
+  }, [hasInitialized, refreshCurrentView]);
+
+  useEffect(() => {
+    if (!hasInitialized) {
+      return;
+    }
+
+    return subscribeToTransactionsUpdates((event) => {
+      const updatedMonth =
+        typeof event?.month === "string" && event.month.length > 0
+          ? event.month
+          : getLastUpdatedMonth();
+      handleExternalUpdate(updatedMonth);
+    });
+  }, [handleExternalUpdate, hasInitialized]);
+
+  useEffect(() => {
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== "visible") {
+        return;
+      }
+      refreshOnFocus();
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [refreshOnFocus]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.addEventListener("focus", refreshOnFocus);
+    return () => window.removeEventListener("focus", refreshOnFocus);
+  }, [refreshOnFocus]);
 
   useEffect(() => {
     fetchJson(`${apiBaseUrl}/profiles`)
@@ -267,8 +664,12 @@ export default function TransactionsPage() {
   }, [fetchDebtSummary]);
 
   const refreshAll = useCallback(() => {
+    if (!hasInitialized) {
+      return Promise.resolve();
+    }
+
     return Promise.all([fetchTransactions(), fetchDebtSummary()]);
-  }, [fetchTransactions, fetchDebtSummary]);
+  }, [fetchTransactions, fetchDebtSummary, hasInitialized]);
 
   const { hasRealtimeUpdate, refreshNow } = useRealtimeUpdates({
     tables: ["transactions", "transaction_splits"],
@@ -293,11 +694,22 @@ export default function TransactionsPage() {
         throw new Error(data.error || "Failed to update transaction.");
       }
 
-      setTransactions((current) =>
-        current.map((transaction) =>
+      const updatedMonth = data?.date ? String(data.date).slice(0, 7) : "";
+      setTransactions((current) => {
+        const nextTransactions = current.map((transaction) =>
           transaction.id === transactionId ? { ...transaction, ...data } : transaction
-        )
-      );
+        );
+        setCache({
+          transactions: nextTransactions,
+          monthOptions,
+          selectedMonth: filters.month,
+          allMonthsSelected,
+          lastUpdatedAt: Date.now(),
+        });
+        lastSeenUpdate.current = getLastUpdatedAt();
+        return nextTransactions;
+      });
+      notifyTransactionsUpdated({ month: updatedMonth });
 
       return data;
     } finally {
@@ -307,6 +719,7 @@ export default function TransactionsPage() {
 
   const handleDelete = async (transactionId) => {
     setDeletingId(transactionId);
+    let shouldRefreshLatest = false;
 
     try {
       const response = await fetch(`${apiBaseUrl}/transactions/${transactionId}`, {
@@ -319,9 +732,41 @@ export default function TransactionsPage() {
         throw new Error(data.error || "Failed to delete transaction.");
       }
 
-      setTransactions((current) =>
-        current.filter((transaction) => transaction.id !== transactionId)
-      );
+      let deletedMonth = "";
+      setTransactions((current) => {
+        const deletedTransaction = current.find(
+          (transaction) => transaction.id === transactionId
+        );
+        deletedMonth = deletedTransaction?.date
+          ? String(deletedTransaction.date).slice(0, 7)
+          : "";
+        const nextTransactions = current.filter(
+          (transaction) => transaction.id !== transactionId
+        );
+        if (
+          filters.month &&
+          !allMonthsSelected &&
+          deletedMonth &&
+          deletedMonth === filters.month &&
+          nextTransactions.length === 0
+        ) {
+          shouldRefreshLatest = true;
+        }
+        setCache({
+          transactions: nextTransactions,
+          monthOptions,
+          selectedMonth: filters.month,
+          allMonthsSelected,
+          lastUpdatedAt: Date.now(),
+        });
+        lastSeenUpdate.current = getLastUpdatedAt();
+        return nextTransactions;
+      });
+
+      if (shouldRefreshLatest) {
+        refreshLatestMonth({ force: true });
+      }
+      notifyTransactionsUpdated({ month: deletedMonth });
 
       return data;
     } finally {
@@ -517,12 +962,14 @@ export default function TransactionsPage() {
             <SelectField
               className="w-full appearance-none rounded-lg border border-cream-500/20 bg-obsidian-950/80 px-3 py-2 pr-9 text-sm text-cream-50 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30 transition-all duration-200"
               value={filters.month}
-              onChange={(event) =>
+              onChange={(event) => {
+                const nextValue = event.target.value;
                 setFilters((current) => ({
                   ...current,
-                  month: event.target.value,
-                }))
-              }
+                  month: nextValue,
+                }));
+                setAllMonthsSelected(nextValue === "");
+              }}
             >
               <option value="">All months</option>
               {monthOptions.map((month) => (

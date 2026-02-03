@@ -6,6 +6,7 @@ import SelectField from "../shared/SelectField";
 import { useToast } from "../shared/ToastProvider";
 import { normalizeNumberInput } from "../shared/inputs";
 import { categoryOptions } from "../shared/transactions";
+import { notifyTransactionsUpdated } from "./transactionsCache";
 
 const initialSplit = { user_id: "", percent: "" };
 
@@ -278,6 +279,9 @@ export default function TransactionForm() {
       }
 
       showToast("Transaction saved.");
+      notifyTransactionsUpdated({
+        month: payload.date ? String(payload.date).slice(0, 7) : "",
+      });
       setAmount("");
       setCategory("");
       setNote("");
