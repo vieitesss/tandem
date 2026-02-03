@@ -3,18 +3,18 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchJson } from "../shared/api";
 import { formatCurrency } from "../shared/format";
 
+const API_BASE_URL = "/api";
+
 export const useDebtSummary = () => {
   const [debtSummary, setDebtSummary] = useState({
     state: "idle",
     message: "",
     data: null,
   });
-  const apiBaseUrl = "/api";
-
   const refreshDebtSummary = useCallback(() => {
     setDebtSummary({ state: "loading", message: "", data: null });
 
-    return fetchJson(`${apiBaseUrl}/debt-summary`)
+    return fetchJson(`${API_BASE_URL}/debt-summary`)
       .then(({ data }) => {
         if (data?.error) {
           setDebtSummary({ state: "error", message: data.error, data: null });
@@ -30,7 +30,7 @@ export const useDebtSummary = () => {
           data: null,
         });
       });
-  }, [apiBaseUrl]);
+  }, []);
 
   useEffect(() => {
     refreshDebtSummary();
