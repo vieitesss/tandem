@@ -71,6 +71,26 @@ const createTransactionsRouter = ({ db }) => {
     return res.json(response);
   });
 
+  router.get("/transactions/latest-month", async (_req, res) => {
+    const { data, error } = await db.getLatestTransactionMonth();
+
+    if (error) {
+      return res.status(500).json({ error: error.message });
+    }
+
+    return res.json({ latest_month: data || null });
+  });
+
+  router.get("/transactions/months", async (_req, res) => {
+    const { data, error } = await db.listTransactionMonths();
+
+    if (error) {
+      return res.status(500).json({ error: error.message });
+    }
+
+    return res.json(Array.isArray(data) ? data : []);
+  });
+
   router.post("/transactions", async (req, res) => {
     const {
       payer_id,

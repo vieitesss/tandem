@@ -154,6 +154,45 @@ const createSupabaseAdapter = ({ supabase, emitChange }) => {
     return { data, error };
   };
 
+  const getLatestTransactionMonth = async () => {
+    const { data, error } = await supabase
+      .from("transactions")
+      .select("date")
+      .order("date", { ascending: false })
+      .limit(1);
+
+    if (error) {
+      return { data: null, error };
+    }
+
+    const latestDate = data?.[0]?.date;
+    if (!latestDate) {
+      return { data: null, error: null };
+    }
+
+    return { data: String(latestDate).slice(0, 7), error: null };
+  };
+
+  const listTransactionMonths = async () => {
+    const { data, error } = await supabase
+      .from("transactions")
+      .select("date")
+      .order("date", { ascending: false });
+
+    if (error) {
+      return { data: null, error };
+    }
+
+    const months = new Set();
+    data?.forEach((row) => {
+      if (row?.date) {
+        months.add(String(row.date).slice(0, 7));
+      }
+    });
+
+    return { data: Array.from(months), error: null };
+  };
+
   const listTransactionsSince = async (fromDate) => {
     const { data, error } = await supabase
       .from("transactions")
@@ -434,6 +473,8 @@ const createSupabaseAdapter = ({ supabase, emitChange }) => {
     clearTransactions,
     listTransactions,
     listTransactionsSince,
+    getLatestTransactionMonth,
+    listTransactionMonths,
     listTimelineTransactions,
     insertTransaction,
     getTransactionById,
