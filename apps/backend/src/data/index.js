@@ -68,6 +68,26 @@ const getEnvNumber = (value, fallback) => {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
 };
 
+const getLinuxProcessStartTime = async (pid) => {
+  if (process.platform !== "linux") {
+    return null;
+  }
+
+  try {
+    const stat = await readFile(`/proc/${pid}/stat`, "utf8");
+    const closeIndex = stat.lastIndexOf(")");
+    if (closeIndex === -1) {
+      return null;
+    }
+    const after = stat.slice(closeIndex + 2);
+    const parts = after.split(" ");
+    const startTime = Number(parts[19]);
+    return Number.isFinite(startTime) ? startTime : null;
+  } catch (error) {
+    return null;
+  }
+};
+
 const acquireLock = async (dataDir) => {
   const absoluteDataDir = path.isAbsolute(dataDir)
     ? dataDir
@@ -79,10 +99,13 @@ const acquireLock = async (dataDir) => {
   const lockDir =
     parentDir === path.parse(absoluteDataDir).root ? absoluteDataDir : parentDir;
   const lockPath = path.join(lockDir, ".tandem.lock");
+  const processStartMs = Date.now() - process.uptime() * 1000;
+  const processStartTicks = await getLinuxProcessStartTime(process.pid);
   const lockInfo = {
     pid: process.pid,
     timestamp: new Date().toISOString(),
     started_at: new Date().toISOString(),
+    start_time_ticks: processStartTicks,
   };
 
   const waitMs = getEnvNumber(process.env.PGLITE_LOCK_WAIT_MS, 20000);
@@ -110,16 +133,35 @@ const acquireLock = async (dataDir) => {
 
       const existingPid = Number(existing?.pid);
       const existingTimestamp = existing?.started_at || existing?.timestamp;
+      const existingStartTicks = Number(existing?.start_time_ticks);
       let lockActive = false;
 
       if (Number.isFinite(existingPid) && existingPid > 0) {
-        try {
-          process.kill(existingPid, 0);
-          lockActive = true;
-        } catch (killError) {
-          if (killError.code !== "ESRCH") {
-            throw killError;
+        const currentStartTicks = await getLinuxProcessStartTime(existingPid);
+        if (
+          Number.isFinite(existingStartTicks) &&
+          Number.isFinite(currentStartTicks)
+        ) {
+          lockActive = existingStartTicks === currentStartTicks;
+        } else {
+          try {
+            process.kill(existingPid, 0);
+            lockActive = true;
+          } catch (killError) {
+            if (killError.code !== "ESRCH") {
+              throw killError;
+            }
           }
+        }
+      }
+
+      if (lockActive && existingPid === process.pid && existingTimestamp) {
+        const existingStartMs = Date.parse(existingTimestamp);
+        if (
+          Number.isFinite(existingStartMs) &&
+          existingStartMs < processStartMs - 1000
+        ) {
+          lockActive = false;
         }
       }
 
