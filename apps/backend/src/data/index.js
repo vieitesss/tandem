@@ -61,6 +61,13 @@ const loadSchema = async (pg) => {
   await pg.exec(schemaSql);
 };
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const getEnvNumber = (value, fallback) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+};
+
 const acquireLock = async (dataDir) => {
   const absoluteDataDir = path.isAbsolute(dataDir)
     ? dataDir
@@ -75,37 +82,75 @@ const acquireLock = async (dataDir) => {
   const lockInfo = {
     pid: process.pid,
     timestamp: new Date().toISOString(),
+    started_at: new Date().toISOString(),
   };
 
-  try {
-    // Try to read existing lock file
-    const existingLock = await readFile(lockPath, "utf8");
-    const existing = JSON.parse(existingLock);
+  const waitMs = getEnvNumber(process.env.PGLITE_LOCK_WAIT_MS, 20000);
+  const delayMs = getEnvNumber(process.env.PGLITE_LOCK_RETRY_DELAY_MS, 500);
+  const deadline = Date.now() + waitMs;
 
-    // Check if process is still running (Unix-only; may not work reliably on Windows)
+  while (true) {
     try {
-      process.kill(existing.pid, 0); // On Unix, signal 0 checks if process exists
-      throw new Error(
-        `PGlite database at ${dataDir} is already in use by process ${existing.pid} (started ${existing.timestamp}). ` +
-          `PGlite does not support concurrent access. Stop the other process or use a different data directory.`
-      );
+      await writeFile(lockPath, JSON.stringify(lockInfo, null, 2), { flag: "wx" });
+      break;
     } catch (error) {
-      if (error.code === "ESRCH") {
-        // Process doesn't exist, stale lock file
-        console.warn(`Removing stale lock file from process ${existing.pid}`);
-      } else {
+      if (error.code !== "EEXIST") {
         throw error;
       }
-    }
-  } catch (error) {
-    if (error.code !== "ENOENT") {
-      throw error;
-    }
-    // No lock file exists, proceed
-  }
 
-  // Create lock file
-  await writeFile(lockPath, JSON.stringify(lockInfo, null, 2));
+      let existing = null;
+      try {
+        const existingLock = await readFile(lockPath, "utf8");
+        existing = JSON.parse(existingLock);
+      } catch (readError) {
+        if (readError.code !== "ENOENT") {
+          console.warn("Failed to read lock file, retrying:", readError.message);
+        }
+      }
+
+      const existingPid = Number(existing?.pid);
+      const existingTimestamp = existing?.started_at || existing?.timestamp;
+      let lockActive = false;
+
+      if (Number.isFinite(existingPid) && existingPid > 0) {
+        try {
+          process.kill(existingPid, 0);
+          lockActive = true;
+        } catch (killError) {
+          if (killError.code !== "ESRCH") {
+            throw killError;
+          }
+        }
+      }
+
+      if (!lockActive) {
+        console.warn(
+          `Removing stale lock file from process ${existingPid || "unknown"}`
+        );
+        try {
+          await unlink(lockPath);
+        } catch (unlinkError) {
+          if (unlinkError.code !== "ENOENT") {
+            throw unlinkError;
+          }
+        }
+        continue;
+      }
+
+      if (Date.now() >= deadline) {
+        throw new Error(
+          `PGlite database at ${dataDir} is already in use by process ${existingPid} (started ${existingTimestamp || "unknown"}). ` +
+            `PGlite does not support concurrent access. Stop the other process or use a different data directory.`
+        );
+      }
+
+      console.warn(
+        `PGlite lock active for process ${existingPid} (started ${existingTimestamp || "unknown"}). ` +
+          `Retrying in ${delayMs}ms...`
+      );
+      await sleep(delayMs);
+    }
+  }
 
   // Return cleanup function
   return async () => {
