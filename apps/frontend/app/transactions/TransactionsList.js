@@ -28,7 +28,7 @@ export default function TransactionsList({
           <span className="hidden md:block">Split</span>
           <span className="text-right">Amount</span>
         </div>
-        <div className="divide-y divide-cream-500/10 rounded-2xl border border-cream-500/15 bg-obsidian-800/40 shadow-card backdrop-blur-sm">
+        <div className="divide-y divide-cream-500/10 rounded-2xl border border-cream-500/15 bg-obsidian-800/40 shadow-md md:shadow-card md:backdrop-blur-sm">
           {group.items.map((transaction) => (
             <TransactionRow
               key={transaction.id}

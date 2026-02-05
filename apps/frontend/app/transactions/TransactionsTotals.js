@@ -6,7 +6,7 @@ export default function TransactionsTotals({ presentTypes, totalsByType }) {
   }
 
   return (
-    <div className="rounded-xl border border-cream-500/10 bg-obsidian-800/40 p-5 shadow-card backdrop-blur-sm">
+    <div className="rounded-xl border border-cream-500/10 bg-obsidian-800/40 p-5 shadow-md md:shadow-card md:backdrop-blur-sm">
       <div className="mb-3 text-[10px] font-bold uppercase tracking-widest text-cream-100/40">
         Visible totals
       </div>

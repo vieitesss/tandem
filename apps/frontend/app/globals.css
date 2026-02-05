@@ -90,6 +90,13 @@
   }
 }
 
+@media (max-width: 767px) {
+  body::before,
+  body::after {
+    display: none;
+  }
+}
+
 @layer utilities {
   /* Staggered animation delays for lists */
   .stagger-1 { animation-delay: 0.05s; }

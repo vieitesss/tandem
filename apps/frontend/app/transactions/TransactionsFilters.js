@@ -11,7 +11,7 @@ export default function TransactionsFilters({
   onMonthChange,
 }) {
   return (
-    <section className="grid gap-4 rounded-2xl border border-cream-500/15 bg-obsidian-800/40 p-6 shadow-card backdrop-blur-sm md:grid-cols-5 animate-slide-up stagger-2">
+    <section className="grid gap-4 rounded-2xl border border-cream-500/15 bg-obsidian-800/40 p-6 shadow-md md:grid-cols-5 md:shadow-card md:backdrop-blur-sm animate-slide-up stagger-2">
       <label className="space-y-2 text-sm font-medium text-cream-200 tracking-wide">
         Month
         <SelectField

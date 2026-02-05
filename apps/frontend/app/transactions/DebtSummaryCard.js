@@ -1,6 +1,6 @@
 export default function DebtSummaryCard({ debtLine, debtSummary }) {
   return (
-    <section className="space-y-4 rounded-2xl border border-cream-500/15 bg-obsidian-800/40 p-6 shadow-card backdrop-blur-sm animate-slide-up stagger-1">
+    <section className="space-y-4 rounded-2xl border border-cream-500/15 bg-obsidian-800/40 p-6 shadow-md md:shadow-card md:backdrop-blur-sm animate-slide-up stagger-1">
       <div className="space-y-2">
         <p className="text-xs uppercase tracking-wider text-cream-100/50 font-semibold">
           Debt Summary

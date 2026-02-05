@@ -46,7 +46,7 @@ export default function TransactionsPage() {
   };
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-8 px-6 pt-8 pb-[calc(6rem+env(safe-area-inset-bottom))] md:p-8 md:pt-12">
+    <main className="mx-auto flex min-h-[100dvh] max-w-6xl flex-col gap-8 px-6 pt-8 pb-[calc(6rem+env(safe-area-inset-bottom))] md:p-8 md:pt-12">
       <header className="space-y-3 animate-fade-in">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-4">
@@ -97,7 +97,7 @@ export default function TransactionsPage() {
       </header>
 
       {hasRealtimeUpdate ? (
-        <section className="rounded-2xl border border-cream-500/15 bg-obsidian-900/50 p-4 shadow-card backdrop-blur-sm animate-slide-up">
+        <section className="rounded-2xl border border-cream-500/15 bg-obsidian-900/50 p-4 shadow-md md:shadow-card md:backdrop-blur-sm animate-slide-up">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="text-sm text-cream-100/80 font-medium">
               New transactions are available.
