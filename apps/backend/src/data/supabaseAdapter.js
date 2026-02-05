@@ -174,23 +174,46 @@ const createSupabaseAdapter = ({ supabase, emitChange }) => {
   };
 
   const listTransactionMonths = async () => {
-    const { data, error } = await supabase
-      .from("transactions")
-      .select("date")
-      .order("date", { ascending: false });
+    const pageSize = 1000;
+    const months = [];
+    const seenMonths = new Set();
+    let from = 0;
 
-    if (error) {
-      return { data: null, error };
+    while (true) {
+      const { data, error } = await supabase
+        .from("transactions")
+        .select("date")
+        .order("date", { ascending: false })
+        .range(from, from + pageSize - 1);
+
+      if (error) {
+        return { data: null, error };
+      }
+
+      if (!data || data.length === 0) {
+        break;
+      }
+
+      data.forEach((row) => {
+        if (!row?.date) {
+          return;
+        }
+
+        const month = String(row.date).slice(0, 7);
+        if (!seenMonths.has(month)) {
+          seenMonths.add(month);
+          months.push(month);
+        }
+      });
+
+      if (data.length < pageSize) {
+        break;
+      }
+
+      from += pageSize;
     }
 
-    const months = new Set();
-    data?.forEach((row) => {
-      if (row?.date) {
-        months.add(String(row.date).slice(0, 7));
-      }
-    });
-
-    return { data: Array.from(months), error: null };
+    return { data: months, error: null };
   };
 
   const listTransactionsSince = async (fromDate) => {
