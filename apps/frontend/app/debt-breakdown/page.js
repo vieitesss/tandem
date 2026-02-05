@@ -214,7 +214,7 @@ export default function DebtBreakdownPage() {
   } else if (debtBalance?.amount) {
     debtLine = `${
       profileMap.get(debtBalance.from_profile_id)?.display_name || "Partner 1"
-    } owed ${formatCurrency(debtBalance.amount)} to ${
+    } owes ${formatCurrency(debtBalance.amount)} to ${
       profileMap.get(debtBalance.to_profile_id)?.display_name || "Partner 2"
     }`;
   }
