@@ -1,80 +1,63 @@
 import { formatCurrency } from "../shared/format";
 
-export default function TransactionsTotals({ presentTypes, totalsByType }) {
+export default function TransactionsTotals({
+  presentTypes,
+  totalsByType,
+  embedded = false,
+}) {
   if (!presentTypes || presentTypes.length === 0) {
     return null;
   }
 
+  const totals = [
+    {
+      key: "EXPENSE",
+      label: "Expenses",
+      value: totalsByType.EXPENSE || 0,
+      dotClassName: "bg-coral-400",
+    },
+    {
+      key: "INCOME",
+      label: "Income",
+      value: totalsByType.INCOME || 0,
+      dotClassName: "bg-sage-300",
+    },
+    {
+      key: "LIQUIDATION",
+      label: "Liquidation",
+      value: totalsByType.LIQUIDATION || 0,
+      dotClassName: "bg-cream-400",
+    },
+  ];
+
+  const wrapperClassName = embedded
+    ? "rounded-2xl border border-obsidian-600 bg-obsidian-900 p-4"
+    : "rounded-3xl border border-obsidian-600/80 bg-obsidian-800 p-4 shadow-card";
+
   return (
-    <div className="rounded-xl border border-cream-500/10 bg-obsidian-800/40 p-5 shadow-md md:shadow-card md:backdrop-blur-sm">
-      <div className="mb-3 text-[10px] font-bold uppercase tracking-widest text-cream-100/40">
-        Visible totals
+    <div className={wrapperClassName}>
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-cream-400">
+          Visible totals
+        </p>
+        <p className="text-[11px] font-medium text-cream-300">Current filters</p>
       </div>
-      {presentTypes.length === 1 ? (
-        <div className="md:flex md:justify-center">
-          <div className="flex items-center justify-between gap-4 md:flex-col md:items-start md:gap-1">
-            <span
-              className={`text-xs font-medium uppercase tracking-wider ${
-                presentTypes[0] === "EXPENSE"
-                  ? "text-coral-400"
-                  : presentTypes[0] === "INCOME"
-                    ? "text-sage-400"
-                    : "text-cream-50"
-              }`}
-            >
-              {presentTypes[0] === "EXPENSE"
-                ? "Expenses"
-                : presentTypes[0] === "INCOME"
-                  ? "Income"
-                  : "Liquidation"}
-            </span>
-            <span
-              className={`text-base font-mono font-bold ${
-                presentTypes[0] === "EXPENSE"
-                  ? "text-coral-400"
-                  : presentTypes[0] === "INCOME"
-                    ? "text-sage-400"
-                    : "text-cream-50"
-              }`}
-            >
-              {formatCurrency(totalsByType[presentTypes[0]])}
-            </span>
+      <div className="grid gap-2 sm:grid-cols-3">
+        {totals.map((item) => (
+          <div
+            key={item.key}
+            className="rounded-xl border border-obsidian-600 bg-white px-3 py-2"
+          >
+            <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-cream-300">
+              <span className={`h-1.5 w-1.5 rounded-full ${item.dotClassName}`} />
+              {item.label}
+            </p>
+            <p className="mt-1 text-sm font-mono font-bold text-cream-50">
+              {formatCurrency(item.value)}
+            </p>
           </div>
-        </div>
-      ) : (
-        <div className="grid gap-y-3 md:grid-cols-3 md:gap-x-6 md:gap-y-0">
-          {totalsByType.EXPENSE > 0 ? (
-            <div className="flex w-full items-center justify-between gap-4 md:w-auto md:flex-col md:items-start md:justify-self-start md:text-left md:gap-1">
-              <span className="text-xs font-medium uppercase tracking-wider text-coral-400">
-                Expenses
-              </span>
-              <span className="font-mono font-bold text-coral-400">
-                {formatCurrency(totalsByType.EXPENSE)}
-              </span>
-            </div>
-          ) : null}
-          {totalsByType.INCOME > 0 ? (
-            <div className="flex w-full items-center justify-between gap-4 md:w-auto md:flex-col md:items-center md:justify-self-center md:text-center md:gap-1">
-              <span className="text-xs font-medium uppercase tracking-wider text-sage-400">
-                Income
-              </span>
-              <span className="font-mono font-bold text-sage-400">
-                {formatCurrency(totalsByType.INCOME)}
-              </span>
-            </div>
-          ) : null}
-          {totalsByType.LIQUIDATION > 0 ? (
-            <div className="flex w-full items-center justify-between gap-4 md:w-auto md:flex-col md:items-end md:justify-self-end md:text-right md:gap-1">
-              <span className="text-xs font-medium uppercase tracking-wider text-cream-50">
-                Liquidation
-              </span>
-              <span className="font-mono font-bold text-cream-50">
-                {formatCurrency(totalsByType.LIQUIDATION)}
-              </span>
-            </div>
-          ) : null}
-        </div>
-      )}
+        ))}
+      </div>
     </div>
   );
 }

@@ -21,7 +21,7 @@ export default function SelectField({
         {children}
       </select>
       <i
-        className="fas fa-angle-down pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-cream-400"
+        className="fas fa-angle-down pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-cream-400/80"
         aria-hidden
       />
     </div>

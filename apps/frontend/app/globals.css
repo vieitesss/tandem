@@ -11,115 +11,113 @@
     --font-clash: 'Clash Display', system-ui, sans-serif;
     --font-inter: 'Inter', system-ui, sans-serif;
     --font-jetbrains: 'JetBrains Mono', monospace;
-    
-    /* Premium color tokens - lighter, softer palette */
-    --color-bg-primary: #202026;
-    --color-bg-secondary: #28282F;
-    --color-bg-elevated: #32323A;
-    --color-text-primary: #FDF8F0;
-    --color-text-secondary: #F0E5D1;
-    --color-text-muted: #D4C19D;
-    --color-accent-primary: #E5D5B8;
-    --color-accent-secondary: #8BA888;
-    --color-border: rgba(229, 213, 184, 0.15);
+
+    --color-bg-primary: #f8fafc;
+    --color-bg-secondary: #f2f4f7;
+    --color-bg-elevated: #ffffff;
+    --color-text-primary: #0f172a;
+    --color-text-secondary: #1e293b;
+    --color-text-muted: #475467;
+    --color-accent-primary: #2563eb;
+    --color-accent-secondary: #0ea5a4;
+    --color-border: rgba(15, 23, 42, 0.12);
   }
-  
+
+  * {
+    @apply border-obsidian-600/60;
+  }
+
   body {
-    @apply bg-obsidian-800 text-[color:var(--color-text-primary)] font-body;
+    @apply bg-obsidian-900 text-[color:var(--color-text-primary)] font-body;
     position: relative;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    line-height: 1.5;
   }
-  
-  /* Atmospheric background treatment */
+
   body::before {
     content: "";
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
-    height: 60vh;
+    bottom: 0;
     background: radial-gradient(
-      ellipse 100% 50% at 50% 0%,
-      rgba(229, 213, 184, 0.06),
-      transparent
+      circle at 0% 0%,
+      rgba(37, 99, 235, 0.07) 0%,
+      rgba(37, 99, 235, 0) 42%
+    ),
+    radial-gradient(
+      circle at 100% 10%,
+      rgba(14, 165, 164, 0.05) 0%,
+      rgba(14, 165, 164, 0) 38%
     );
     pointer-events: none;
     z-index: 0;
   }
-  
-  /* Subtle noise texture */
+
   body::after {
-    content: "";
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
-    pointer-events: none;
-    z-index: 0;
-    opacity: 0.5;
+    content: none;
   }
-  
-  /* Ensure content is above background */
+
   body > * {
     position: relative;
     z-index: 1;
   }
-  
+
   h1, h2, h3, h4, h5, h6 {
     @apply font-display font-semibold;
     letter-spacing: -0.02em;
+    color: var(--color-text-primary);
   }
-  
-  /* Refined scrollbar */
+
+  :focus-visible {
+    outline: 2px solid rgba(37, 99, 235, 0.7);
+    outline-offset: 2px;
+  }
+
   ::-webkit-scrollbar {
     width: 8px;
+    height: 8px;
   }
-  
+
   ::-webkit-scrollbar-track {
-    @apply bg-obsidian-950;
+    @apply bg-obsidian-900;
   }
-  
+
   ::-webkit-scrollbar-thumb {
-    @apply bg-obsidian-700 rounded-full;
+    @apply bg-obsidian-600 rounded-full;
   }
-  
+
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-cream-600;
+    @apply bg-cream-400;
   }
 }
 
 @media (max-width: 767px) {
-  body::before,
-  body::after {
-    display: none;
+  body::before {
+    opacity: 0.7;
   }
 }
 
 @layer utilities {
-  /* Staggered animation delays for lists */
   .stagger-1 { animation-delay: 0.05s; }
   .stagger-2 { animation-delay: 0.1s; }
   .stagger-3 { animation-delay: 0.15s; }
   .stagger-4 { animation-delay: 0.2s; }
   .stagger-5 { animation-delay: 0.25s; }
   .stagger-6 { animation-delay: 0.3s; }
-  
-  /* Glass morphism effect */
+
   .glass {
-    @apply bg-obsidian-800/40 backdrop-blur-xl border border-white/5;
+    @apply bg-white/85 backdrop-blur-xl border border-obsidian-600/50;
   }
-  
-  /* Gradient border effect */
+
   .border-gradient {
     position: relative;
     background: linear-gradient(var(--color-bg-elevated), var(--color-bg-elevated)) padding-box,
-                linear-gradient(135deg, rgba(184, 153, 104, 0.3), transparent 50%, rgba(184, 153, 104, 0.1)) border-box;
+                linear-gradient(135deg, rgba(37, 99, 235, 0.35), transparent 50%, rgba(14, 165, 164, 0.15)) border-box;
     border: 1px solid transparent;
   }
-  
-  /* Tabular numbers for financial amounts */
+
   .tabular-nums {
     font-feature-settings: "tnum";
     font-variant-numeric: tabular-nums;
@@ -135,6 +133,17 @@
     width: 100%;
     height: 100%;
     object-fit: contain;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 

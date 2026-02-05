@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { normalizeNumberInput } from "../shared/inputs";
-import DesktopHeaderActions from "../shared/DesktopHeaderActions";
+import { InlineMessage, PageHeader, PageShell, SectionCard } from "../shared/PageLayout";
 import SecondaryActions, { SecondaryLink } from "../shared/SecondaryActions";
 import { useToast } from "../shared/ToastProvider";
 import ProfileSetup from "./ProfileSetup";
@@ -138,23 +138,15 @@ export default function ProfilesPage() {
 
   if (isLoading) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 px-6 pt-8 pb-[calc(6rem+env(safe-area-inset-bottom))] md:p-8 md:pt-12">
-        <header className="space-y-3 animate-fade-in">
-          <div className="flex items-center gap-4">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-cream-500/20 to-cream-600/10 border border-cream-500/20 shadow-glow-sm md:h-12 md:w-12">
-              <img
-                src="/icon.png"
-                alt="Tandem"
-                className="h-7 w-7 md:h-8 md:w-8"
-              />
-            </div>
-            <h1 className="text-3xl font-display font-semibold tracking-tight text-cream-50 md:text-4xl">Profiles</h1>
-          </div>
-          <p className="text-sm text-cream-100/60 font-medium tracking-wide">
-            Loading profiles...
-          </p>
-        </header>
-      </main>
+      <PageShell maxWidth="max-w-3xl">
+        <PageHeader
+          title="Profiles"
+          description="Manage default split percentages for each partner."
+          currentPage="profiles"
+          eyebrow="Setup"
+        />
+        <InlineMessage tone="muted">Loading profiles...</InlineMessage>
+      </PageShell>
     );
   }
 
@@ -166,24 +158,13 @@ export default function ProfilesPage() {
   const canAddProfile = profiles.length < 2;
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-8 px-6 pt-8 pb-[calc(6rem+env(safe-area-inset-bottom))] md:p-8 md:pt-12">
-      <header className="space-y-3 animate-fade-in">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-4">
-            <div className="title-icon flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-cream-500/20 to-cream-600/10 border border-cream-500/20 shadow-glow-sm md:h-12 md:w-12">
-              <img
-                src="/icon.png"
-                alt="Tandem"
-                className="title-icon-media"
-              />
-            </div>
-            <h1 className="text-3xl font-display font-semibold tracking-tight text-cream-50 md:text-4xl">Profiles</h1>
-          </div>
-          <DesktopHeaderActions currentPage="profiles" />
-        </div>
-        <p className="text-sm text-cream-100/60 font-medium tracking-wide">
-          Manage default split percentages for each partner
-        </p>
+    <PageShell maxWidth="max-w-3xl">
+      <PageHeader
+        title="Profiles"
+        description="Manage default split percentages for each partner."
+        currentPage="profiles"
+        eyebrow="Setup"
+      >
         <SecondaryActions>
           <SecondaryLink
             href="/categories"
@@ -195,18 +176,18 @@ export default function ProfilesPage() {
             }
           />
         </SecondaryActions>
-      </header>
+      </PageHeader>
 
       {hasTooManyProfiles ? (
-        <section className="rounded-2xl border border-coral-500/30 bg-coral-500/10 p-5 text-sm text-coral-100 shadow-card">
+        <SectionCard className="border-coral-300/60 bg-coral-50 p-5 text-sm text-coral-100">
           This workspace has {profiles.length} profiles. Tandem supports exactly
           two. Remove extras in the database, then refresh the page.
-        </section>
+        </SectionCard>
       ) : null}
 
       {canAddProfile ? (
         <form
-          className="space-y-3 rounded-2xl border border-cream-500/15 bg-obsidian-800/40 p-6 shadow-card backdrop-blur-sm animate-slide-up stagger-1"
+          className="animate-slide-up stagger-1 space-y-3 rounded-3xl border border-obsidian-600/80 bg-obsidian-800 p-6 shadow-card"
           onSubmit={handleCreate}
         >
           <div className="grid gap-3 sm:grid-cols-[1fr_120px_120px]">
@@ -235,7 +216,7 @@ export default function ProfilesPage() {
               }
             />
             <button
-              className="rounded-lg bg-cream-500 px-4 py-2.5 font-display font-semibold text-obsidian-950 shadow-glow-md transition-all duration-300 hover:bg-cream-400 hover:shadow-glow-lg hover:scale-[1.02] active:scale-[0.98]"
+              className="rounded-lg bg-cream-500 px-4 py-2.5 font-display font-semibold text-white shadow-glow-md transition-all duration-300 hover:bg-cream-400 hover:shadow-glow-lg hover:scale-[1.02] active:scale-[0.98]"
               type="submit"
             >
               Add
@@ -243,11 +224,11 @@ export default function ProfilesPage() {
           </div>
         </form>
       ) : (
-        <section className="rounded-2xl border border-cream-500/15 bg-obsidian-800/40 p-6 text-sm text-cream-100/70 shadow-card">
+        <SectionCard className="p-6 text-sm text-cream-300">
           {hasTooManyProfiles
             ? "Profile limit exceeded. Remove extras and reload this page."
             : "Two profiles are already set. Edit them below as needed."}
-        </section>
+        </SectionCard>
       )}
 
       <section className="space-y-4 animate-slide-up stagger-2">
@@ -259,7 +240,7 @@ export default function ProfilesPage() {
             {profiles.map((profile) => (
               <div
                 key={profile.id}
-                className="group relative space-y-4 rounded-2xl border border-cream-500/15 bg-obsidian-800/40 p-5 shadow-card backdrop-blur-sm transition-all duration-300 hover:border-cream-500/25 hover:shadow-elevated"
+                className="group relative space-y-4 rounded-2xl border border-obsidian-600/80 bg-obsidian-800 p-5 shadow-card transition-all duration-300 hover:border-cream-500/25 hover:shadow-elevated"
               >
                 <div className="space-y-2">
                   <label className="text-[10px] font-bold uppercase tracking-widest text-cream-100/40">
@@ -299,7 +280,7 @@ export default function ProfilesPage() {
                   </div>
                 </div>
                 <button
-                  className="w-full flex h-10 items-center justify-center rounded-lg bg-obsidian-700/60 text-xs font-semibold text-cream-200 transition-all duration-300 hover:bg-cream-500 hover:text-obsidian-950 hover:shadow-glow-sm disabled:opacity-50"
+                  className="w-full flex h-10 items-center justify-center rounded-lg bg-obsidian-700/60 text-xs font-semibold text-cream-200 transition-all duration-300 hover:bg-cream-500 hover:text-white hover:shadow-glow-sm disabled:opacity-50"
                   type="button"
                   onClick={() => handleSave(profile)}
                   disabled={savingId === profile.id}
@@ -316,6 +297,6 @@ export default function ProfilesPage() {
         )}
       </section>
 
-    </main>
+    </PageShell>
   );
 }

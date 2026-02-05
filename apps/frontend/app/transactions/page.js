@@ -1,7 +1,7 @@
 "use client";
 
-import DesktopHeaderActions from "../shared/DesktopHeaderActions";
 import SecondaryActions, { SecondaryLink } from "../shared/SecondaryActions";
+import { InlineMessage, PageHeader, PageShell, SectionCard } from "../shared/PageLayout";
 import TransactionsFilters from "./TransactionsFilters";
 import TransactionsList from "./TransactionsList";
 import TransactionsTotals from "./TransactionsTotals";
@@ -30,6 +30,8 @@ export default function TransactionsPage() {
   } = useTransactionsData({ onRefreshExtras: refreshDebtSummary });
   const { filteredTransactions, groupedTransactions, totalsByType, presentTypes } =
     useTransactionsViewModel({ transactions, filters });
+  const showVisibleTotals =
+    status.state === "idle" && filteredTransactions.length > 0;
   const handleFilterChange = (key, value) => {
     setFilters((current) => ({
       ...current,
@@ -46,24 +48,13 @@ export default function TransactionsPage() {
   };
 
   return (
-    <main className="mx-auto flex min-h-[100dvh] max-w-6xl flex-col gap-8 px-6 pt-8 pb-[calc(6rem+env(safe-area-inset-bottom))] md:p-8 md:pt-12">
-      <header className="space-y-3 animate-fade-in">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-4">
-            <div className="title-icon flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-cream-500/20 to-cream-600/10 border border-cream-500/20 shadow-glow-sm md:h-12 md:w-12">
-              <img
-                src="/icon.png"
-                alt="Tandem"
-                className="title-icon-media"
-              />
-            </div>
-            <h1 className="text-3xl font-display font-semibold tracking-tight text-cream-50 md:text-4xl">Transactions</h1>
-          </div>
-          <DesktopHeaderActions currentPage="transactions" />
-        </div>
-        <p className="text-sm text-cream-100/60 font-medium tracking-wide">
-          Review every transaction and filter by month, type, category, or payer
-        </p>
+    <PageShell>
+      <PageHeader
+        title="Transactions"
+        description="Review every transaction and filter by month, type, category, or payer."
+        currentPage="transactions"
+        eyebrow="Ledger"
+      >
         <SecondaryActions>
           <SecondaryLink
             href="/timeline"
@@ -94,35 +85,48 @@ export default function TransactionsPage() {
             }
           />
         </SecondaryActions>
-      </header>
+      </PageHeader>
 
       {hasRealtimeUpdate ? (
-        <section className="rounded-2xl border border-cream-500/15 bg-obsidian-900/50 p-4 shadow-md md:shadow-card md:backdrop-blur-sm animate-slide-up">
+        <SectionCard className="animate-slide-up p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="text-sm text-cream-100/80 font-medium">
+            <div className="text-sm text-cream-300 font-medium">
               New transactions are available.
             </div>
             <button
-              className="rounded-full border border-cream-400/40 bg-cream-500/10 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-cream-100/80 transition-colors duration-200 hover:border-cream-300 hover:text-cream-50"
+              className="rounded-full border border-obsidian-600 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-cream-200 transition-colors duration-200 hover:border-cream-500/35 hover:bg-obsidian-900"
               type="button"
               onClick={refreshNow}
             >
               Refresh now
             </button>
           </div>
-        </section>
+        </SectionCard>
       ) : null}
 
-      <DebtSummaryCard debtLine={debtLine} debtSummary={debtSummary} />
+      <SectionCard className="p-4">
+        <div
+          className={`grid gap-4 ${
+            showVisibleTotals ? "xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]" : ""
+          }`}
+        >
+          <DebtSummaryCard
+            debtLine={debtLine}
+            debtSummary={debtSummary}
+            embedded
+            fillHeight={showVisibleTotals}
+          />
+          {showVisibleTotals ? (
+            <TransactionsTotals
+              presentTypes={presentTypes}
+              totalsByType={totalsByType}
+              embedded
+            />
+          ) : null}
+        </div>
+      </SectionCard>
 
       <section className="space-y-4">
-        {status.state === "idle" && filteredTransactions.length > 0 ? (
-          <TransactionsTotals
-            presentTypes={presentTypes}
-            totalsByType={totalsByType}
-          />
-        ) : null}
-
         <TransactionsFilters
           filters={filters}
           monthOptions={monthOptions}
@@ -133,15 +137,15 @@ export default function TransactionsPage() {
         />
 
         {status.state === "loading" ? (
-          <p className="text-sm text-cream-100/60 font-medium">Loading transactions...</p>
+          <InlineMessage tone="muted">Loading transactions...</InlineMessage>
         ) : null}
 
         {status.state === "error" ? (
-          <p className="text-sm text-coral-300 font-medium">{status.message}</p>
+          <InlineMessage tone="error">{status.message}</InlineMessage>
         ) : null}
 
         {status.state === "idle" && filteredTransactions.length === 0 ? (
-          <p className="text-sm text-cream-100/40 font-medium">No transactions found.</p>
+          <InlineMessage tone="muted">No transactions found.</InlineMessage>
         ) : null}
 
         <TransactionsList
@@ -154,6 +158,6 @@ export default function TransactionsPage() {
           onDelete={handleDelete}
         />
       </section>
-    </main>
+    </PageShell>
   );
 }

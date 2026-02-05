@@ -4,44 +4,44 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Premium dark palette with warm undertones - lighter version
+        // Semantic light-first base palette
         obsidian: {
-          950: "#1A1A1E",
-          900: "#202026",
-          800: "#28282F",
-          700: "#32323A",
-          600: "#3E3E48",
+          950: "#FCFCFD",
+          900: "#F8FAFC",
+          800: "#FFFFFF",
+          700: "#EEF2F6",
+          600: "#D9DFEA",
         },
-        // Lighter warm accent (soft cream/beige)
+        // Editorial ink + accent range
         cream: {
-          50: "#FFFCF7",
-          100: "#FDF8F0",
-          200: "#F8F0E3",
-          300: "#F0E5D1",
-          400: "#E5D5B8",
-          500: "#D4C19D",
-          600: "#BFA982",
-          700: "#9E8A6A",
+          50: "#0F172A",
+          100: "#1E293B",
+          200: "#334155",
+          300: "#475467",
+          400: "#64748B",
+          500: "#2563EB",
+          600: "#1D4ED8",
+          700: "#1E40AF",
         },
-        // Sage green for positive financial states
+        // Positive financial states
         sage: {
-          50: "#F4F6F4",
-          100: "#E8EDE8",
-          200: "#D4DDD4",
-          300: "#A8BDA8",
-          400: "#8BA888",
-          500: "#6B8E6B",
-          600: "#577357",
+          50: "#054F31",
+          100: "#05603A",
+          200: "#027A48",
+          300: "#039855",
+          400: "#12B76A",
+          500: "#32D583",
+          600: "#6CE9A6",
         },
-        // Softer coral/salmon for expenses
+        // Expense and danger states
         coral: {
-          50: "#FDF5F4",
-          100: "#FBEAE7",
-          200: "#F6D5CF",
-          300: "#EDB5AA",
-          400: "#E19181",
-          500: "#D47061",
-          600: "#B85A4C",
+          50: "#7A271A",
+          100: "#912018",
+          200: "#B42318",
+          300: "#D92D20",
+          400: "#F04438",
+          500: "#F97066",
+          600: "#FDA29B",
         },
       },
       fontFamily: {
@@ -55,11 +55,11 @@ module.exports = {
         wider: "0.15em",
       },
       boxShadow: {
-        "glow-sm": "0 0 10px rgba(229, 213, 184, 0.1)",
-        "glow-md": "0 0 20px rgba(229, 213, 184, 0.15)",
-        "glow-lg": "0 0 30px rgba(229, 213, 184, 0.2)",
-        "elevated": "0 20px 40px rgba(0, 0, 0, 0.4), 0 0 1px rgba(229, 213, 184, 0.1)",
-        "card": "0 8px 24px rgba(0, 0, 0, 0.3), 0 0 1px rgba(229, 213, 184, 0.08)",
+        "glow-sm": "0 2px 10px rgba(37, 99, 235, 0.15)",
+        "glow-md": "0 6px 18px rgba(37, 99, 235, 0.2)",
+        "glow-lg": "0 12px 28px rgba(37, 99, 235, 0.24)",
+        "elevated": "0 24px 48px rgba(16, 24, 40, 0.14)",
+        "card": "0 8px 24px rgba(16, 24, 40, 0.08)",
       },
       animation: {
         "fade-in": "fadeIn 0.6s ease-out",

@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 
 import { normalizeNumberInput } from "../shared/inputs";
+import { PageHeader, PageShell, SectionCard } from "../shared/PageLayout";
 import { useToast } from "../shared/ToastProvider";
 
 const initialProfiles = [
@@ -96,39 +97,23 @@ export default function ProfileSetup({ onComplete }) {
   };
 
   const inputClassName = (hasError) =>
-    `w-full rounded-lg border bg-obsidian-950/70 px-3 py-2.5 text-sm text-cream-50 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-cream-500/30 ${
-      hasError ? "border-coral-400" : "border-cream-500/20 hover:border-cream-500/30"
+    `w-full rounded-lg border bg-obsidian-900 px-3 py-2.5 text-sm text-cream-50 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-cream-500/30 ${
+      hasError ? "border-coral-400" : "border-obsidian-600 hover:border-cream-500/30"
     }`;
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-8 px-6 pt-8 pb-[calc(6rem+env(safe-area-inset-bottom))] md:p-8 md:pt-12">
-      <header className="space-y-4 animate-fade-in">
-        <div className="flex items-center gap-4">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-cream-500/20 to-cream-600/10 border border-cream-500/20 shadow-glow-sm md:h-12 md:w-12">
-            <img src="/icon.png" alt="Tandem" className="h-7 w-7 md:h-8 md:w-8" />
-          </div>
-          <div>
-            <p className="text-xs uppercase tracking-wider text-cream-100/50 font-semibold">
-              First time setup
-            </p>
-            <h1 className="text-3xl font-display font-semibold tracking-tight text-cream-50 md:text-4xl">
-              Create two profiles
-            </h1>
-          </div>
-        </div>
-        <p className="text-sm text-cream-100/60 font-medium tracking-wide">
-          Tandem works with two partners only. Add both names and how you split shared expenses.
-        </p>
-      </header>
+    <PageShell maxWidth="max-w-4xl">
+      <PageHeader
+        title="Create two profiles"
+        description="Tandem works with two partners only. Add both names and how you split shared expenses."
+        eyebrow="First time setup"
+      />
 
-      <section className="rounded-2xl border border-coral-500/20 bg-coral-500/10 p-4 text-xs text-coral-100/90">
+      <SectionCard className="border-coral-300/60 bg-coral-50 p-4 text-xs text-coral-100">
         Creating profiles resets existing transactions in this workspace.
-      </section>
+      </SectionCard>
 
-      <form
-        className="space-y-6 rounded-2xl border border-cream-500/15 bg-obsidian-800/40 p-6 shadow-card backdrop-blur-sm animate-slide-up"
-        onSubmit={handleSubmit}
-      >
+      <SectionCard as="form" className="animate-slide-up space-y-6 p-6" onSubmit={handleSubmit}>
         <div className="grid gap-4 md:grid-cols-2">
           {profiles.map((profile, index) => {
             const showNameError =
@@ -138,7 +123,7 @@ export default function ProfileSetup({ onComplete }) {
             return (
               <div
                 key={`profile-${index}`}
-                className="space-y-4 rounded-2xl border border-cream-500/10 bg-obsidian-950/40 p-5"
+                className="space-y-4 rounded-2xl border border-obsidian-600/80 bg-obsidian-900 p-5"
               >
                 <div className="text-xs font-bold uppercase tracking-widest text-cream-100/50">
                   Profile {index + 1}
@@ -187,8 +172,8 @@ export default function ProfileSetup({ onComplete }) {
           })}
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-cream-500/10 bg-obsidian-950/40 px-4 py-3 text-sm">
-          <span className="text-cream-100/60 font-medium">Total split</span>
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-obsidian-600 bg-obsidian-900 px-4 py-3 text-sm">
+          <span className="text-cream-300 font-medium">Total split</span>
           <span
             className={`font-mono font-semibold ${
               hasInvalidTotal && hasTriedSubmit
@@ -201,14 +186,14 @@ export default function ProfileSetup({ onComplete }) {
         </div>
 
         <button
-          className="w-full rounded-lg bg-cream-500 px-4 py-3 font-display font-semibold text-obsidian-950 shadow-glow-md transition-all duration-300 hover:bg-cream-400 hover:shadow-glow-lg hover:scale-[1.01] active:scale-[0.98] disabled:opacity-60 disabled:hover:scale-100"
+          className="w-full rounded-lg bg-cream-500 px-4 py-3 font-display font-semibold text-white shadow-glow-md transition-all duration-300 hover:bg-cream-400 hover:shadow-glow-lg hover:scale-[1.01] active:scale-[0.98] disabled:opacity-60 disabled:hover:scale-100"
           type="submit"
           disabled={isSaving}
         >
           {isSaving ? "Saving..." : "Create profiles"}
         </button>
 
-      </form>
-    </main>
+      </SectionCard>
+    </PageShell>
   );
 }

@@ -11,11 +11,11 @@ export default function TransactionsFilters({
   onMonthChange,
 }) {
   return (
-    <section className="grid gap-4 rounded-2xl border border-cream-500/15 bg-obsidian-800/40 p-6 shadow-md md:grid-cols-5 md:shadow-card md:backdrop-blur-sm animate-slide-up stagger-2">
-      <label className="space-y-2 text-sm font-medium text-cream-200 tracking-wide">
+    <section className="animate-slide-up stagger-2 grid gap-4 rounded-3xl border border-obsidian-600/80 bg-obsidian-800 p-6 shadow-card md:grid-cols-5">
+      <label className="space-y-2 text-sm font-medium tracking-wide text-cream-200">
         Month
         <SelectField
-          className="w-full appearance-none rounded-lg border border-cream-500/20 bg-obsidian-950/80 px-3 py-2 pr-9 text-sm text-cream-50 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30 transition-all duration-200"
+          className="w-full appearance-none rounded-lg border border-obsidian-600 bg-obsidian-900 px-3 py-2 pr-9 text-sm text-cream-50 transition-all duration-200 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30"
           value={filters.month}
           onChange={onMonthChange}
         >
@@ -27,10 +27,10 @@ export default function TransactionsFilters({
           ))}
         </SelectField>
       </label>
-      <label className="space-y-2 text-sm font-medium text-cream-200 tracking-wide">
+      <label className="space-y-2 text-sm font-medium tracking-wide text-cream-200">
         Type
         <SelectField
-          className="w-full appearance-none rounded-lg border border-cream-500/20 bg-obsidian-950/80 px-3 py-2 pr-9 text-sm text-cream-50 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30 transition-all duration-200"
+          className="w-full appearance-none rounded-lg border border-obsidian-600 bg-obsidian-900 px-3 py-2 pr-9 text-sm text-cream-50 transition-all duration-200 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30"
           value={filters.type}
           onChange={(event) => onFilterChange("type", event.target.value)}
         >
@@ -41,10 +41,10 @@ export default function TransactionsFilters({
           ))}
         </SelectField>
       </label>
-      <label className="space-y-2 text-sm font-medium text-cream-200 tracking-wide">
+      <label className="space-y-2 text-sm font-medium tracking-wide text-cream-200">
         Category
         <SelectField
-          className="w-full appearance-none rounded-lg border border-cream-500/20 bg-obsidian-950/80 px-3 py-2 pr-9 text-sm text-cream-50 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30 transition-all duration-200"
+          className="w-full appearance-none rounded-lg border border-obsidian-600 bg-obsidian-900 px-3 py-2 pr-9 text-sm text-cream-50 transition-all duration-200 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30"
           value={filters.category}
           onChange={(event) => onFilterChange("category", event.target.value)}
         >
@@ -55,10 +55,10 @@ export default function TransactionsFilters({
           ))}
         </SelectField>
       </label>
-      <label className="space-y-2 text-sm font-medium text-cream-200 tracking-wide">
+      <label className="space-y-2 text-sm font-medium tracking-wide text-cream-200">
         Paid by
         <SelectField
-          className="w-full appearance-none rounded-lg border border-cream-500/20 bg-obsidian-950/80 px-3 py-2 pr-9 text-sm text-cream-50 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30 transition-all duration-200"
+          className="w-full appearance-none rounded-lg border border-obsidian-600 bg-obsidian-900 px-3 py-2 pr-9 text-sm text-cream-50 transition-all duration-200 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30"
           value={filters.payerId}
           onChange={(event) => onFilterChange("payerId", event.target.value)}
         >
@@ -70,10 +70,10 @@ export default function TransactionsFilters({
           ))}
         </SelectField>
       </label>
-      <label className="space-y-2 text-sm font-medium text-cream-200 tracking-wide">
+      <label className="space-y-2 text-sm font-medium tracking-wide text-cream-200">
         Split type
         <SelectField
-          className="w-full appearance-none rounded-lg border border-cream-500/20 bg-obsidian-950/80 px-3 py-2 pr-9 text-sm text-cream-50 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30 transition-all duration-200"
+          className="w-full appearance-none rounded-lg border border-obsidian-600 bg-obsidian-900 px-3 py-2 pr-9 text-sm text-cream-50 transition-all duration-200 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30"
           value={filters.split}
           onChange={(event) => onFilterChange("split", event.target.value)}
         >

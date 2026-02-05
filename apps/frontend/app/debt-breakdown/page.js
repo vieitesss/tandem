@@ -2,11 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import DesktopHeaderActions from "../shared/DesktopHeaderActions";
 import { fetchJson } from "../shared/api";
 import { useRealtimeUpdates } from "../shared/useRealtimeUpdates";
 import Tooltip from "../shared/Tooltip";
 import { formatCurrency, formatMonthLabel } from "../shared/format";
+import { InlineMessage, PageHeader, PageShell, SectionCard } from "../shared/PageLayout";
 
 const getTitleForTransaction = (transaction) => {
   if (!transaction) {
@@ -220,43 +220,28 @@ export default function DebtBreakdownPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-8 px-6 pt-8 pb-[calc(6rem+env(safe-area-inset-bottom))] md:p-8 md:pt-12">
-      <header className="space-y-5 animate-fade-in">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="title-icon flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-cream-500/20 to-cream-600/10 border border-cream-500/20 shadow-glow-sm md:h-12 md:w-12">
-              <img
-                src="/icon.png"
-                alt="Tandem"
-                className="title-icon-media"
-              />
-            </div>
-            <h1 className="text-2xl font-display font-semibold text-cream-50 tracking-tight md:text-3xl">Debt Breakdown</h1>
-          </div>
-          <DesktopHeaderActions currentPage="" />
+    <PageShell>
+      <PageHeader
+        title="Debt Breakdown"
+        description="Every number is shown with its source: expenses paid, custom split shares, owed transactions, and liquidations."
+        eyebrow="Analysis"
+      />
+
+      <SectionCard className="p-6">
+        <div className="space-y-2">
+          <p className="text-sm text-cream-200 font-medium leading-relaxed">
+            Net = what was paid - what had to be paid - what was received.
+          </p>
+          <p className="text-sm text-cream-300 font-medium">{debtLine}</p>
+          <p className="text-xs text-cream-300 font-medium">All-time</p>
         </div>
-        <div className="flex flex-wrap items-end justify-between gap-4 rounded-2xl border border-cream-500/15 bg-obsidian-800/40 p-6 shadow-card backdrop-blur-sm">
-          <div className="space-y-2">
-            <p className="text-sm text-cream-100 font-medium leading-relaxed">
-              Every number is shown with its source: expenses paid, custom split
-              shares, owed transactions, and liquidations.
-            </p>
-            <p className="text-xs text-cream-100/60 font-medium">
-              Net = what was paid - what had to be paid - what was received
-            </p>
-            <p className="text-xs text-cream-100/60 font-medium">
-              {debtLine}
-            </p>
-            <p className="text-xs text-cream-100/60 font-medium">All-time</p>
-          </div>
-        </div>
-      </header>
+      </SectionCard>
 
       {debtSummary.state === "loading" ? (
-        <p className="text-sm text-cream-100/60 font-medium">Loading debt breakdown...</p>
+        <InlineMessage tone="muted">Loading debt breakdown...</InlineMessage>
       ) : null}
       {debtSummary.state === "error" ? (
-        <p className="text-sm text-coral-300 font-medium">{debtSummary.message}</p>
+        <InlineMessage tone="error">{debtSummary.message}</InlineMessage>
       ) : null}
 
       {debtSummary.state === "idle" ? (
@@ -526,6 +511,6 @@ export default function DebtBreakdownPage() {
           </div>
         </section>
       ) : null}
-    </main>
+    </PageShell>
   );
 }

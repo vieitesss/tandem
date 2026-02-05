@@ -2,10 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import DesktopHeaderActions from "../shared/DesktopHeaderActions";
 import { fetchJson } from "../shared/api";
 import { useRealtimeUpdates } from "../shared/useRealtimeUpdates";
 import { formatCurrency, formatMonthLabel } from "../shared/format";
+import { InlineMessage, PageHeader, PageShell } from "../shared/PageLayout";
 
 const emptySummary = {
   profiles: [],
@@ -62,40 +62,23 @@ export default function PersonSummaryPage() {
   }, [summary.monthly_summary]);
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-8 px-6 pt-8 pb-[calc(6rem+env(safe-area-inset-bottom))] md:p-8 md:pt-12">
-      <header className="space-y-3 animate-fade-in">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-4">
-            <div className="title-icon flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-cream-500/20 to-cream-600/10 border border-cream-500/20 shadow-glow-sm md:h-12 md:w-12">
-              <img src="/icon.png" alt="Tandem" className="title-icon-media" />
-            </div>
-            <h1 className="text-3xl font-display font-semibold tracking-tight text-cream-50 md:text-4xl">
-              Summary
-            </h1>
-          </div>
-          <DesktopHeaderActions currentPage="" />
-        </div>
-        <p className="text-sm text-cream-100/60 font-medium tracking-wide">
-          Monthly breakdown of spending, income, and net balance per person
-        </p>
-      </header>
+    <PageShell>
+      <PageHeader
+        title="Summary"
+        description="Monthly breakdown of spending, income, and net balance per person."
+        eyebrow="Analysis"
+      />
 
       {status === "error" ? (
-        <p className="text-sm text-coral-300 font-medium">
-          Unable to load person summary.
-        </p>
+        <InlineMessage tone="error">Unable to load person summary.</InlineMessage>
       ) : null}
 
       {status === "loading" ? (
-        <p className="text-sm text-cream-100/60 font-medium">
-          Loading person summary...
-        </p>
+        <InlineMessage tone="muted">Loading person summary...</InlineMessage>
       ) : null}
 
       {status === "idle" && monthGroups.length === 0 ? (
-        <p className="text-sm text-cream-100/60 font-medium">
-          No transaction data available yet.
-        </p>
+        <InlineMessage tone="muted">No transaction data available yet.</InlineMessage>
       ) : null}
 
       {status === "idle" && monthGroups.length > 0 ? (
@@ -103,7 +86,7 @@ export default function PersonSummaryPage() {
           {monthGroups.map((month) => (
             <div
               key={month.month}
-              className="rounded-2xl border border-cream-500/15 bg-obsidian-800/40 p-6 shadow-card backdrop-blur-sm"
+              className="rounded-3xl border border-obsidian-600/80 bg-obsidian-800 p-6 shadow-card"
             >
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-display font-semibold text-cream-50 tracking-tight">
@@ -120,7 +103,7 @@ export default function PersonSummaryPage() {
                   return (
                     <div
                       key={profile.profile_id}
-                      className="rounded-2xl border border-cream-500/10 bg-obsidian-900/60 p-4 space-y-3"
+                      className="rounded-2xl border border-obsidian-600/70 bg-obsidian-900 p-4 space-y-3"
                     >
                       <div className="text-xs font-bold uppercase tracking-wider text-cream-500/80">
                         {profileName}
@@ -201,6 +184,6 @@ export default function PersonSummaryPage() {
           ))}
         </section>
       ) : null}
-    </main>
+    </PageShell>
   );
 }

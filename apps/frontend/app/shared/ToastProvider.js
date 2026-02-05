@@ -58,10 +58,10 @@ export function ToastProvider({ children }) {
           aria-live="polite"
         >
           <div
-            className={`rounded-2xl border px-4 py-3 text-sm font-semibold text-obsidian-950 shadow-glow-md backdrop-blur-md animate-fade-in ${
+            className={`animate-fade-in rounded-2xl border px-4 py-3 text-sm font-semibold text-white shadow-card ${
               toast.tone === "error"
-                ? "border-coral-400/50 bg-coral-400/90"
-                : "border-sage-400/40 bg-sage-400/90"
+                ? "border-coral-200 bg-coral-300"
+                : "border-sage-100 bg-sage-200"
             }`}
             role="status"
           >
