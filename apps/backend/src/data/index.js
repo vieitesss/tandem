@@ -68,6 +68,42 @@ const getEnvNumber = (value, fallback) => {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
 };
 
+const getLinuxClockInfo = async () => {
+  if (process.platform !== "linux") {
+    return null;
+  }
+
+  try {
+    const uptimeRaw = await readFile("/proc/uptime", "utf8");
+    const uptimeSeconds = Number(uptimeRaw.split(" ")[0]);
+    if (!Number.isFinite(uptimeSeconds)) {
+      return null;
+    }
+
+    const selfStartTicks = await getLinuxProcessStartTime(process.pid);
+    if (!Number.isFinite(selfStartTicks)) {
+      return null;
+    }
+
+    const processStartSinceBoot = uptimeSeconds - process.uptime();
+    if (!Number.isFinite(processStartSinceBoot) || processStartSinceBoot <= 0) {
+      return null;
+    }
+
+    const ticksPerSecond = selfStartTicks / processStartSinceBoot;
+    if (!Number.isFinite(ticksPerSecond) || ticksPerSecond <= 0) {
+      return null;
+    }
+
+    return {
+      bootTimeMs: Date.now() - uptimeSeconds * 1000,
+      ticksPerSecond,
+    };
+  } catch (error) {
+    return null;
+  }
+};
+
 const getLinuxProcessStartTime = async (pid) => {
   if (process.platform !== "linux") {
     return null;
@@ -88,6 +124,83 @@ const getLinuxProcessStartTime = async (pid) => {
   }
 };
 
+const getLinuxProcessStartTimeMs = async (pid, clockInfo) => {
+  if (!clockInfo) {
+    return null;
+  }
+
+  const startTicks = await getLinuxProcessStartTime(pid);
+  if (!Number.isFinite(startTicks)) {
+    return null;
+  }
+
+  return clockInfo.bootTimeMs + (startTicks / clockInfo.ticksPerSecond) * 1000;
+};
+
+const parsePostmasterPid = (contents) => {
+  const lines = String(contents).trim().split(/\r?\n/);
+  const pid = Number(lines[0]);
+  const startTimeSeconds = Number(lines[2]);
+  return {
+    pid: Number.isFinite(pid) ? pid : null,
+    startTimeSeconds: Number.isFinite(startTimeSeconds) ? startTimeSeconds : null,
+  };
+};
+
+const ensurePostmasterPidCleared = async (dataDir, clockInfo) => {
+  const pidPath = path.join(dataDir, "postmaster.pid");
+
+  let contents = null;
+  try {
+    contents = await readFile(pidPath, "utf8");
+  } catch (error) {
+    if (error.code !== "ENOENT") {
+      throw error;
+    }
+    return;
+  }
+
+  const { pid, startTimeSeconds } = parsePostmasterPid(contents);
+  if (!pid) {
+    return;
+  }
+
+  let active = false;
+  const fileStartMs = Number.isFinite(startTimeSeconds)
+    ? startTimeSeconds * 1000
+    : null;
+  const processStartMs = await getLinuxProcessStartTimeMs(pid, clockInfo);
+
+  if (Number.isFinite(processStartMs) && Number.isFinite(fileStartMs)) {
+    active = Math.abs(processStartMs - fileStartMs) <= 2000;
+  } else {
+    try {
+      process.kill(pid, 0);
+      active = true;
+    } catch (error) {
+      if (error.code !== "ESRCH") {
+        throw error;
+      }
+    }
+  }
+
+  if (active) {
+    throw new Error(
+      `PGlite database at ${dataDir} is already in use by process ${pid}. ` +
+        `Stop the other process or remove ${pidPath} if it is stale.`
+    );
+  }
+
+  console.warn(`Removing stale postmaster.pid from process ${pid}`);
+  try {
+    await unlink(pidPath);
+  } catch (error) {
+    if (error.code !== "ENOENT") {
+      throw error;
+    }
+  }
+};
+
 const acquireLock = async (dataDir) => {
   const absoluteDataDir = path.isAbsolute(dataDir)
     ? dataDir
@@ -100,6 +213,7 @@ const acquireLock = async (dataDir) => {
     parentDir === path.parse(absoluteDataDir).root ? absoluteDataDir : parentDir;
   const lockPath = path.join(lockDir, ".tandem.lock");
   const processStartMs = Date.now() - process.uptime() * 1000;
+  const clockInfo = await getLinuxClockInfo();
   const processStartTicks = await getLinuxProcessStartTime(process.pid);
   const lockInfo = {
     pid: process.pid,
@@ -192,6 +306,19 @@ const acquireLock = async (dataDir) => {
       );
       await sleep(delayMs);
     }
+  }
+
+  try {
+    await ensurePostmasterPidCleared(absoluteDataDir, clockInfo);
+  } catch (error) {
+    try {
+      await unlink(lockPath);
+    } catch (unlinkError) {
+      if (unlinkError.code !== "ENOENT") {
+        console.warn("Failed to remove lock file:", unlinkError.message);
+      }
+    }
+    throw error;
   }
 
   // Return cleanup function
