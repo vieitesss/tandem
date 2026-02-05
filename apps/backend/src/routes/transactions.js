@@ -127,6 +127,17 @@ const createTransactionsRouter = ({ db }) => {
         .json({ error: "Liquidation requires a beneficiary." });
     }
 
+    if (
+      isLiquidation &&
+      normalizedBeneficiaryId &&
+      normalizedPayerId &&
+      normalizedBeneficiaryId === normalizedPayerId
+    ) {
+      return res
+        .status(400)
+        .json({ error: "Liquidation requires another profile." });
+    }
+
     if (isIncome && !normalizedBeneficiaryId && !normalizedPayerId) {
       return res.status(400).json({ error: "Income requires a recipient." });
     }
@@ -162,7 +173,7 @@ const createTransactionsRouter = ({ db }) => {
     const payerForInsert = isIncome
       ? normalizedBeneficiaryId || normalizedPayerId
       : normalizedPayerId;
-    const categoryForInsert = isIncome ? null : category;
+    const categoryForInsert = isIncome || isLiquidation ? null : category;
     const splitModeForInsert =
       isIncome || isLiquidation ? "none" : requestedSplitMode;
     const beneficiaryForInsert = isIncome
@@ -239,9 +250,18 @@ const createTransactionsRouter = ({ db }) => {
 
   router.patch("/transactions/:id", async (req, res) => {
     const { id } = req.params;
-    const { payer_id, amount, category, date, note, split_mode, beneficiary_id } =
-      req.body || {};
+    const {
+      payer_id,
+      amount,
+      category,
+      date,
+      note,
+      split_mode,
+      beneficiary_id,
+      splits_percent,
+    } = req.body || {};
     const transactionId = normalizeId(id);
+    const hasSplitsPercentPayload = splits_percent !== undefined;
 
     if (!id || Number.isNaN(transactionId)) {
       return res.status(400).json({ error: "Transaction id must be a number." });
@@ -295,10 +315,12 @@ const createTransactionsRouter = ({ db }) => {
     }
 
     if (category !== undefined) {
-      if (existing.type !== "INCOME" && !category) {
+      if (existing.type === "EXPENSE" && !category) {
         return res.status(400).json({ error: "Category is required." });
       }
-      updates.category = existing.type === "INCOME" ? null : category;
+      updates.category = existing.type === "EXPENSE" ? category : null;
+    } else if (existing.type !== "EXPENSE" && existing.category) {
+      updates.category = null;
     }
 
     if (note !== undefined) {
@@ -316,9 +338,13 @@ const createTransactionsRouter = ({ db }) => {
         return res.status(400).json({ error: "Invalid split mode." });
       }
 
-      if (split_mode === "custom" && existing.split_mode !== "custom") {
+      if (
+        split_mode === "custom" &&
+        existing.split_mode !== "custom" &&
+        !hasSplitsPercentPayload
+      ) {
         return res.status(400).json({
-          error: "Custom splits must be edited in the main form.",
+          error: "Custom split percentages are required.",
         });
       }
 
@@ -331,49 +357,116 @@ const createTransactionsRouter = ({ db }) => {
       }
     }
 
-    if (beneficiary_id !== undefined) {
+    let normalizedSplitsPercent = null;
+
+    if (hasSplitsPercentPayload) {
       if (existing.type !== "EXPENSE") {
         return res
           .status(400)
-          .json({ error: "Beneficiary only applies to expenses." });
+          .json({ error: "Split percentages only apply to expenses." });
       }
 
+      if (updatedSplitMode !== "custom") {
+        return res
+          .status(400)
+          .json({ error: "Split percentages require custom split mode." });
+      }
+
+      if (!Array.isArray(splits_percent) || splits_percent.length === 0) {
+        return res
+          .status(400)
+          .json({ error: "Split percentages are required." });
+      }
+
+      const totalPercent = splits_percent.reduce(
+        (sum, split) => sum + Number(split.percent || 0),
+        0
+      );
+
+      const invalidPercent = splits_percent.some((split) => {
+        const normalizedSplitId = normalizeId(split.user_id);
+        return Number(split.percent || 0) <= 0 || !normalizedSplitId;
+      });
+
+      if (Math.abs(totalPercent - 100) > 0.01 || invalidPercent) {
+        return res
+          .status(400)
+          .json({ error: "Split percentages must total 100%." });
+      }
+
+      normalizedSplitsPercent = splits_percent.map((split) => ({
+        user_id: Number(split.user_id),
+        percent: Number(split.percent || 0),
+      }));
+    }
+
+    if (beneficiary_id !== undefined) {
       const normalizedBeneficiaryId = normalizeId(beneficiary_id);
 
       if (Number.isNaN(normalizedBeneficiaryId)) {
         return res.status(400).json({ error: "Beneficiary must be a number." });
       }
 
-      if (updatedSplitMode !== "owed" && normalizedBeneficiaryId) {
-        return res.status(400).json({ error: "Beneficiary only applies to owed." });
+      if (existing.type === "EXPENSE") {
+        if (updatedSplitMode !== "owed" && normalizedBeneficiaryId) {
+          return res
+            .status(400)
+            .json({ error: "Beneficiary only applies to owed." });
+        }
+      } else if (existing.type === "LIQUIDATION") {
+        if (!normalizedBeneficiaryId) {
+          return res
+            .status(400)
+            .json({ error: "Liquidation requires a beneficiary." });
+        }
+      } else {
+        return res
+          .status(400)
+          .json({ error: "Beneficiary only applies to expenses and liquidations." });
       }
 
       updatedBeneficiaryId = normalizedBeneficiaryId;
       updates.beneficiary_id = normalizedBeneficiaryId;
     }
 
-    if (
-      updatedSplitMode !== "owed" &&
-      (updatedBeneficiaryId || updates.beneficiary_id)
-    ) {
-      updatedBeneficiaryId = null;
-      updates.beneficiary_id = null;
+    if (existing.type === "EXPENSE") {
+      if (
+        updatedSplitMode !== "owed" &&
+        (updatedBeneficiaryId || updates.beneficiary_id)
+      ) {
+        updatedBeneficiaryId = null;
+        updates.beneficiary_id = null;
+      }
+
+      if (updatedSplitMode === "owed" && !updatedBeneficiaryId) {
+        return res
+          .status(400)
+          .json({ error: "Owed expenses need a beneficiary." });
+      }
+
+      if (
+        updatedSplitMode === "owed" &&
+        updatedBeneficiaryId &&
+        updatedBeneficiaryId === updatedPayerId
+      ) {
+        return res
+          .status(400)
+          .json({ error: "Owed expenses need another profile." });
+      }
     }
 
-    if (updatedSplitMode === "owed" && !updatedBeneficiaryId) {
-      return res
-        .status(400)
-        .json({ error: "Owed expenses need a beneficiary." });
-    }
+    if (existing.type === "LIQUIDATION") {
+      if (!updatedBeneficiaryId) {
+        return res
+          .status(400)
+          .json({ error: "Liquidation requires a beneficiary." });
+      }
 
-    if (
-      updatedSplitMode === "owed" &&
-      updatedBeneficiaryId &&
-      updatedBeneficiaryId === updatedPayerId
-    ) {
-      return res
-        .status(400)
-        .json({ error: "Owed expenses need another profile." });
+      if (updatedBeneficiaryId === updatedPayerId) {
+        return res
+          .status(400)
+          .json({ error: "Liquidation requires another profile." });
+      }
     }
 
     if (Object.keys(updates).length === 0) {
@@ -402,10 +495,41 @@ const createTransactionsRouter = ({ db }) => {
       }
     }
 
-    const shouldUpdateSplits =
-      existing.type === "EXPENSE" && updated.split_mode === "custom";
+    const shouldReplaceCustomSplits =
+      existing.type === "EXPENSE" &&
+      updated.split_mode === "custom" &&
+      Array.isArray(normalizedSplitsPercent);
 
-    if (shouldUpdateSplits && amount !== undefined) {
+    if (shouldReplaceCustomSplits) {
+      const { error: clearSplitsError } =
+        await db.deleteTransactionSplitsByTransactionId(transactionId);
+
+      if (clearSplitsError) {
+        return res.status(500).json({ error: clearSplitsError.message });
+      }
+
+      const percentages = normalizedSplitsPercent.map((split) => split.percent);
+      const allocatedAmounts = allocateAmount(updated.amount, percentages);
+      const splitRows = normalizedSplitsPercent.map((split, index) => ({
+        transaction_id: transactionId,
+        user_id: split.user_id,
+        amount: allocatedAmounts[index],
+      }));
+
+      const { error: insertSplitsError } = await db.insertTransactionSplits(splitRows);
+
+      if (insertSplitsError) {
+        return res.status(500).json({ error: insertSplitsError.message });
+      }
+    }
+
+    const shouldRebalanceCustomSplits =
+      existing.type === "EXPENSE" &&
+      updated.split_mode === "custom" &&
+      !shouldReplaceCustomSplits &&
+      amount !== undefined;
+
+    if (shouldRebalanceCustomSplits) {
       const { data: splits, error: splitsError } =
         await db.listTransactionSplitsByTransactionId(transactionId);
 
