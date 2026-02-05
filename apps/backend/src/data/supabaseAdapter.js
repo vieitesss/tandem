@@ -154,6 +154,68 @@ const createSupabaseAdapter = ({ supabase, emitChange }) => {
     return { data, error };
   };
 
+  const getLatestTransactionMonth = async () => {
+    const { data, error } = await supabase
+      .from("transactions")
+      .select("date")
+      .order("date", { ascending: false })
+      .limit(1);
+
+    if (error) {
+      return { data: null, error };
+    }
+
+    const latestDate = data?.[0]?.date;
+    if (!latestDate) {
+      return { data: null, error: null };
+    }
+
+    return { data: String(latestDate).slice(0, 7), error: null };
+  };
+
+  const listTransactionMonths = async () => {
+    const pageSize = 1000;
+    const months = [];
+    const seenMonths = new Set();
+    let from = 0;
+
+    while (true) {
+      const { data, error } = await supabase
+        .from("transactions")
+        .select("date")
+        .order("date", { ascending: false })
+        .range(from, from + pageSize - 1);
+
+      if (error) {
+        return { data: null, error };
+      }
+
+      if (!data || data.length === 0) {
+        break;
+      }
+
+      data.forEach((row) => {
+        if (!row?.date) {
+          return;
+        }
+
+        const month = String(row.date).slice(0, 7);
+        if (!seenMonths.has(month)) {
+          seenMonths.add(month);
+          months.push(month);
+        }
+      });
+
+      if (data.length < pageSize) {
+        break;
+      }
+
+      from += pageSize;
+    }
+
+    return { data: months, error: null };
+  };
+
   const listTransactionsSince = async (fromDate) => {
     const { data, error } = await supabase
       .from("transactions")
@@ -434,6 +496,8 @@ const createSupabaseAdapter = ({ supabase, emitChange }) => {
     clearTransactions,
     listTransactions,
     listTransactionsSince,
+    getLatestTransactionMonth,
+    listTransactionMonths,
     listTimelineTransactions,
     insertTransaction,
     getTransactionById,

@@ -242,6 +242,32 @@ const createPgliteAdapter = ({ pg, emitChange }) => {
     }
   };
 
+  const getLatestTransactionMonth = async () => {
+    try {
+      const { rows } = await pg.query(
+        "SELECT to_char(max(date), 'YYYY-MM') AS latest_month FROM transactions"
+      );
+      const latestMonth = rows?.[0]?.latest_month || null;
+      return { data: latestMonth, error: null };
+    } catch (error) {
+      return { data: null, error: normalizeError(error) };
+    }
+  };
+
+  const listTransactionMonths = async () => {
+    try {
+      const { rows } = await pg.query(
+        "SELECT DISTINCT to_char(date, 'YYYY-MM') AS month FROM transactions ORDER BY month DESC"
+      );
+      const months = Array.isArray(rows)
+        ? rows.map((row) => row.month).filter(Boolean)
+        : [];
+      return { data: months, error: null };
+    } catch (error) {
+      return { data: null, error: normalizeError(error) };
+    }
+  };
+
   const listTransactionsSince = async (fromDate) => {
     try {
       const { rows } = await pg.query(
@@ -582,6 +608,8 @@ const createPgliteAdapter = ({ pg, emitChange }) => {
     clearTransactions,
     listTransactions,
     listTransactionsSince,
+    getLatestTransactionMonth,
+    listTransactionMonths,
     listTimelineTransactions,
     insertTransaction,
     getTransactionById,

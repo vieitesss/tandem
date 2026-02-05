@@ -1,289 +1,49 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-
 import DesktopHeaderActions from "../shared/DesktopHeaderActions";
 import SecondaryActions, { SecondaryLink } from "../shared/SecondaryActions";
-import SelectField from "../shared/SelectField";
-import { fetchJson } from "../shared/api";
-import { formatCurrency, formatMonthLabel } from "../shared/format";
-import { useRealtimeUpdates } from "../shared/useRealtimeUpdates";
-import {
-  categoryOptions,
-  typeOptions,
-} from "../shared/transactions";
-import TransactionRow from "./TransactionRow";
+import TransactionsFilters from "./TransactionsFilters";
+import TransactionsList from "./TransactionsList";
+import TransactionsTotals from "./TransactionsTotals";
+import DebtSummaryCard from "./DebtSummaryCard";
+import { useDebtSummary } from "./useDebtSummary";
+import { useTransactionsData } from "./useTransactionsData";
+import { useTransactionsLookups } from "./useTransactionsLookups";
+import { useTransactionsViewModel } from "./useTransactionsViewModel";
 
 export default function TransactionsPage() {
-  const [transactions, setTransactions] = useState([]);
-  const [status, setStatus] = useState({ state: "idle", message: "" });
-  const [filters, setFilters] = useState({
-    month: "",
-    type: "ALL",
-    category: "All",
-    payerId: "",
-    split: "ALL",
-  });
-  const [profiles, setProfiles] = useState([]);
-  const [categories, setCategories] = useState(categoryOptions);
-  const [savingId, setSavingId] = useState(null);
-  const [deletingId, setDeletingId] = useState(null);
-  const [debtSummary, setDebtSummary] = useState({
-    state: "idle",
-    message: "",
-    data: null,
-  });
-
-  const apiBaseUrl = "/api";
-
-  const queryString = useMemo(() => {
-    const params = new URLSearchParams();
-    if (filters.month) {
-      params.set("month", filters.month);
-    }
-    if (filters.type && filters.type !== "ALL") {
-      params.set("type", filters.type);
-    }
-    if (filters.category && filters.category !== "All") {
-      params.set("category", filters.category);
-    }
-    const query = params.toString();
-    return query ? `?${query}` : "";
-  }, [filters]);
-
-  const filteredTransactions = useMemo(() => {
-    const payerId = filters.payerId ? Number(filters.payerId) : null;
-
-    return transactions.filter((transaction) => {
-      if (payerId && transaction.payer_id !== payerId) {
-        return false;
-      }
-
-      if (filters.split && filters.split !== "ALL") {
-        if (transaction.type !== "EXPENSE") {
-          return false;
-        }
-
-        const splitLabel =
-          transaction.split_mode === "none"
-            ? "PERSONAL"
-            : transaction.split_mode
-                ? String(transaction.split_mode).toUpperCase()
-                : "";
-
-        if (splitLabel !== filters.split) {
-          return false;
-        }
-      }
-
-      return true;
-    });
-  }, [filters.payerId, filters.split, transactions]);
-
-  const monthOptions = useMemo(() => {
-    const months = new Set();
-
-    transactions.forEach((transaction) => {
-      if (transaction.date) {
-        months.add(transaction.date.slice(0, 7));
-      }
-    });
-
-    return Array.from(months).sort((a, b) => b.localeCompare(a));
-  }, [transactions]);
-
-  const groupedTransactions = useMemo(() => {
-    const groups = new Map();
-
-    filteredTransactions.forEach((transaction) => {
-      const monthKey = transaction.date
-        ? transaction.date.slice(0, 7)
-        : "unknown";
-
-      if (!groups.has(monthKey)) {
-        groups.set(monthKey, []);
-      }
-
-      groups.get(monthKey).push(transaction);
-    });
-
-    return Array.from(groups.keys())
-      .sort((a, b) => b.localeCompare(a))
-      .map((month) => ({ month, items: groups.get(month) }));
-  }, [filteredTransactions]);
-
-  const totalsByType = useMemo(() => {
-    const totals = {
-      EXPENSE: 0,
-      INCOME: 0,
-      LIQUIDATION: 0,
-    };
-
-    filteredTransactions.forEach((transaction) => {
-      const type = transaction.type;
-      if (type && Object.prototype.hasOwnProperty.call(totals, type)) {
-        totals[type] += Number(transaction.amount) || 0;
-      }
-    });
-
-    return totals;
-  }, [filteredTransactions]);
-
-  const presentTypes = useMemo(() => {
-    return Object.entries(totalsByType)
-      .filter(([, total]) => total > 0)
-      .map(([type]) => type);
-  }, [totalsByType]);
-
-  const fetchTransactions = useCallback(() => {
-    setStatus({ state: "loading", message: "" });
-
-    return fetchJson(`${apiBaseUrl}/transactions${queryString}`)
-      .then(({ data }) => {
-        setTransactions(Array.isArray(data) ? data : []);
-        setStatus({ state: "idle", message: "" });
-      })
-      .catch(() => {
-        setStatus({ state: "error", message: "Failed to load transactions." });
-        setTransactions([]);
-      });
-  }, [apiBaseUrl, queryString]);
-
-  useEffect(() => {
-    fetchTransactions();
-  }, [fetchTransactions]);
-
-  useEffect(() => {
-    fetchJson(`${apiBaseUrl}/profiles`)
-      .then(({ data }) => {
-        setProfiles(Array.isArray(data) ? data : []);
-      })
-      .catch(() => setProfiles([]));
-  }, [apiBaseUrl]);
-
-  useEffect(() => {
-    fetchJson(`${apiBaseUrl}/categories`)
-      .then(({ data }) => {
-        if (Array.isArray(data) && data.length > 0) {
-          setCategories(data);
-        }
-      })
-      .catch(() => setCategories(categoryOptions));
-  }, [apiBaseUrl]);
-
-  const categoryFilterOptions = useMemo(() => {
-    return ["All", ...categories.map((option) => option.label)];
-  }, [categories]);
-
-  const fetchDebtSummary = useCallback(() => {
-    setDebtSummary({ state: "loading", message: "", data: null });
-
-    return fetchJson(`${apiBaseUrl}/debt-summary`)
-      .then(({ data }) => {
-        if (data?.error) {
-          setDebtSummary({ state: "error", message: data.error, data: null });
-          return;
-        }
-
-        setDebtSummary({ state: "idle", message: "", data });
-      })
-      .catch(() => {
-        setDebtSummary({
-          state: "error",
-          message: "Failed to load debt summary.",
-          data: null,
-        });
-      });
-  }, [apiBaseUrl]);
-
-  useEffect(() => {
-    fetchDebtSummary();
-  }, [fetchDebtSummary]);
-
-  const refreshAll = useCallback(() => {
-    return Promise.all([fetchTransactions(), fetchDebtSummary()]);
-  }, [fetchTransactions, fetchDebtSummary]);
-
-  const { hasRealtimeUpdate, refreshNow } = useRealtimeUpdates({
-    tables: ["transactions", "transaction_splits"],
-    onRefresh: refreshAll,
-    channelName: "transactions-updates",
-    preserveScroll: true,
-  });
-
-  const handleUpdate = async (transactionId, payload) => {
-    setSavingId(transactionId);
-
-    try {
-      const response = await fetch(`${apiBaseUrl}/transactions/${transactionId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to update transaction.");
-      }
-
-      setTransactions((current) =>
-        current.map((transaction) =>
-          transaction.id === transactionId ? { ...transaction, ...data } : transaction
-        )
-      );
-
-      return data;
-    } finally {
-      setSavingId(null);
-    }
+  const { debtSummary, debtLine, refreshDebtSummary } = useDebtSummary();
+  const { profiles, categories, categoryFilterOptions } = useTransactionsLookups();
+  const {
+    transactions,
+    status,
+    filters,
+    setFilters,
+    monthOptions,
+    setAllMonthsSelected,
+    hasRealtimeUpdate,
+    refreshNow,
+    savingId,
+    deletingId,
+    handleUpdate,
+    handleDelete,
+  } = useTransactionsData({ onRefreshExtras: refreshDebtSummary });
+  const { filteredTransactions, groupedTransactions, totalsByType, presentTypes } =
+    useTransactionsViewModel({ transactions, filters });
+  const handleFilterChange = (key, value) => {
+    setFilters((current) => ({
+      ...current,
+      [key]: value,
+    }));
   };
-
-  const handleDelete = async (transactionId) => {
-    setDeletingId(transactionId);
-
-    try {
-      const response = await fetch(`${apiBaseUrl}/transactions/${transactionId}`, {
-        method: "DELETE",
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to delete transaction.");
-      }
-
-      setTransactions((current) =>
-        current.filter((transaction) => transaction.id !== transactionId)
-      );
-
-      return data;
-    } finally {
-      setDeletingId(null);
-    }
+  const handleMonthChange = (event) => {
+    const nextValue = event.target.value;
+    setFilters((current) => ({
+      ...current,
+      month: nextValue,
+    }));
+    setAllMonthsSelected(nextValue === "");
   };
-
-  const debtBalance = debtSummary.data?.balance || {};
-  const debtProfiles = debtSummary.data?.profiles || [];
-
-  const debtProfilesById = new Map(
-    debtProfiles.map((profile) => [profile.id, profile])
-  );
-  let debtLine = "All settled up.";
-
-  if (debtSummary.state === "loading") {
-    debtLine = "Calculating balances...";
-  } else if (debtSummary.state === "error") {
-    debtLine = "Unable to calculate debt.";
-  } else if (debtBalance?.amount) {
-    debtLine = `${
-      debtProfilesById.get(debtBalance.from_profile_id)?.display_name ||
-      "Partner 1"
-    } owed ${formatCurrency(debtBalance.amount)} to ${
-      debtProfilesById.get(debtBalance.to_profile_id)?.display_name ||
-      "Partner 2"
-    }`;
-  }
 
   return (
     <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-8 px-6 pt-8 pb-[calc(6rem+env(safe-area-inset-bottom))] md:p-8 md:pt-12">
@@ -353,196 +113,24 @@ export default function TransactionsPage() {
         </section>
       ) : null}
 
-      <section className="space-y-4 rounded-2xl border border-cream-500/15 bg-obsidian-800/40 p-6 shadow-card backdrop-blur-sm animate-slide-up stagger-1">
-        <div className="space-y-2">
-          <p className="text-xs uppercase tracking-wider text-cream-100/50 font-semibold">
-            Debt Summary
-          </p>
-          <h2 className="text-xl font-display font-semibold text-cream-50 tracking-tight">
-            {debtLine}
-          </h2>
-          <p className="text-xs text-cream-100/60 font-medium">All-time</p>
-        </div>
-        {debtSummary.state === "loading" ? (
-          <p className="text-sm text-cream-100/60 font-medium">Loading debt summary...</p>
-        ) : null}
-        {debtSummary.state === "error" ? (
-          <p className="text-sm text-coral-300 font-medium">{debtSummary.message}</p>
-        ) : null}
-      </section>
+      <DebtSummaryCard debtLine={debtLine} debtSummary={debtSummary} />
 
       <section className="space-y-4">
         {status.state === "idle" && filteredTransactions.length > 0 ? (
-          <div className="rounded-xl border border-cream-500/10 bg-obsidian-800/40 p-5 shadow-card backdrop-blur-sm">
-            <div className="mb-3 text-[10px] font-bold uppercase tracking-widest text-cream-100/40">
-              Visible totals
-            </div>
-            {presentTypes.length === 1 ? (
-              <div className="md:flex md:justify-center">
-                <div className="flex items-center justify-between gap-4 md:flex-col md:items-start md:gap-1">
-                  <span
-                    className={`text-xs font-medium uppercase tracking-wider ${
-                      presentTypes[0] === "EXPENSE"
-                        ? "text-coral-400"
-                        : presentTypes[0] === "INCOME"
-                          ? "text-sage-400"
-                          : "text-cream-50"
-                    }`}
-                  >
-                    {presentTypes[0] === "EXPENSE"
-                      ? "Expenses"
-                      : presentTypes[0] === "INCOME"
-                        ? "Income"
-                        : "Liquidation"}
-                  </span>
-                  <span
-                    className={`text-base font-mono font-bold ${
-                      presentTypes[0] === "EXPENSE"
-                        ? "text-coral-400"
-                        : presentTypes[0] === "INCOME"
-                          ? "text-sage-400"
-                          : "text-cream-50"
-                    }`}
-                  >
-                    {formatCurrency(totalsByType[presentTypes[0]])}
-                  </span>
-                </div>
-              </div>
-            ) : (
-              <div className="grid gap-y-3 md:grid-cols-3 md:gap-x-6 md:gap-y-0">
-                {totalsByType.EXPENSE > 0 ? (
-                  <div className="flex w-full items-center justify-between gap-4 md:w-auto md:flex-col md:items-start md:justify-self-start md:text-left md:gap-1">
-                    <span className="text-xs font-medium uppercase tracking-wider text-coral-400">
-                      Expenses
-                    </span>
-                    <span className="font-mono font-bold text-coral-400">
-                      {formatCurrency(totalsByType.EXPENSE)}
-                    </span>
-                  </div>
-                ) : null}
-                {totalsByType.INCOME > 0 ? (
-                  <div className="flex w-full items-center justify-between gap-4 md:w-auto md:flex-col md:items-center md:justify-self-center md:text-center md:gap-1">
-                    <span className="text-xs font-medium uppercase tracking-wider text-sage-400">
-                      Income
-                    </span>
-                    <span className="font-mono font-bold text-sage-400">
-                      {formatCurrency(totalsByType.INCOME)}
-                    </span>
-                  </div>
-                ) : null}
-                {totalsByType.LIQUIDATION > 0 ? (
-                  <div className="flex w-full items-center justify-between gap-4 md:w-auto md:flex-col md:items-end md:justify-self-end md:text-right md:gap-1">
-                    <span className="text-xs font-medium uppercase tracking-wider text-cream-50">
-                      Liquidation
-                    </span>
-                    <span className="font-mono font-bold text-cream-50">
-                      {formatCurrency(totalsByType.LIQUIDATION)}
-                    </span>
-                  </div>
-                ) : null}
-              </div>
-            )}
-          </div>
+          <TransactionsTotals
+            presentTypes={presentTypes}
+            totalsByType={totalsByType}
+          />
         ) : null}
 
-        <section className="grid gap-4 rounded-2xl border border-cream-500/15 bg-obsidian-800/40 p-6 shadow-card backdrop-blur-sm md:grid-cols-5 animate-slide-up stagger-2">
-          <label className="space-y-2 text-sm font-medium text-cream-200 tracking-wide">
-            Month
-            <SelectField
-              className="w-full appearance-none rounded-lg border border-cream-500/20 bg-obsidian-950/80 px-3 py-2 pr-9 text-sm text-cream-50 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30 transition-all duration-200"
-              value={filters.month}
-              onChange={(event) =>
-                setFilters((current) => ({
-                  ...current,
-                  month: event.target.value,
-                }))
-              }
-            >
-              <option value="">All months</option>
-              {monthOptions.map((month) => (
-                <option key={month} value={month}>
-                  {formatMonthLabel(month)}
-                </option>
-              ))}
-            </SelectField>
-          </label>
-          <label className="space-y-2 text-sm font-medium text-cream-200 tracking-wide">
-            Type
-            <SelectField
-              className="w-full appearance-none rounded-lg border border-cream-500/20 bg-obsidian-950/80 px-3 py-2 pr-9 text-sm text-cream-50 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30 transition-all duration-200"
-              value={filters.type}
-              onChange={(event) =>
-                setFilters((current) => ({
-                  ...current,
-                  type: event.target.value,
-                }))
-              }
-            >
-              {typeOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </SelectField>
-          </label>
-          <label className="space-y-2 text-sm font-medium text-cream-200 tracking-wide">
-            Category
-            <SelectField
-              className="w-full appearance-none rounded-lg border border-cream-500/20 bg-obsidian-950/80 px-3 py-2 pr-9 text-sm text-cream-50 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30 transition-all duration-200"
-              value={filters.category}
-              onChange={(event) =>
-                setFilters((current) => ({
-                  ...current,
-                  category: event.target.value,
-                }))
-              }
-            >
-              {categoryFilterOptions.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </SelectField>
-          </label>
-          <label className="space-y-2 text-sm font-medium text-cream-200 tracking-wide">
-            Paid by
-            <SelectField
-              className="w-full appearance-none rounded-lg border border-cream-500/20 bg-obsidian-950/80 px-3 py-2 pr-9 text-sm text-cream-50 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30 transition-all duration-200"
-              value={filters.payerId}
-              onChange={(event) =>
-                setFilters((current) => ({
-                  ...current,
-                  payerId: event.target.value,
-                }))
-              }
-            >
-              <option value="">All payers</option>
-              {profiles.map((profile) => (
-                <option key={profile.id} value={profile.id}>
-                  {profile.display_name || profile.id}
-                </option>
-              ))}
-            </SelectField>
-          </label>
-          <label className="space-y-2 text-sm font-medium text-cream-200 tracking-wide">
-            Split type
-            <SelectField
-              className="w-full appearance-none rounded-lg border border-cream-500/20 bg-obsidian-950/80 px-3 py-2 pr-9 text-sm text-cream-50 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30 transition-all duration-200"
-              value={filters.split}
-              onChange={(event) =>
-                setFilters((current) => ({
-                  ...current,
-                  split: event.target.value,
-                }))
-              }
-            >
-              <option value="ALL">All splits</option>
-              <option value="PERSONAL">Personal</option>
-              <option value="OWED">Owed</option>
-              <option value="CUSTOM">Custom</option>
-            </SelectField>
-          </label>
-        </section>
+        <TransactionsFilters
+          filters={filters}
+          monthOptions={monthOptions}
+          profiles={profiles}
+          categoryFilterOptions={categoryFilterOptions}
+          onFilterChange={handleFilterChange}
+          onMonthChange={handleMonthChange}
+        />
 
         {status.state === "loading" ? (
           <p className="text-sm text-cream-100/60 font-medium">Loading transactions...</p>
@@ -556,43 +144,15 @@ export default function TransactionsPage() {
           <p className="text-sm text-cream-100/40 font-medium">No transactions found.</p>
         ) : null}
 
-        {groupedTransactions.map((group) => {
-          const monthLabel =
-            group.month === "unknown"
-              ? "Unknown date"
-              : formatMonthLabel(group.month);
-
-          return (
-            <div key={group.month} className="space-y-3 animate-slide-up">
-              <div className="text-base font-display font-semibold text-cream-100 tracking-tight">
-                {monthLabel}
-              </div>
-              <div className="grid grid-cols-[50px_100px_1fr_80px] gap-2 px-3 text-xs text-cream-100/50 font-semibold uppercase tracking-wider md:grid-cols-[60px_120px_140px_1fr_100px_90px_72px]">
-                <span>Day</span>
-                <span>Paid by</span>
-                <span className="md:hidden">Note</span>
-                <span className="hidden md:block">Category</span>
-                <span className="hidden md:block">Note</span>
-                <span className="hidden md:block">Split</span>
-                <span className="text-right">Amount</span>
-              </div>
-              <div className="divide-y divide-cream-500/10 rounded-2xl border border-cream-500/15 bg-obsidian-800/40 shadow-card backdrop-blur-sm">
-                {group.items.map((transaction) => (
-                  <TransactionRow
-                    key={transaction.id}
-                    transaction={transaction}
-                    profiles={profiles}
-                    categoryOptions={categories}
-                    onSave={handleUpdate}
-                    onDelete={handleDelete}
-                    isSaving={savingId === transaction.id}
-                    isDeleting={deletingId === transaction.id}
-                  />
-                ))}
-              </div>
-            </div>
-          );
-        })}
+        <TransactionsList
+          groupedTransactions={groupedTransactions}
+          profiles={profiles}
+          categories={categories}
+          savingId={savingId}
+          deletingId={deletingId}
+          onSave={handleUpdate}
+          onDelete={handleDelete}
+        />
       </section>
     </main>
   );
