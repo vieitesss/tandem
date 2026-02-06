@@ -11,7 +11,7 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en" className="scroll-smooth">
-      <body className="min-h-screen antialiased selection:bg-cream-500/20 selection:text-cream-50">
+      <body className="min-h-screen overflow-x-hidden antialiased selection:bg-cream-500/20 selection:text-cream-50">
         <ToastProvider>
           {children}
           <BottomNav />

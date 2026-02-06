@@ -14,9 +14,9 @@ const emptySummary = {
 };
 
 const avatarToneClass = [
-  "bg-cream-500/15 text-cream-100 border border-cream-500/25",
-  "bg-sage-600/20 text-sage-100 border border-sage-600/35",
-  "bg-coral-600/20 text-coral-100 border border-coral-600/35",
+  "bg-obsidian-700 text-cream-100 border border-obsidian-600",
+  "bg-obsidian-900 text-cream-200 border border-obsidian-600",
+  "bg-cream-500/10 text-cream-100 border border-cream-500/25",
 ];
 
 const initialsFromName = (value) => {
@@ -152,13 +152,13 @@ export default function PersonSummaryPage() {
                         </div>
                       </div>
 
-                      <div className="space-y-2.5">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-cream-300">Expenses</span>
-                          <span className="text-sm font-mono tabular-nums text-coral-300">
-                            {formatCurrency(profile.expenses_total)}
-                          </span>
-                        </div>
+                        <div className="space-y-2.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-cream-300">Expenses</span>
+                            <span className="text-sm font-mono tabular-nums text-cream-100">
+                              {formatCurrency(profile.expenses_total)}
+                            </span>
+                          </div>
                         <div className="flex items-center justify-between">
                           <span className="text-sm text-cream-300">
                             Liquidations paid
@@ -171,7 +171,7 @@ export default function PersonSummaryPage() {
                           <span className="text-sm font-semibold text-cream-100">
                             Total spent
                           </span>
-                          <span className="text-sm font-mono tabular-nums font-semibold text-coral-200">
+                          <span className="text-sm font-mono tabular-nums font-semibold text-cream-100">
                             {formatCurrency(profile.total_spent)}
                           </span>
                         </div>
@@ -180,7 +180,7 @@ export default function PersonSummaryPage() {
                           <span className="text-sm text-cream-300">
                             Income
                           </span>
-                          <span className="text-sm font-mono tabular-nums text-sage-300">
+                          <span className="text-sm font-mono tabular-nums text-cream-100">
                             {formatCurrency(profile.income_total)}
                           </span>
                         </div>
@@ -196,7 +196,7 @@ export default function PersonSummaryPage() {
                           <span className="text-sm font-semibold text-cream-100">
                             Total income
                           </span>
-                          <span className="text-sm font-mono tabular-nums font-semibold text-sage-200">
+                          <span className="text-sm font-mono tabular-nums font-semibold text-cream-100">
                             {formatCurrency(profile.total_income)}
                           </span>
                         </div>

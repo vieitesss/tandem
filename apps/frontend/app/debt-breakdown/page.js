@@ -205,9 +205,6 @@ export default function DebtBreakdownPage() {
 
       <SectionCard className="p-6">
         <div className="space-y-2">
-          <p className="text-sm text-cream-200 font-medium leading-relaxed">
-            Net = what was paid - what had to be paid - what was received.
-          </p>
           <p className="text-sm text-cream-300 font-medium">{debtLine}</p>
           <p className="text-xs text-cream-300 font-medium">All-time</p>
         </div>

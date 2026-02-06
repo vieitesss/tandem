@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import EmojiPicker from "../shared/EmojiPicker";
+import { resolveCategoryIcon } from "../shared/categoryIcons";
 import { InlineMessage, PageHeader, PageShell, SectionCard } from "../shared/PageLayout";
 import { apiDelete, apiGet, apiPatch, apiPost } from "../shared/api";
 import { SetupSecondaryActions } from "../shared/SecondaryNavPresets";
@@ -127,7 +128,7 @@ export default function CategoriesPage() {
           />
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-cream-500/20 bg-obsidian-950/80 text-2xl">
-              {form.icon || "✨"}
+              {resolveCategoryIcon(form.icon) || "✨"}
             </div>
             <span className="text-xs text-cream-100/60 font-medium">
               Pick an icon
@@ -166,7 +167,7 @@ export default function CategoriesPage() {
                       )
                     }
                   >
-                    {category.icon}
+                    {resolveCategoryIcon(category.icon)}
                   </button>
                   <input
                     className="min-w-[200px] flex-1 rounded-lg border border-cream-500/20 bg-obsidian-950/80 px-3 py-2 text-cream-50 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30 transition-all duration-200"

@@ -340,14 +340,6 @@ export const useTransactionsData = ({ onRefreshExtras } = {}) => {
         const nextTransactions = Array.isArray(data) ? data : [];
         setStatusIdle();
         applyTransactionsSnapshot(nextTransactions);
-
-        if (
-          filters.month &&
-          !allMonthsSelected &&
-          nextTransactions.length === 0
-        ) {
-          refreshLatestMonth({ force: true });
-        }
       })
       .catch(() => {
         if (requestQueryString !== queryStringRef.current) {
@@ -590,7 +582,6 @@ export const useTransactionsData = ({ onRefreshExtras } = {}) => {
 
   const handleDelete = async (transactionId) => {
     setDeletingId(transactionId);
-    let shouldRefreshLatest = false;
 
     try {
       const data = await apiDelete(
@@ -609,23 +600,10 @@ export const useTransactionsData = ({ onRefreshExtras } = {}) => {
         const nextTransactions = current.filter(
           (transaction) => transaction.id !== transactionId
         );
-        if (
-          filters.month &&
-          !allMonthsSelected &&
-          deletedMonth &&
-          deletedMonth === filters.month &&
-          nextTransactions.length === 0
-        ) {
-          shouldRefreshLatest = true;
-        }
         persistCacheWithState({ transactions: nextTransactions });
         syncLastSeenUpdate();
         return nextTransactions;
       });
-
-      if (shouldRefreshLatest) {
-        refreshLatestMonth({ force: true });
-      }
       notifyTransactionsUpdated({ month: deletedMonth });
 
       return data;

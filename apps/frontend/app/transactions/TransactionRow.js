@@ -1,13 +1,114 @@
 "use client";
 
-import { createPortal } from "react-dom";
 import { useEffect, useMemo, useState } from "react";
 
+import AppModal from "../shared/AppModal";
 import SelectField from "../shared/SelectField";
 import { buildDefaultCustomSplits } from "../shared/domain/splits";
 import { formatCurrency, formatDayOfMonth } from "../shared/format";
 import { normalizeNumberInput } from "../shared/inputs";
 import { useToast } from "../shared/ToastProvider";
+
+const iconKeyFromValue = (icon, label) => {
+  const value = String(icon || "").trim().toLowerCase();
+  const labelValue = String(label || "").trim().toLowerCase();
+
+  if (
+    [
+      "cart",
+      "home",
+      "bolt",
+      "car",
+      "health",
+      "media",
+      "bag",
+      "box",
+      "briefcase",
+      "gift",
+      "paw",
+      "book",
+      "shield",
+      "smile",
+      "receipt",
+      "tag",
+    ].includes(value)
+  ) {
+    return value;
+  }
+
+  const emojiMap = {
+    "🛒": "cart",
+    "🏠": "home",
+    "💡": "bolt",
+    "🍽️": "cart",
+    "🚗": "car",
+    "🩺": "health",
+    "🎬": "media",
+    "✈️": "car",
+    "🛍️": "bag",
+    "📦": "box",
+    "💼": "briefcase",
+    "🧑‍💻": "briefcase",
+    "🎁": "gift",
+    "🐾": "paw",
+    "🎓": "book",
+    "🛡️": "shield",
+    "🧹": "home",
+    "🧸": "smile",
+    "🧾": "receipt",
+    "🧩": "tag",
+    "💕": "gift",
+    "🏞️": "car",
+  };
+
+  if (emojiMap[icon]) {
+    return emojiMap[icon];
+  }
+
+  if (labelValue.includes("rent") || labelValue.includes("home")) return "home";
+  if (labelValue.includes("groc") || labelValue.includes("food") || labelValue.includes("restaurant")) return "cart";
+  if (labelValue.includes("util") || labelValue.includes("bill")) return "bolt";
+  if (labelValue.includes("transport") || labelValue.includes("travel") || labelValue.includes("trip")) return "car";
+  if (labelValue.includes("health") || labelValue.includes("medical")) return "health";
+  if (labelValue.includes("entertain")) return "media";
+  if (labelValue.includes("shop")) return "bag";
+  if (labelValue.includes("subscr")) return "box";
+  if (labelValue.includes("salary") || labelValue.includes("freelance")) return "briefcase";
+  if (labelValue.includes("gift") || labelValue.includes("date night")) return "gift";
+  if (labelValue.includes("pet")) return "paw";
+  if (labelValue.includes("education")) return "book";
+  if (labelValue.includes("insurance")) return "shield";
+  if (labelValue.includes("kids")) return "smile";
+  if (labelValue.includes("tax")) return "receipt";
+  return "tag";
+};
+
+function CategoryIcon({ icon, label, className = "h-4 w-4 text-cream-300" }) {
+  const key = iconKeyFromValue(icon, label);
+  let path = "M3 10l7-7h7v7l-7 7-7-7zm9-3h.01";
+
+  if (key === "home") path = "M3 8.75L10 3l7 5.75V17H3V8.75zM7.5 17v-4h5v4";
+  if (key === "cart") path = "M3 4h2l1.4 8.2h8.3L16 6H6.2M8 16a1 1 0 100-2 1 1 0 000 2zm6 0a1 1 0 100-2 1 1 0 000 2z";
+  if (key === "bolt") path = "M11 2L5 10h4l-1 8 7-10h-4l1-6z";
+  if (key === "car") path = "M4 11l1.5-4h9L16 11v4h-1.5v-1.5h-9V15H4v-4zm2 .5h8";
+  if (key === "health") path = "M10 4v12M4 10h12";
+  if (key === "media") path = "M4 5h12v10H4zM8 8l4 2-4 2V8z";
+  if (key === "bag") path = "M5 7h10l-1 10H6L5 7zm3 0V5a2 2 0 114 0v2";
+  if (key === "box") path = "M4 7l6-3 6 3-6 3-6-3zm0 0v6l6 3 6-3V7";
+  if (key === "briefcase") path = "M3 7h14v9H3V7zm5-2h4v2H8V5z";
+  if (key === "gift") path = "M4 8h12v8H4V8zm0-2h12v2H4V6zm6 0v10M8 6s-2-3 0-3c1.5 0 2 3 2 3M12 6s2-3 0-3c-1.5 0-2 3-2 3";
+  if (key === "paw") path = "M7 8a1.2 1.2 0 110-2.4A1.2 1.2 0 017 8zm6 0a1.2 1.2 0 110-2.4A1.2 1.2 0 0113 8zM6 12.5c0-1.7 1.8-2.5 4-2.5s4 .8 4 2.5S12.2 15 10 15s-4-.8-4-2.5z";
+  if (key === "book") path = "M4 4h8a3 3 0 013 3v9H7a3 3 0 00-3 3V4zm0 0v12";
+  if (key === "shield") path = "M10 3l6 2v4c0 4.2-2.6 6.6-6 8-3.4-1.4-6-3.8-6-8V5l6-2z";
+  if (key === "smile") path = "M10 17a7 7 0 100-14 7 7 0 000 14zm-3-5c.6.8 1.7 1.2 3 1.2s2.4-.4 3-1.2M7.5 8.5h.01M12.5 8.5h.01";
+  if (key === "receipt") path = "M6 3h8v14l-2-1.2L10 17l-2-1.2L6 17V3zm2 4h4M8 9h4M8 11h3";
+
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden>
+      <path d={path} strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
 
 const amountClassFor = (type) => {
   if (type === "INCOME") {
@@ -19,17 +120,6 @@ const amountClassFor = (type) => {
   }
 
   return "text-cream-50";
-};
-
-const ModalPortal = ({ children }) => {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-    return () => setMounted(false);
-  }, []);
-
-  return mounted ? createPortal(children, document.body) : null;
 };
 
 export default function TransactionRow({
@@ -84,6 +174,14 @@ export default function TransactionRow({
     );
   }, [profiles, transaction.payer_id, transaction.payer_name]);
   const categoryLabel = transaction.category || "—";
+  const categoryIcon = useMemo(() => {
+    if (!transaction.category) {
+      return "";
+    }
+
+    const match = categoryOptions.find((option) => option.label === transaction.category);
+    return match?.icon || "";
+  }, [categoryOptions, transaction.category]);
   const splitLabel = useMemo(() => {
     if (transaction.type !== "EXPENSE") {
       return "—";
@@ -105,17 +203,6 @@ export default function TransactionRow({
   }, [transaction.split_mode, transaction.type]);
   const noteLabel = transaction.note ? transaction.note.trim() : "";
   const notePlaceholder = "—";
-
-  useEffect(() => {
-    if (isModalOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [isModalOpen]);
 
   useEffect(() => {
     if (isModalOpen) {
@@ -362,18 +449,23 @@ export default function TransactionRow({
   };
 
   const rowContent = (
-    <div className="grid grid-cols-[52px_110px_1fr_86px] items-center gap-2 text-sm md:grid-cols-[70px_130px_140px_1fr_100px_96px_84px]">
-      <span className="text-cream-100 tabular-nums font-mono">{dayLabel}</span>
-      <span className="truncate text-cream-100 font-medium">{payerLabel}</span>
-      <span className="truncate text-cream-100/60 md:hidden">
+    <div className="grid grid-cols-12 items-center gap-1.5 text-[13px] md:grid-cols-[70px_130px_140px_1fr_100px_96px_84px] md:gap-2 md:text-sm">
+      <span className="col-span-2 text-cream-100 tabular-nums font-mono md:col-auto">{dayLabel}</span>
+      <span className="col-span-3 truncate text-cream-100 font-medium md:col-auto">{payerLabel}</span>
+      <span className="col-span-4 truncate text-cream-100/60 md:hidden">
         {noteLabel || notePlaceholder}
       </span>
-      <span className="hidden truncate text-cream-100 md:block">{categoryLabel}</span>
+      <span className="hidden truncate text-cream-100 md:block">
+        <span className="inline-flex items-center gap-1.5">
+          <CategoryIcon icon={categoryIcon} label={categoryLabel} />
+          <span className="truncate">{categoryLabel}</span>
+        </span>
+      </span>
       <span className="hidden truncate text-cream-100/60 md:block">
         {noteLabel || notePlaceholder}
       </span>
       <span className="hidden truncate text-cream-100/60 md:block">{splitLabel}</span>
-      <span className={`text-right font-mono tabular-nums font-semibold ${amountClass}`}>
+      <span className={`col-span-3 text-right font-mono tabular-nums font-semibold md:col-auto ${amountClass}`}>
         {formatCurrency(transaction.amount)}
       </span>
       <div className="hidden justify-end md:flex">
@@ -392,7 +484,10 @@ export default function TransactionRow({
     <div className="space-y-1">
       <div className="flex items-center gap-2">
         <span className="text-cream-100/50 text-xs font-medium">Category:</span>
-        <span className="text-cream-100">{categoryLabel}</span>
+        <span className="inline-flex items-center gap-1.5 text-cream-100">
+          <CategoryIcon icon={categoryIcon} label={categoryLabel} />
+          <span>{categoryLabel}</span>
+        </span>
       </div>
       <div className="flex items-center gap-2">
         <span className="text-cream-100/50 text-xs font-medium">Split:</span>
@@ -409,7 +504,7 @@ export default function TransactionRow({
   };
 
   return (
-    <div className="px-4 py-4 transition-colors duration-150 hover:bg-obsidian-900/70">
+    <div className="px-2.5 py-2 transition-colors duration-150 hover:bg-obsidian-900/70 md:px-3">
       <div
         role="button"
         tabIndex={0}
@@ -435,13 +530,13 @@ export default function TransactionRow({
         </div>
       ) : null}
       {isModalOpen ? (
-        <ModalPortal>
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-cream-50/50 p-4 animate-fade-in">
-            <div className="animate-scale-in w-full max-w-lg space-y-4 rounded-3xl border border-obsidian-600/90 bg-obsidian-800 p-6 text-cream-50">
-              <div className="space-y-1">
-                <h3 className="text-xl font-display font-semibold tracking-tight">Edit Transaction</h3>
-                <p className="text-xs text-cream-100/60 font-medium">Type: {transaction.type}</p>
-              </div>
+        <AppModal
+          open={isModalOpen}
+          onClose={handleCloseModal}
+          title="Edit Transaction"
+          subtitle={`Type: ${transaction.type}`}
+          maxWidth="max-w-lg"
+        >
                <div className="grid gap-3 text-sm">
                  <label className="space-y-2 text-xs font-medium text-cream-200 tracking-wide">
                    Date
@@ -493,11 +588,11 @@ export default function TransactionRow({
                      <option value="">
                        {isCategoryRequired ? "Select category" : "Not required"}
                      </option>
-                     {categoryOptions.map((option) => (
-                       <option key={option.label} value={option.label}>
-                         {option.label}
-                       </option>
-                     ))}
+                       {categoryOptions.map((option) => (
+                         <option key={option.label} value={option.label}>
+                           {option.label}
+                         </option>
+                       ))}
                    </SelectField>
                   </label>
                   {transaction.type === "LIQUIDATION" ? (
@@ -643,8 +738,8 @@ export default function TransactionRow({
                  </label>
                </div>
 
-              {error ? <p className="text-xs text-coral-300 font-medium">{error}</p> : null}
-              <div className="flex flex-wrap items-center justify-between gap-3">
+               {error ? <p className="mt-4 text-xs text-coral-300 font-medium">{error}</p> : null}
+               <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-obsidian-600 pt-3">
                 <button
                   type="button"
                   className={`rounded-lg px-4 py-2 text-xs font-semibold transition-colors duration-150 ${
@@ -680,9 +775,7 @@ export default function TransactionRow({
                   </button>
                 </div>
               </div>
-            </div>
-          </div>
-        </ModalPortal>
+        </AppModal>
       ) : null}
     </div>
   );

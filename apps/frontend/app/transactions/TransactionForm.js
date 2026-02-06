@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import SelectField from "../shared/SelectField";
 import { useToast } from "../shared/ToastProvider";
@@ -14,7 +14,88 @@ import { notifyTransactionsUpdated } from "./transactionsCache";
 
 const initialSplit = { user_id: "", percent: "" };
 
+const categoryIconKey = (label) => {
+  const value = String(label || "").toLowerCase();
+
+  if (value.includes("rent") || value.includes("home")) return "home";
+  if (value.includes("groc") || value.includes("food") || value.includes("restaurant")) return "cart";
+  if (value.includes("util") || value.includes("bill")) return "bolt";
+  if (value.includes("transport") || value.includes("travel")) return "car";
+  if (value.includes("health") || value.includes("medical")) return "health";
+  if (value.includes("entertain")) return "media";
+  if (value.includes("shop")) return "bag";
+  if (value.includes("subscr")) return "box";
+  if (value.includes("salary") || value.includes("freelance")) return "briefcase";
+  if (value.includes("gift")) return "gift";
+  if (value.includes("pet")) return "paw";
+  if (value.includes("education")) return "book";
+  if (value.includes("insurance")) return "shield";
+  if (value.includes("kids")) return "smile";
+  if (value.includes("tax")) return "receipt";
+
+  return "tag";
+};
+
+function CategoryIcon({ label, active }) {
+  const icon = categoryIconKey(label);
+  const className = active ? "h-4 w-4 text-cream-100" : "h-4 w-4 text-cream-300";
+  let path = "M3 10l7-7h7v7l-7 7-7-7zm9-3h.01";
+
+  if (icon === "home") {
+    path = "M3 8.75L10 3l7 5.75V17H3V8.75zM7.5 17v-4h5v4";
+  }
+  if (icon === "cart") {
+    path = "M3 4h2l1.4 8.2h8.3L16 6H6.2M8 16a1 1 0 100-2 1 1 0 000 2zm6 0a1 1 0 100-2 1 1 0 000 2z";
+  }
+  if (icon === "bolt") {
+    path = "M11 2L5 10h4l-1 8 7-10h-4l1-6z";
+  }
+  if (icon === "car") {
+    path = "M4 11l1.5-4h9L16 11v4h-1.5v-1.5h-9V15H4v-4zm2 .5h8";
+  }
+  if (icon === "health") {
+    path = "M10 4v12M4 10h12";
+  }
+  if (icon === "media") {
+    path = "M4 5h12v10H4zM8 8l4 2-4 2V8z";
+  }
+  if (icon === "bag") {
+    path = "M5 7h10l-1 10H6L5 7zm3 0V5a2 2 0 114 0v2";
+  }
+  if (icon === "box") {
+    path = "M4 7l6-3 6 3-6 3-6-3zm0 0v6l6 3 6-3V7";
+  }
+  if (icon === "briefcase") {
+    path = "M3 7h14v9H3V7zm5-2h4v2H8V5z";
+  }
+  if (icon === "gift") {
+    path = "M4 8h12v8H4V8zm0-2h12v2H4V6zm6 0v10M8 6s-2-3 0-3c1.5 0 2 3 2 3M12 6s2-3 0-3c-1.5 0-2 3-2 3";
+  }
+  if (icon === "paw") {
+    path = "M7 8a1.2 1.2 0 110-2.4A1.2 1.2 0 017 8zm6 0a1.2 1.2 0 110-2.4A1.2 1.2 0 0113 8zM6 12.5c0-1.7 1.8-2.5 4-2.5s4 .8 4 2.5S12.2 15 10 15s-4-.8-4-2.5z";
+  }
+  if (icon === "book") {
+    path = "M4 4h8a3 3 0 013 3v9H7a3 3 0 00-3 3V4zm0 0v12";
+  }
+  if (icon === "shield") {
+    path = "M10 3l6 2v4c0 4.2-2.6 6.6-6 8-3.4-1.4-6-3.8-6-8V5l6-2z";
+  }
+  if (icon === "smile") {
+    path = "M10 17a7 7 0 100-14 7 7 0 000 14zm-3-5c.6.8 1.7 1.2 3 1.2s2.4-.4 3-1.2M7.5 8.5h.01M12.5 8.5h.01";
+  }
+  if (icon === "receipt") {
+    path = "M6 3h8v14l-2-1.2L10 17l-2-1.2L6 17V3zm2 4h4M8 9h4M8 11h3";
+  }
+
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden>
+      <path d={path} strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export default function TransactionForm() {
+  const amountInputRef = useRef(null);
   const [payerId, setPayerId] = useState("");
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState("");
@@ -49,6 +130,10 @@ export default function TransactionForm() {
 
   const fieldLabelClassName =
     "text-[11px] font-semibold uppercase tracking-[0.14em] text-cream-300";
+
+  useEffect(() => {
+    amountInputRef.current?.focus();
+  }, []);
 
   useEffect(() => {
     if (profiles.length === 0) {
@@ -275,42 +360,41 @@ export default function TransactionForm() {
         <p className="text-xs font-medium text-cream-300">Fields marked * are required</p>
       </div>
 
-      <div className={`${panelClassName} space-y-4`}>
-        <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_220px]">
-          <div className="space-y-2">
-            <label className={fieldLabelClassName}>
-              Amount<span className="text-coral-400"> *</span>
-            </label>
-            <div className="relative">
-              <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-semibold text-cream-300">
-                EUR
-              </span>
-              <input
-                className={`${inputClassName(showAmountError)} tabular-nums h-16 !pl-[5.1rem] !pr-4 text-3xl font-semibold text-cream-50 sm:!pl-[4.8rem]`}
-                placeholder="0.00"
-                type="text"
-                inputMode="decimal"
-                pattern="[0-9]*[.]?[0-9]*"
-                value={amount}
-                onChange={handleAmountChange}
-                aria-invalid={showAmountError}
-              />
-            </div>
-            {showAmountFormatError ? (
-              <p className="text-xs text-coral-300 font-medium">
-                Only numbers and a decimal point are allowed.
-              </p>
-            ) : showAmountError ? (
-              <p className="text-xs text-coral-300 font-medium">Enter an amount above 0.</p>
-            ) : null}
+      <div className={`${panelClassName} space-y-5`}>
+        <div className="space-y-2 text-center">
+          <label className={fieldLabelClassName}>
+            Amount<span className="text-coral-400"> *</span>
+          </label>
+          <div className="mx-auto max-w-xs">
+            <input
+              ref={amountInputRef}
+              className="w-full border-0 bg-transparent px-2 py-1 text-center text-5xl font-semibold tabular-nums text-cream-50 placeholder:text-cream-300/50 focus:outline-none"
+              placeholder="0.00"
+              type="text"
+              inputMode="decimal"
+              pattern="[0-9]*[.]?[0-9]*"
+              value={amount}
+              onChange={handleAmountChange}
+              aria-invalid={showAmountError}
+            />
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-cream-400">EUR</p>
           </div>
+          {showAmountFormatError ? (
+            <p className="text-xs text-coral-300 font-medium">
+              Only numbers and a decimal point are allowed.
+            </p>
+          ) : showAmountError ? (
+            <p className="text-xs text-coral-300 font-medium">Enter an amount above 0.</p>
+          ) : null}
+        </div>
 
+        <div className="grid gap-4 md:grid-cols-[220px_1fr]">
           <div className="space-y-2">
             <label className={fieldLabelClassName}>
               Date<span className="text-coral-400"> *</span>
             </label>
             <input
-              className={`${inputClassName(showDateError)} h-16`}
+              className={`${inputClassName(showDateError)} h-12`}
               type="date"
               value={date}
               onChange={(event) => {
@@ -323,39 +407,41 @@ export default function TransactionForm() {
               <p className="text-xs text-coral-300 font-medium">Choose a date.</p>
             ) : null}
           </div>
-        </div>
 
-        <div className="space-y-2">
-          <label className={fieldLabelClassName}>
-            Type<span className="text-coral-400"> *</span>
-          </label>
-          <div className="grid grid-cols-3 gap-1 rounded-xl border border-obsidian-600 bg-obsidian-900 p-1">
-            {["EXPENSE", "INCOME", "LIQUIDATION"].map((value) => {
-              const isActive = type === value;
-              return (
-                <button
-                  key={value}
-                  type="button"
-                  className={`min-w-0 truncate rounded-lg px-2 py-2 text-[11px] font-semibold tracking-wide text-center transition-colors sm:px-3 sm:text-xs ${
-                    isActive
-                      ? value === "EXPENSE"
-                        ? "bg-coral-600/30 text-coral-100"
-                        : value === "INCOME"
-                          ? "bg-sage-600/30 text-sage-100"
-                          : "bg-cream-500/20 text-cream-100"
-                      : "text-cream-300 hover:bg-obsidian-800"
-                  }`}
-                  onClick={() => setType(value)}
-                >
-                  {value === "LIQUIDATION" ? "Liquidation" : value[0] + value.slice(1).toLowerCase()}
-                </button>
-              );
-            })}
+          <div className="space-y-2">
+            <label className={fieldLabelClassName}>
+              Type<span className="text-coral-400"> *</span>
+            </label>
+            <div className="grid grid-cols-3 gap-1 rounded-xl border border-obsidian-600 bg-obsidian-900 p-1">
+              {["EXPENSE", "INCOME", "LIQUIDATION"].map((value) => {
+                const isActive = type === value;
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    className={`min-h-11 min-w-0 truncate rounded-lg px-2 py-2 text-[11px] font-semibold tracking-wide text-center transition-colors sm:px-3 sm:text-xs ${
+                      isActive
+                        ? value === "EXPENSE"
+                          ? "bg-coral-500/30 text-coral-100"
+                          : value === "INCOME"
+                            ? "bg-sage-600/30 text-sage-100"
+                            : "bg-cream-500/20 text-cream-100"
+                        : "text-cream-300 hover:bg-obsidian-800"
+                    }`}
+                    onClick={() => setType(value)}
+                  >
+                    {value === "LIQUIDATION"
+                      ? "Liquidation"
+                      : value[0] + value.slice(1).toLowerCase()}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
 
-      <div className={`${panelClassName} grid gap-4 sm:grid-cols-2`}>
+      <div className={`${panelClassName} grid gap-4`}>
         <div className={sectionClassName}>
           <label className={fieldLabelClassName}>
             {type === "INCOME" ? "Recipient" : "Paid by"}
@@ -386,27 +472,40 @@ export default function TransactionForm() {
           ) : null}
         </div>
 
-        <div className={`${sectionClassName} ${type === "INCOME" ? "opacity-60" : ""}`}>
+        <div className={sectionClassName}>
           <label className={fieldLabelClassName}>
             Category{type !== "INCOME" ? <span className="text-coral-400"> *</span> : null}
           </label>
-          <SelectField
-            className={`${inputClassName(showCategoryError)} appearance-none pr-9`}
-            value={category}
-            onChange={(event) => {
-              setCategory(event.target.value);
-              setTouched((current) => ({ ...current, category: true }));
-            }}
-            disabled={type === "INCOME"}
-            aria-invalid={showCategoryError}
-          >
-            <option value="">{type === "INCOME" ? "Not required" : "Select category"}</option>
-            {categories.map((option) => (
-              <option key={option.id || option.label} value={option.label}>
-                {option.label}
-              </option>
-            ))}
-          </SelectField>
+          {type === "INCOME" ? (
+            <div className="min-h-11 rounded-xl border border-obsidian-600 bg-obsidian-900 px-3 py-2 text-sm text-cream-300">
+              Not required for income
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-6">
+              {categories.map((option) => {
+                const isActive = category === option.label;
+                return (
+                  <button
+                    key={option.id || option.label}
+                    type="button"
+                    className={`flex min-h-11 min-w-0 flex-col items-center justify-center gap-1 rounded-xl border px-2 py-2 text-center text-[11px] font-semibold ${
+                      isActive
+                        ? "border-2 border-cream-500 bg-cream-500/25 text-cream-50"
+                        : "border-2 border-obsidian-600 bg-obsidian-900 text-cream-200"
+                    }`}
+                    onClick={() => {
+                      setCategory(option.label);
+                      setTouched((current) => ({ ...current, category: true }));
+                    }}
+                    aria-pressed={isActive}
+                  >
+                    <CategoryIcon label={option.label} active={isActive} />
+                    <span className="truncate w-full">{option.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
           {showCategoryError ? (
             <p className="mt-2 text-xs text-coral-300 font-medium">Select a category.</p>
           ) : null}
@@ -620,7 +719,7 @@ export default function TransactionForm() {
       </div>
       <div className={sectionClassName}>
         <button
-          className="w-full rounded-xl border border-cream-500/40 bg-cream-500 px-4 py-3 font-display font-semibold text-white transition-colors duration-200 hover:bg-cream-600 disabled:opacity-60"
+          className="w-full rounded-xl border border-cream-500/40 bg-cream-500 px-4 py-3 font-display font-semibold text-white transition-colors duration-200 hover:bg-cream-600 disabled:border-cream-500/30 disabled:bg-cream-500/75 disabled:text-white/90"
           type="submit"
           disabled={!canSubmit}
         >

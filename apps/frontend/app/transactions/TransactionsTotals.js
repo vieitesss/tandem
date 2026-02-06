@@ -32,7 +32,7 @@ export default function TransactionsTotals({
 
   const wrapperClassName = embedded
     ? "rounded-2xl border border-obsidian-600 bg-obsidian-900 p-4"
-    : "rounded-3xl border border-obsidian-600/80 bg-obsidian-800 p-4 shadow-card";
+    : "rounded-2xl border border-obsidian-600/80 bg-obsidian-800 p-4";
 
   return (
     <div className={wrapperClassName}>

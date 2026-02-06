@@ -1,9 +1,5 @@
 import { formatCurrency } from "../shared/format";
 
-const pluralize = (count, singular, plural) => {
-  return count === 1 ? singular : plural;
-};
-
 export default function DebtSummaryCard({
   debtLine,
   debtSummary,
@@ -14,13 +10,12 @@ export default function DebtSummaryCard({
     ? `rounded-2xl border border-obsidian-600 bg-obsidian-900 p-4 ${
         fillHeight ? "xl:h-full" : "h-fit self-start"
       }`
-    : "animate-slide-up stagger-1 h-fit self-start rounded-3xl border border-obsidian-600/80 bg-obsidian-800 p-4 shadow-card";
+    : "animate-slide-up stagger-1 h-fit self-start rounded-2xl border border-obsidian-600/80 bg-obsidian-800 p-4";
 
   const profiles = Array.isArray(debtSummary.data?.profiles)
     ? debtSummary.data.profiles
     : [];
   const netByProfile = debtSummary.data?.net_by_profile || {};
-  const details = debtSummary.data?.details || {};
 
   const netLine =
     debtSummary.state === "idle" && profiles.length > 0
@@ -35,32 +30,6 @@ export default function DebtSummaryCard({
           .join(" | ")}`
       : null;
 
-  const owedCount = Array.isArray(details.owed_transactions)
-    ? details.owed_transactions.length
-    : 0;
-  const liquidationCount = Array.isArray(details.liquidations)
-    ? details.liquidations.length
-    : 0;
-  const customCount = Array.isArray(details.custom_splits)
-    ? details.custom_splits.length
-    : 0;
-  const sourceLine =
-    debtSummary.state === "idle"
-      ? `Based on ${owedCount} ${pluralize(
-          owedCount,
-          "owed expense",
-          "owed expenses"
-        )}, ${liquidationCount} ${pluralize(
-          liquidationCount,
-          "liquidation",
-          "liquidations"
-        )}, and ${customCount} ${pluralize(
-          customCount,
-          "custom split expense",
-          "custom split expenses"
-        )}.`
-      : null;
-
   return (
     <section className={`${wrapperClassName} flex flex-col`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -68,7 +37,7 @@ export default function DebtSummaryCard({
           <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-cream-400">
             Debt summary
           </p>
-          <h2 className="text-lg font-display font-semibold tracking-tight text-cream-50 md:text-xl">
+          <h2 className="text-2xl font-display font-bold tracking-tight text-cream-50 md:text-3xl">
             {debtLine}
           </h2>
         </div>
@@ -86,10 +55,9 @@ export default function DebtSummaryCard({
           {debtSummary.message}
         </p>
       ) : null}
-      {debtSummary.state === "idle" && (netLine || sourceLine) ? (
+      {debtSummary.state === "idle" && netLine ? (
         <div className="mt-3 space-y-1 rounded-xl border border-obsidian-600 bg-white px-3 py-2 text-xs text-cream-300">
           {netLine ? <p className="font-medium text-cream-200">{netLine}</p> : null}
-          {sourceLine ? <p className="text-cream-300">{sourceLine}</p> : null}
         </div>
       ) : null}
     </section>
