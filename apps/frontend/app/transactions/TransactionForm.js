@@ -14,8 +14,61 @@ import { notifyTransactionsUpdated } from "./transactionsCache";
 
 const initialSplit = { user_id: "", percent: "" };
 
-const categoryIconKey = (label) => {
+const categoryIconKey = (icon, label) => {
+  const iconValue = String(icon || "").trim().toLowerCase();
   const value = String(label || "").toLowerCase();
+
+  if (
+    [
+      "cart",
+      "home",
+      "bolt",
+      "car",
+      "health",
+      "media",
+      "bag",
+      "box",
+      "briefcase",
+      "gift",
+      "paw",
+      "book",
+      "shield",
+      "smile",
+      "receipt",
+      "tag",
+    ].includes(iconValue)
+  ) {
+    return iconValue;
+  }
+
+  const emojiMap = {
+    "🛒": "cart",
+    "🏠": "home",
+    "💡": "bolt",
+    "🍽️": "cart",
+    "🚗": "car",
+    "🩺": "health",
+    "🎬": "media",
+    "✈️": "car",
+    "🛍️": "bag",
+    "📦": "box",
+    "💼": "briefcase",
+    "🧑‍💻": "briefcase",
+    "🎁": "gift",
+    "🐾": "paw",
+    "🎓": "book",
+    "🛡️": "shield",
+    "🧹": "home",
+    "🧸": "smile",
+    "🧾": "receipt",
+    "🧩": "tag",
+    "💕": "gift",
+    "🏞️": "car",
+  };
+
+  if (emojiMap[iconValue]) {
+    return emojiMap[iconValue];
+  }
 
   if (value.includes("rent") || value.includes("home")) return "home";
   if (value.includes("groc") || value.includes("food") || value.includes("restaurant")) return "cart";
@@ -36,8 +89,8 @@ const categoryIconKey = (label) => {
   return "tag";
 };
 
-function CategoryIcon({ label, active }) {
-  const icon = categoryIconKey(label);
+function CategoryIcon({ icon: iconProp, label, active }) {
+  const icon = categoryIconKey(iconProp, label);
   const className = active ? "h-4 w-4 text-cream-100" : "h-4 w-4 text-cream-300";
   let path = "M3 10l7-7h7v7l-7 7-7-7zm9-3h.01";
 
@@ -499,7 +552,7 @@ export default function TransactionForm() {
                     }}
                     aria-pressed={isActive}
                   >
-                    <CategoryIcon label={option.label} active={isActive} />
+                    <CategoryIcon icon={option.icon} label={option.label} active={isActive} />
                     <span className="truncate w-full">{option.label}</span>
                   </button>
                 );

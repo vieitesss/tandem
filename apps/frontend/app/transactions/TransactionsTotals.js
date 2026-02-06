@@ -29,6 +29,11 @@ export default function TransactionsTotals({
       dotClassName: "bg-cream-400",
     },
   ];
+  const visibleTotals = totals.filter((item) => presentTypes.includes(item.key));
+
+  if (visibleTotals.length === 0) {
+    return null;
+  }
 
   const wrapperClassName = embedded
     ? "rounded-2xl border border-obsidian-600 bg-obsidian-900 p-4"
@@ -43,7 +48,7 @@ export default function TransactionsTotals({
         <p className="text-[11px] font-medium text-cream-300">Current filters</p>
       </div>
       <div className="grid gap-2 sm:grid-cols-3">
-        {totals.map((item) => (
+        {visibleTotals.map((item) => (
           <div
             key={item.key}
             className="rounded-xl border border-obsidian-600 bg-white px-3 py-2"

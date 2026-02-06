@@ -61,8 +61,8 @@ const iconKeyFromValue = (icon, label) => {
     "🏞️": "car",
   };
 
-  if (emojiMap[icon]) {
-    return emojiMap[icon];
+  if (emojiMap[value]) {
+    return emojiMap[value];
   }
 
   if (labelValue.includes("rent") || labelValue.includes("home")) return "home";
