@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { useEffect, useMemo, useState } from "react";
 
 import SelectField from "../shared/SelectField";
+import { buildDefaultCustomSplits } from "../shared/domain/splits";
 import { formatCurrency, formatDayOfMonth } from "../shared/format";
 import { normalizeNumberInput } from "../shared/inputs";
 import { useToast } from "../shared/ToastProvider";
@@ -29,33 +30,6 @@ const ModalPortal = ({ children }) => {
   }, []);
 
   return mounted ? createPortal(children, document.body) : null;
-};
-
-const buildDefaultCustomSplits = (profiles) => {
-  const validProfiles = Array.isArray(profiles)
-    ? profiles.filter((profile) => profile?.id)
-    : [];
-
-  if (validProfiles.length === 0) {
-    return [];
-  }
-
-  const splits = validProfiles.map((profile) => ({
-    user_id: String(profile.id),
-    percent: String(Math.round(Number(profile.default_split || 0) * 1000) / 10),
-  }));
-
-  const total = splits.reduce((sum, split) => sum + Number(split.percent || 0), 0);
-
-  if (Math.abs(total - 100) <= 0.01 && !splits.some((split) => Number(split.percent) <= 0)) {
-    return splits;
-  }
-
-  const equalShare = Math.round((100 / validProfiles.length) * 10) / 10;
-  return validProfiles.map((profile) => ({
-    user_id: String(profile.id),
-    percent: String(equalShare),
-  }));
 };
 
 export default function TransactionRow({

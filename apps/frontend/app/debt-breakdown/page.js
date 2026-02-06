@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import SecondaryActions, { SecondaryLink } from "../shared/SecondaryActions";
-import { fetchJson } from "../shared/api";
+import { groupByMonth, sortByDateDesc } from "../shared/domain/months";
+import { AnalysisSecondaryActions } from "../shared/SecondaryNavPresets";
+import { API_BASE_PATH, fetchJson } from "../shared/api";
 import { useRealtimeUpdates } from "../shared/useRealtimeUpdates";
 import Tooltip from "../shared/Tooltip";
 import { formatCurrency, formatMonthLabel } from "../shared/format";
@@ -25,33 +26,6 @@ const getTitleForTransaction = (transaction) => {
   return "No note";
 };
 
-const sortByDateDesc = (left, right) => {
-  const leftDate = left?.date ? new Date(left.date).getTime() : 0;
-  const rightDate = right?.date ? new Date(right.date).getTime() : 0;
-  return rightDate - leftDate;
-};
-
-const getMonthKey = (dateString) => {
-  if (!dateString) return "unknown";
-  return dateString.slice(0, 7);
-};
-
-const groupByMonth = (items) => {
-  const groups = new Map();
-
-  items.forEach((item) => {
-    const monthKey = getMonthKey(item.date);
-    if (!groups.has(monthKey)) {
-      groups.set(monthKey, []);
-    }
-    groups.get(monthKey).push(item);
-  });
-
-  return Array.from(groups.keys())
-    .sort((a, b) => b.localeCompare(a))
-    .map((month) => ({ month, items: groups.get(month) }));
-};
-
 export default function DebtBreakdownPage() {
   const [debtSummary, setDebtSummary] = useState({
     state: "idle",
@@ -59,12 +33,10 @@ export default function DebtBreakdownPage() {
     data: null,
   });
 
-  const apiBaseUrl = "/api";
-
   const fetchDebtSummary = useCallback(() => {
     setDebtSummary({ state: "loading", message: "", data: null });
 
-    return fetchJson(`${apiBaseUrl}/debt-summary`)
+    return fetchJson(`${API_BASE_PATH}/debt-summary`)
       .then(({ data }) => {
         if (data?.error) {
           setDebtSummary({ state: "error", message: data.error, data: null });
@@ -80,7 +52,7 @@ export default function DebtBreakdownPage() {
           data: null,
         });
       });
-  }, [apiBaseUrl]);
+  }, []);
 
   useEffect(() => {
     fetchDebtSummary();
@@ -228,45 +200,7 @@ export default function DebtBreakdownPage() {
         eyebrow="Analysis"
         currentPage="transactions"
       >
-        <SecondaryActions>
-          <SecondaryLink
-            href="/transactions"
-            label="Overview"
-            icon={
-              <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M10.489 2.386a.75.75 0 00-.978 0L3.01 7.81a.75.75 0 00.48 1.315h.76v6.125a.75.75 0 00.75.75H8.5a.75.75 0 00.75-.75V11h1.5v4.25a.75.75 0 00.75.75H15a.75.75 0 00.75-.75V9.125h.76a.75.75 0 00.48-1.315l-6.5-5.424z" />
-              </svg>
-            }
-          />
-          <SecondaryLink
-            href="/timeline"
-            label="Timeline"
-            icon={
-              <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" />
-              </svg>
-            }
-          />
-          <SecondaryLink
-            href="/person-summary"
-            label="Person Summary"
-            icon={
-              <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M2 10a8 8 0 018-8v8h8a8 8 0 11-16 0z" />
-                <path d="M12 2.252A8.014 8.014 0 0117.748 8H12V2.252z" />
-              </svg>
-            }
-          />
-          <SecondaryLink
-            href="/debt-breakdown"
-            label="Debt Breakdown"
-            icon={
-              <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
-              </svg>
-            }
-          />
-        </SecondaryActions>
+        <AnalysisSecondaryActions />
       </PageHeader>
 
       <SectionCard className="p-6">

@@ -2,8 +2,10 @@
 
 import { useMemo, useState } from "react";
 
+import { parsePercentValue } from "../shared/domain/splits";
 import { normalizeNumberInput } from "../shared/inputs";
 import { PageHeader, PageShell, SectionCard } from "../shared/PageLayout";
+import { apiPost } from "../shared/api";
 import { useToast } from "../shared/ToastProvider";
 
 const initialProfiles = [
@@ -16,19 +18,10 @@ export default function ProfileSetup({ onComplete }) {
   const [isSaving, setIsSaving] = useState(false);
   const [hasTriedSubmit, setHasTriedSubmit] = useState(false);
 
-  const apiBaseUrl = "/api";
   const { showToast } = useToast();
 
-  const parsePercent = (value) => {
-    const normalized = Number(value);
-    if (Number.isNaN(normalized) || normalized <= 0 || normalized >= 100) {
-      return null;
-    }
-    return normalized;
-  };
-
   const splitValues = useMemo(
-    () => profiles.map((profile) => parsePercent(profile.splitPercent)),
+    () => profiles.map((profile) => parsePercentValue(profile.splitPercent)),
     [profiles]
   );
 
@@ -74,16 +67,7 @@ export default function ProfileSetup({ onComplete }) {
         })),
       };
 
-      const response = await fetch(`${apiBaseUrl}/profiles/setup`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const errorBody = await response.json();
-        throw new Error(errorBody.error || "Failed to create profiles.");
-      }
+      await apiPost("/profiles/setup", payload, "Failed to create profiles.");
 
       showToast("Profiles created.");
       setProfiles(initialProfiles);

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { fetchJson } from "../shared/api";
+import { API_BASE_PATH, apiDelete, apiPatch, fetchJson } from "../shared/api";
 import { formatMonthLabel } from "../shared/format";
 import { useToast } from "../shared/ToastProvider";
 import { useRealtimeUpdates } from "../shared/useRealtimeUpdates";
@@ -42,7 +42,7 @@ export const useTransactionsData = ({ onRefreshExtras } = {}) => {
   const queryStringRef = useRef("");
   const { showToast } = useToast();
 
-  const apiBaseUrl = "/api";
+  const apiBaseUrl = API_BASE_PATH;
   const setStatusIdle = () => setStatus({ state: "idle", message: "" });
   const setStatusLoading = () => setStatus({ state: "loading", message: "" });
   const setStatusError = (message) =>
@@ -565,17 +565,11 @@ export const useTransactionsData = ({ onRefreshExtras } = {}) => {
     setSavingId(transactionId);
 
     try {
-      const response = await fetch(`${apiBaseUrl}/transactions/${transactionId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to update transaction.");
-      }
+      const data = await apiPatch(
+        `/transactions/${transactionId}`,
+        payload,
+        "Failed to update transaction."
+      );
 
       const updatedMonth = data?.date ? String(data.date).slice(0, 7) : "";
       setTransactions((current) => {
@@ -599,15 +593,10 @@ export const useTransactionsData = ({ onRefreshExtras } = {}) => {
     let shouldRefreshLatest = false;
 
     try {
-      const response = await fetch(`${apiBaseUrl}/transactions/${transactionId}`, {
-        method: "DELETE",
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to delete transaction.");
-      }
+      const data = await apiDelete(
+        `/transactions/${transactionId}`,
+        "Failed to delete transaction."
+      );
 
       let deletedMonth = "";
       setTransactions((current) => {

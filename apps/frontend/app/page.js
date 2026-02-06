@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 import ProfileSetup from "./profiles/ProfileSetup";
+import { apiGet } from "./shared/api";
 import { InlineMessage, PageHeader, PageShell, SectionCard } from "./shared/PageLayout";
 import TransactionForm from "./transactions/TransactionForm";
 
@@ -11,12 +12,9 @@ export default function Home() {
   const [profiles, setProfiles] = useState([]);
   const [status, setStatus] = useState("loading");
 
-  const apiBaseUrl = "/api";
-
   const loadProfiles = useCallback(() => {
     setStatus("loading");
-    fetch(`${apiBaseUrl}/profiles`)
-      .then((response) => response.json())
+    apiGet("/profiles")
       .then((data) => {
         setProfiles(Array.isArray(data) ? data : []);
         setStatus("idle");
@@ -25,7 +23,7 @@ export default function Home() {
         setProfiles([]);
         setStatus("error");
       });
-  }, [apiBaseUrl]);
+  }, []);
 
   useEffect(() => {
     loadProfiles();

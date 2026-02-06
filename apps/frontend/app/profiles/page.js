@@ -2,9 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { parsePercentFraction } from "../shared/domain/splits";
 import { normalizeNumberInput } from "../shared/inputs";
 import { InlineMessage, PageHeader, PageShell, SectionCard } from "../shared/PageLayout";
-import SecondaryActions, { SecondaryLink } from "../shared/SecondaryActions";
+import { apiGet, apiPatch, apiPost } from "../shared/api";
+import { SetupSecondaryActions } from "../shared/SecondaryNavPresets";
 import { useToast } from "../shared/ToastProvider";
 import ProfileSetup from "./ProfileSetup";
 
@@ -16,13 +18,11 @@ export default function ProfilesPage() {
   const [savingId, setSavingId] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const apiBaseUrl = "/api";
   const { showToast } = useToast();
 
   const loadProfiles = useCallback(() => {
     setIsLoading(true);
-    fetch(`${apiBaseUrl}/profiles`)
-      .then((response) => response.json())
+    apiGet("/profiles")
       .then((data) => {
         setProfiles(
           Array.isArray(data)
@@ -41,7 +41,7 @@ export default function ProfilesPage() {
         setProfiles([]);
         setIsLoading(false);
       });
-  }, [apiBaseUrl]);
+  }, []);
 
   useEffect(() => {
     loadProfiles();
@@ -55,14 +55,6 @@ export default function ProfilesPage() {
     );
   };
 
-  const parsePercent = (value) => {
-    const normalized = Number(value);
-    if (Number.isNaN(normalized) || normalized <= 0 || normalized >= 100) {
-      return null;
-    }
-    return normalized / 100;
-  };
-
   const handleCreate = async (event) => {
     event.preventDefault();
 
@@ -71,7 +63,7 @@ export default function ProfilesPage() {
       return;
     }
 
-    const defaultSplit = parsePercent(form.splitPercent);
+    const defaultSplit = parsePercentFraction(form.splitPercent);
 
     if (!form.displayName.trim() || defaultSplit === null) {
       showToast("Add a name and valid split.", { tone: "error" });
@@ -79,19 +71,14 @@ export default function ProfilesPage() {
     }
 
     try {
-      const response = await fetch(`${apiBaseUrl}/profiles`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      await apiPost(
+        "/profiles",
+        {
           display_name: form.displayName.trim(),
           default_split: defaultSplit,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorBody = await response.json();
-        throw new Error(errorBody.error || "Failed to create profile");
-      }
+        },
+        "Failed to create profile"
+      );
 
       setForm(emptyProfile);
       loadProfiles();
@@ -104,7 +91,7 @@ export default function ProfilesPage() {
   const handleSave = async (profile) => {
     setSavingId(profile.id);
 
-    const defaultSplit = parsePercent(profile.splitPercent);
+    const defaultSplit = parsePercentFraction(profile.splitPercent);
 
     if (!profile.display_name.trim() || defaultSplit === null) {
       showToast("Enter name and split 0-100.", { tone: "error" });
@@ -113,19 +100,14 @@ export default function ProfilesPage() {
     }
 
     try {
-      const response = await fetch(`${apiBaseUrl}/profiles/${profile.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      await apiPatch(
+        `/profiles/${profile.id}`,
+        {
           display_name: profile.display_name.trim(),
           default_split: defaultSplit,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorBody = await response.json();
-        throw new Error(errorBody.error || "Failed to update profile");
-      }
+        },
+        "Failed to update profile"
+      );
 
       showToast("Profile updated.");
       loadProfiles();
@@ -165,26 +147,7 @@ export default function ProfilesPage() {
         currentPage="profiles"
         eyebrow="Setup"
       >
-        <SecondaryActions>
-          <SecondaryLink
-            href="/profiles"
-            label="Overview"
-            icon={
-              <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M10.489 2.386a.75.75 0 00-.978 0L3.01 7.81a.75.75 0 00.48 1.315h.76v6.125a.75.75 0 00.75.75H8.5a.75.75 0 00.75-.75V11h1.5v4.25a.75.75 0 00.75.75H15a.75.75 0 00.75-.75V9.125h.76a.75.75 0 00.48-1.315l-6.5-5.424z" />
-              </svg>
-            }
-          />
-          <SecondaryLink
-            href="/categories"
-            label="Categories"
-            icon={
-              <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-              </svg>
-            }
-          />
-        </SecondaryActions>
+        <SetupSecondaryActions />
       </PageHeader>
 
       {hasTooManyProfiles ? (

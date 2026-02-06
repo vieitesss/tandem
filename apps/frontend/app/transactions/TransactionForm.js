@@ -5,6 +5,10 @@ import { useEffect, useMemo, useState } from "react";
 import SelectField from "../shared/SelectField";
 import { useToast } from "../shared/ToastProvider";
 import { normalizeNumberInput } from "../shared/inputs";
+import { apiPost } from "../shared/api";
+import { buildDefaultPercentSplits } from "../shared/domain/splits";
+import { useCategories } from "../shared/hooks/useCategories";
+import { useProfiles } from "../shared/hooks/useProfiles";
 import { categoryOptions } from "../shared/transactions";
 import { notifyTransactionsUpdated } from "./transactionsCache";
 
@@ -19,8 +23,6 @@ export default function TransactionForm() {
   const [type, setType] = useState("EXPENSE");
   const [splitMode, setSplitMode] = useState("custom");
   const [splits, setSplits] = useState([initialSplit]);
-  const [profiles, setProfiles] = useState([]);
-  const [categories, setCategories] = useState(categoryOptions);
   const [beneficiaryId, setBeneficiaryId] = useState("");
   const [owedToId, setOwedToId] = useState("");
   const [hasTriedSubmit, setHasTriedSubmit] = useState(false);
@@ -33,8 +35,8 @@ export default function TransactionForm() {
     category: false,
   });
   const { showToast } = useToast();
-
-  const apiBaseUrl = "/api";
+  const { data: profiles } = useProfiles();
+  const { data: categories } = useCategories({ fallback: categoryOptions });
 
   const inputClassName = (hasError) =>
     `w-full rounded-xl border bg-obsidian-800 px-3.5 py-2.5 text-cream-100 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-cream-500/20 ${
@@ -49,50 +51,11 @@ export default function TransactionForm() {
     "text-[11px] font-semibold uppercase tracking-[0.14em] text-cream-300";
 
   useEffect(() => {
-    let isMounted = true;
-
-    fetch(`${apiBaseUrl}/profiles`)
-      .then((response) => response.json())
-      .then((data) => {
-        if (isMounted) {
-          setProfiles(Array.isArray(data) ? data : []);
-        }
-      })
-      .catch(() => {
-        if (isMounted) {
-          setProfiles([]);
-        }
-      });
-
-    fetch(`${apiBaseUrl}/categories`)
-      .then((response) => response.json())
-      .then((data) => {
-        if (isMounted && Array.isArray(data) && data.length > 0) {
-          setCategories(data);
-        }
-      })
-      .catch(() => {
-        if (isMounted) {
-          setCategories(categoryOptions);
-        }
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [apiBaseUrl]);
-
-  useEffect(() => {
     if (profiles.length === 0) {
       return;
     }
 
-    setSplits(
-      profiles.map((profile) => ({
-        user_id: profile.id,
-        percent: Number(profile.default_split || 0) * 100,
-      }))
-    );
+    setSplits(buildDefaultPercentSplits(profiles));
   }, [profiles]);
 
   useEffect(() => {
@@ -271,16 +234,7 @@ export default function TransactionForm() {
     };
 
     try {
-      const response = await fetch(`${apiBaseUrl}/transactions`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const errorBody = await response.json();
-        throw new Error(errorBody.error || "Failed to save transaction");
-      }
+      await apiPost("/transactions", payload, "Failed to save transaction");
 
       showToast("Transaction saved.");
       notifyTransactionsUpdated({
@@ -293,12 +247,7 @@ export default function TransactionForm() {
       setBeneficiaryId("");
       setOwedToId("");
       setSplits(
-        profiles.length
-          ? profiles.map((profile) => ({
-              user_id: profile.id,
-              percent: Number(profile.default_split || 0) * 100,
-            }))
-          : [initialSplit]
+        profiles.length ? buildDefaultPercentSplits(profiles) : [initialSplit]
       );
       setHasTriedSubmit(false);
       setAmountFormatError(false);
