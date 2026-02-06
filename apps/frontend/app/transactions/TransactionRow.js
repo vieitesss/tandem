@@ -388,7 +388,7 @@ export default function TransactionRow({
   };
 
   const rowContent = (
-    <div className="grid grid-cols-[50px_100px_1fr_80px] items-center gap-2 text-sm md:grid-cols-[60px_120px_140px_1fr_100px_90px_72px]">
+    <div className="grid grid-cols-[52px_110px_1fr_86px] items-center gap-2 text-sm md:grid-cols-[70px_130px_140px_1fr_100px_96px_84px]">
       <span className="text-cream-100 tabular-nums font-mono">{dayLabel}</span>
       <span className="truncate text-cream-100 font-medium">{payerLabel}</span>
       <span className="truncate text-cream-100/60 md:hidden">
@@ -399,13 +399,13 @@ export default function TransactionRow({
         {noteLabel || notePlaceholder}
       </span>
       <span className="hidden truncate text-cream-100/60 md:block">{splitLabel}</span>
-      <span className={`text-right font-mono font-semibold ${amountClass}`}>
+      <span className={`text-right font-mono tabular-nums font-semibold ${amountClass}`}>
         {formatCurrency(transaction.amount)}
       </span>
       <div className="hidden justify-end md:flex">
         <button
           type="button"
-          className="rounded-lg bg-obsidian-700/60 px-3 py-1.5 text-xs font-medium text-cream-200 transition-all duration-200 hover:bg-obsidian-700 hover:text-cream-100"
+          className="rounded-lg border border-obsidian-600 bg-obsidian-800 px-3 py-1.5 text-xs font-medium text-cream-200 transition-colors duration-150 hover:border-cream-500/35 hover:text-cream-100"
           onClick={handleOpenModal}
         >
           Edit
@@ -435,7 +435,7 @@ export default function TransactionRow({
   };
 
   return (
-    <div className="px-3 py-3 transition-all duration-200 hover:bg-obsidian-900">
+    <div className="px-4 py-4 transition-colors duration-150 hover:bg-obsidian-900/70">
       <div
         role="button"
         tabIndex={0}
@@ -452,7 +452,7 @@ export default function TransactionRow({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              className="rounded-lg bg-obsidian-700/60 px-3 py-1.5 text-xs font-medium text-cream-200 transition-all duration-200 hover:bg-obsidian-700"
+               className="rounded-lg border border-obsidian-600 bg-obsidian-800 px-3 py-1.5 text-xs font-medium text-cream-200 transition-colors duration-150 hover:border-cream-500/35 hover:text-cream-100"
               onClick={handleOpenModal}
             >
               Edit
@@ -462,8 +462,8 @@ export default function TransactionRow({
       ) : null}
       {isModalOpen ? (
         <ModalPortal>
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-cream-50/60 p-4 backdrop-blur-sm animate-fade-in">
-            <div className="animate-scale-in w-full max-w-lg space-y-4 rounded-3xl border border-obsidian-600/80 bg-obsidian-800 p-6 text-cream-50 shadow-elevated">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-cream-50/50 p-4 animate-fade-in">
+            <div className="animate-scale-in w-full max-w-lg space-y-4 rounded-3xl border border-obsidian-600/90 bg-obsidian-800 p-6 text-cream-50">
               <div className="space-y-1">
                 <h3 className="text-xl font-display font-semibold tracking-tight">Edit Transaction</h3>
                 <p className="text-xs text-cream-100/60 font-medium">Type: {transaction.type}</p>
@@ -472,7 +472,7 @@ export default function TransactionRow({
                  <label className="space-y-2 text-xs font-medium text-cream-200 tracking-wide">
                    Date
                    <input
-                      className="w-full rounded-lg border border-obsidian-600 bg-obsidian-900 px-3 py-2 text-sm text-cream-50 transition-all duration-200 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30"
+                       className="w-full rounded-lg border border-obsidian-600 bg-obsidian-800 px-3 py-2 text-sm text-cream-100 transition-colors duration-150 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/20"
                      type="date"
                      value={draft.date}
                      onChange={(event) =>
@@ -486,7 +486,7 @@ export default function TransactionRow({
                  <label className="space-y-2 text-xs font-medium text-cream-200 tracking-wide">
                    Paid by
                    <SelectField
-                      className="w-full appearance-none rounded-lg border border-obsidian-600 bg-obsidian-900 px-3 py-2 pr-9 text-sm text-cream-50 transition-all duration-200 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30"
+                       className="w-full appearance-none rounded-lg border border-obsidian-600 bg-obsidian-800 px-3 py-2 pr-9 text-sm text-cream-100 transition-colors duration-150 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/20"
                      value={draft.payerId}
                      onChange={(event) =>
                        setDraft((current) => ({
@@ -506,7 +506,7 @@ export default function TransactionRow({
                  <label className="space-y-2 text-xs font-medium text-cream-200 tracking-wide">
                    Category
                    <SelectField
-                      className="w-full appearance-none rounded-lg border border-obsidian-600 bg-obsidian-900 px-3 py-2 pr-9 text-sm text-cream-50 transition-all duration-200 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30"
+                       className="w-full appearance-none rounded-lg border border-obsidian-600 bg-obsidian-800 px-3 py-2 pr-9 text-sm text-cream-100 transition-colors duration-150 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/20"
                      value={draft.category}
                      onChange={(event) =>
                        setDraft((current) => ({
@@ -530,7 +530,7 @@ export default function TransactionRow({
                     <label className="space-y-2 text-xs font-medium text-cream-200 tracking-wide">
                       Sent to
                       <SelectField
-                         className="w-full appearance-none rounded-lg border border-obsidian-600 bg-obsidian-900 px-3 py-2 pr-9 text-sm text-cream-50 transition-all duration-200 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30"
+                          className="w-full appearance-none rounded-lg border border-obsidian-600 bg-obsidian-800 px-3 py-2 pr-9 text-sm text-cream-100 transition-colors duration-150 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/20"
                         value={draft.beneficiaryId}
                         onChange={(event) =>
                           setDraft((current) => ({
@@ -554,7 +554,7 @@ export default function TransactionRow({
                     <label className="space-y-2 text-xs font-medium text-cream-200 tracking-wide">
                       Split mode
                      <SelectField
-                        className="w-full appearance-none rounded-lg border border-obsidian-600 bg-obsidian-900 px-3 py-2 pr-9 text-sm text-cream-50 transition-all duration-200 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30"
+                         className="w-full appearance-none rounded-lg border border-obsidian-600 bg-obsidian-800 px-3 py-2 pr-9 text-sm text-cream-100 transition-colors duration-150 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/20"
                        value={draft.splitMode}
                         onChange={(event) =>
                           setDraft((current) => ({
@@ -577,7 +577,7 @@ export default function TransactionRow({
                    <label className="space-y-2 text-xs font-medium text-cream-200 tracking-wide">
                      Owed by
                      <SelectField
-                        className="w-full appearance-none rounded-lg border border-obsidian-600 bg-obsidian-900 px-3 py-2 pr-9 text-sm text-cream-50 transition-all duration-200 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30"
+                         className="w-full appearance-none rounded-lg border border-obsidian-600 bg-obsidian-800 px-3 py-2 pr-9 text-sm text-cream-100 transition-colors duration-150 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/20"
                        value={draft.owedToId}
                        onChange={(event) =>
                          setDraft((current) => ({
@@ -600,7 +600,7 @@ export default function TransactionRow({
                     </label>
                   ) : null}
                   {transaction.type === "EXPENSE" && draft.splitMode === "custom" ? (
-                    <div className="space-y-2 rounded-xl border border-obsidian-600 bg-obsidian-900 p-3">
+                    <div className="space-y-2 rounded-xl border border-obsidian-600 bg-obsidian-900/60 p-3">
                       <p className="text-xs font-medium text-cream-300">
                         Define each partner's share. Total must be 100%.
                       </p>
@@ -618,7 +618,7 @@ export default function TransactionRow({
                                 {profileLabel}
                               </span>
                               <input
-                                className="w-full rounded-lg border border-obsidian-600 bg-white px-2 py-1.5 text-right text-xs font-mono text-cream-50 transition-all duration-200 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30"
+                                className="w-full rounded-lg border border-obsidian-600 bg-obsidian-800 px-2 py-1.5 text-right text-xs font-mono tabular-nums text-cream-100 transition-colors duration-150 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/20"
                                 type="number"
                                 step="0.1"
                                 value={split.percent}
@@ -643,7 +643,7 @@ export default function TransactionRow({
                   <label className="space-y-2 text-xs font-medium text-cream-200 tracking-wide">
                     Amount
                     <input
-                      className="w-full rounded-lg border border-obsidian-600 bg-obsidian-900 px-3 py-2 text-left text-sm text-cream-50 font-mono transition-all duration-200 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30"
+                      className="w-full rounded-lg border border-obsidian-600 bg-obsidian-800 px-3 py-2 text-left text-sm text-cream-100 font-mono tabular-nums transition-colors duration-150 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/20"
                      placeholder="0.00"
                      inputMode="decimal"
                      value={draft.amount}
@@ -656,7 +656,7 @@ export default function TransactionRow({
                  <label className="space-y-2 text-xs font-medium text-cream-200 tracking-wide">
                    Note
                    <input
-                      className="w-full rounded-lg border border-obsidian-600 bg-obsidian-900 px-3 py-2 text-sm text-cream-50 placeholder:text-cream-300/60 transition-all duration-200 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30"
+                       className="w-full rounded-lg border border-obsidian-600 bg-obsidian-800 px-3 py-2 text-sm text-cream-100 placeholder:text-cream-300/60 transition-colors duration-150 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/20"
                      placeholder="No note"
                      value={draft.note}
                      onChange={(event) =>
@@ -673,10 +673,10 @@ export default function TransactionRow({
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <button
                   type="button"
-                  className={`rounded-lg px-4 py-2 text-xs font-semibold transition-all duration-200 ${
+                  className={`rounded-lg px-4 py-2 text-xs font-semibold transition-colors duration-150 ${
                     isDeleteConfirm
-                      ? "bg-coral-500 text-white shadow-glow-sm"
-                      : "bg-coral-500/80 text-white hover:bg-coral-500 hover:shadow-glow-sm"
+                      ? "bg-coral-500 text-white"
+                      : "bg-coral-500/85 text-white hover:bg-coral-500"
                   }`}
                   onClick={handleDelete}
                   disabled={isDeleting}
@@ -690,7 +690,7 @@ export default function TransactionRow({
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    className="rounded-lg bg-obsidian-700/60 px-4 py-2 text-xs font-medium text-cream-200 transition-all duration-200 hover:bg-obsidian-700"
+                    className="rounded-lg border border-obsidian-600 bg-obsidian-800 px-4 py-2 text-xs font-medium text-cream-200 transition-colors duration-150 hover:border-cream-500/35 hover:text-cream-100"
                     onClick={handleCloseModal}
                     disabled={isSaving || isDeleting}
                   >
@@ -698,7 +698,7 @@ export default function TransactionRow({
                   </button>
                   <button
                     type="button"
-                    className="rounded-lg bg-cream-500 px-4 py-2 text-xs font-semibold text-white shadow-glow-md transition-all duration-200 hover:bg-cream-400 hover:shadow-glow-lg"
+                    className="rounded-lg border border-cream-500/40 bg-cream-500 px-4 py-2 text-xs font-semibold text-white transition-colors duration-150 hover:bg-cream-600"
                     onClick={handleSave}
                     disabled={isSaving || isDeleting}
                   >

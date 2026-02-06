@@ -32,7 +32,7 @@ export function PageHeader({
           </p>
         ) : null}
         <div className="flex min-w-0 items-center gap-3">
-          <div className="title-icon flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-cream-500/20 bg-gradient-to-br from-cream-500/15 via-cream-500/5 to-transparent shadow-glow-sm md:h-12 md:w-12">
+          <div className="title-icon flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-cream-500/25 bg-gradient-to-br from-cream-500/12 via-cream-500/4 to-transparent md:h-12 md:w-12">
             <img src="/icon.png" alt="Tandem" className="title-icon-media" />
           </div>
           <h1 className="truncate text-3xl font-display font-semibold tracking-tight text-cream-50 md:text-4xl">
@@ -57,7 +57,7 @@ export function SectionCard({ as: Component = "section", className, children, ..
   return (
     <Component
       className={cx(
-        "rounded-3xl border border-obsidian-600/80 bg-obsidian-800 shadow-card",
+        "rounded-3xl border border-obsidian-600/90 bg-obsidian-800",
         className
       )}
       {...props}

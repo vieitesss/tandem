@@ -1,5 +1,4 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-@import url('https://api.fontshare.com/v2/css?f[]=clash-display@400,500,600,700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 @tailwind base;
@@ -8,18 +7,18 @@
 
 @layer base {
   :root {
-    --font-clash: 'Clash Display', system-ui, sans-serif;
+    --font-clash: 'Inter', system-ui, sans-serif;
     --font-inter: 'Inter', system-ui, sans-serif;
     --font-jetbrains: 'JetBrains Mono', monospace;
 
-    --color-bg-primary: #f8fafc;
-    --color-bg-secondary: #f2f4f7;
+    --color-bg-primary: #f7f9fb;
+    --color-bg-secondary: #eef2f6;
     --color-bg-elevated: #ffffff;
     --color-text-primary: #0f172a;
     --color-text-secondary: #1e293b;
     --color-text-muted: #475467;
-    --color-accent-primary: #2563eb;
-    --color-accent-secondary: #0ea5a4;
+    --color-accent-primary: #2e4e73;
+    --color-accent-secondary: #243f61;
     --color-border: rgba(15, 23, 42, 0.12);
   }
 
@@ -41,16 +40,10 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: radial-gradient(
-      circle at 0% 0%,
-      rgba(37, 99, 235, 0.07) 0%,
-      rgba(37, 99, 235, 0) 42%
-    ),
-    radial-gradient(
-      circle at 100% 10%,
-      rgba(14, 165, 164, 0.05) 0%,
-      rgba(14, 165, 164, 0) 38%
-    );
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.65) 0%, rgba(255, 255, 255, 0) 50%),
+      radial-gradient(circle at 12% 0%, rgba(46, 78, 115, 0.08) 0%, rgba(46, 78, 115, 0) 44%),
+      radial-gradient(circle at 100% 12%, rgba(102, 126, 154, 0.07) 0%, rgba(102, 126, 154, 0) 38%);
     pointer-events: none;
     z-index: 0;
   }
@@ -71,7 +64,7 @@
   }
 
   :focus-visible {
-    outline: 2px solid rgba(37, 99, 235, 0.7);
+    outline: 2px solid rgba(46, 78, 115, 0.65);
     outline-offset: 2px;
   }
 
@@ -108,13 +101,13 @@
   .stagger-6 { animation-delay: 0.3s; }
 
   .glass {
-    @apply bg-white/85 backdrop-blur-xl border border-obsidian-600/50;
+    @apply bg-white/90 backdrop-blur-xl border border-obsidian-600/80;
   }
 
   .border-gradient {
     position: relative;
     background: linear-gradient(var(--color-bg-elevated), var(--color-bg-elevated)) padding-box,
-                linear-gradient(135deg, rgba(37, 99, 235, 0.35), transparent 50%, rgba(14, 165, 164, 0.15)) border-box;
+                linear-gradient(135deg, rgba(46, 78, 115, 0.28), transparent 50%, rgba(46, 78, 115, 0.08)) border-box;
     border: 1px solid transparent;
   }
 

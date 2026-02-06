@@ -1,6 +1,6 @@
 export default function InsightCard({ label, value, helper }) {
   return (
-    <div className="rounded-2xl border border-obsidian-600/80 bg-white p-5 shadow-card">
+    <div className="rounded-2xl border border-obsidian-600/90 bg-obsidian-800 p-5">
       <div className="text-xs font-medium uppercase tracking-wider text-cream-300/70">
         {label}
       </div>

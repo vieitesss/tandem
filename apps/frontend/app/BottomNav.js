@@ -42,6 +42,19 @@ export default function BottomNav() {
     if (href === "/") {
       return pathname === "/";
     }
+
+    if (href === "/transactions") {
+      return ["/transactions", "/timeline", "/person-summary", "/debt-breakdown"].some(
+        (route) => pathname === route || pathname.startsWith(`${route}/`)
+      );
+    }
+
+    if (href === "/profiles") {
+      return ["/profiles", "/categories"].some(
+        (route) => pathname === route || pathname.startsWith(`${route}/`)
+      );
+    }
+
     return pathname.startsWith(href);
   };
 

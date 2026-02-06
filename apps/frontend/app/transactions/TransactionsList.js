@@ -19,16 +19,16 @@ export default function TransactionsList({
         <div className="text-base font-display font-semibold tracking-tight text-cream-100">
           {monthLabel}
         </div>
-        <div className="grid grid-cols-[50px_100px_1fr_80px] gap-2 px-3 text-xs font-semibold uppercase tracking-wider text-cream-400 md:grid-cols-[60px_120px_140px_1fr_100px_90px_72px]">
+        <div className="grid grid-cols-[52px_110px_1fr_86px] gap-2 px-4 text-[11px] font-semibold uppercase tracking-[0.12em] text-cream-400 md:grid-cols-[70px_130px_140px_1fr_100px_96px_84px]">
           <span>Day</span>
           <span>Paid by</span>
           <span className="md:hidden">Note</span>
           <span className="hidden md:block">Category</span>
           <span className="hidden md:block">Note</span>
           <span className="hidden md:block">Split</span>
-          <span className="text-right">Amount</span>
+          <span className="text-right tabular-nums">Amount</span>
         </div>
-        <div className="divide-y divide-obsidian-600 rounded-3xl border border-obsidian-600/80 bg-obsidian-800 shadow-card">
+        <div className="divide-y divide-obsidian-600 rounded-3xl border border-obsidian-600/90 bg-obsidian-800">
           {group.items.map((transaction) => (
             <TransactionRow
               key={transaction.id}

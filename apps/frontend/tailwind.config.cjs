@@ -4,48 +4,48 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Semantic light-first base palette
+        // Neutral flat surface palette
         obsidian: {
-          950: "#FCFCFD",
-          900: "#F8FAFC",
+          950: "#FCFDFE",
+          900: "#F7F9FB",
           800: "#FFFFFF",
           700: "#EEF2F6",
-          600: "#D9DFEA",
+          600: "#D6DEE8",
         },
-        // Editorial ink + accent range
+        // Neutral ink and accent
         cream: {
           50: "#0F172A",
           100: "#1E293B",
           200: "#334155",
           300: "#475467",
-          400: "#64748B",
-          500: "#2563EB",
-          600: "#1D4ED8",
-          700: "#1E40AF",
+          400: "#667085",
+          500: "#2E4E73",
+          600: "#243F61",
+          700: "#1C324E",
         },
-        // Positive financial states
+        // Positive financial states (income)
         sage: {
-          50: "#054F31",
-          100: "#05603A",
-          200: "#027A48",
-          300: "#039855",
-          400: "#12B76A",
-          500: "#32D583",
-          600: "#6CE9A6",
+          50: "#0B3D2E",
+          100: "#14553E",
+          200: "#1D6D4E",
+          300: "#258460",
+          400: "#2E9B70",
+          500: "#42AF84",
+          600: "#67C29E",
         },
         // Expense and danger states
         coral: {
-          50: "#7A271A",
-          100: "#912018",
-          200: "#B42318",
-          300: "#D92D20",
-          400: "#F04438",
-          500: "#F97066",
-          600: "#FDA29B",
+          50: "#6A2F2A",
+          100: "#7A3932",
+          200: "#8C443B",
+          300: "#A04E43",
+          400: "#B85E52",
+          500: "#CC746A",
+          600: "#D9918A",
         },
       },
       fontFamily: {
-        display: ["var(--font-clash)", "system-ui", "sans-serif"],
+        display: ["var(--font-inter)", "system-ui", "sans-serif"],
         body: ["var(--font-inter)", "system-ui", "sans-serif"],
         mono: ["var(--font-jetbrains)", "monospace"],
       },
@@ -55,11 +55,11 @@ module.exports = {
         wider: "0.15em",
       },
       boxShadow: {
-        "glow-sm": "0 2px 10px rgba(37, 99, 235, 0.15)",
-        "glow-md": "0 6px 18px rgba(37, 99, 235, 0.2)",
-        "glow-lg": "0 12px 28px rgba(37, 99, 235, 0.24)",
-        "elevated": "0 24px 48px rgba(16, 24, 40, 0.14)",
-        "card": "0 8px 24px rgba(16, 24, 40, 0.08)",
+        "glow-sm": "none",
+        "glow-md": "none",
+        "glow-lg": "none",
+        "elevated": "none",
+        "card": "none",
       },
       animation: {
         "fade-in": "fadeIn 0.6s ease-out",

@@ -133,66 +133,31 @@ export default function TimelineViz({ monthlyData }) {
     return null;
   }
 
-  // Find the max value to scale the bars
-  const maxAmount = Math.max(...monthlyData.map((d) => d.total_spent), 1);
-  const chartHeight = 256;
-  const topPadding = 18;
-  const minBarHeight = 8;
-  const transitionSpan = Math.min(barWidth * 0.2, 12);
-  const stepInset = Math.min(transitionSpan, barWidth * 0.35);
-  const cornerRadius = Math.min(stepInset * 0.8, 8);
-  const labelOffset = 4;
-  const maxBarHeight = chartHeight - topPadding;
-  const heights = monthlyData.map((data) =>
-    Math.max((data.total_spent / maxAmount) * maxBarHeight, minBarHeight)
-  );
-  const yPositions = heights.map((height) => chartHeight - height);
+  const maxAmount = Math.max(...monthlyData.map((entry) => Number(entry.total_spent || 0)), 1);
+  const chartHeight = 248;
+  const topPadding = 20;
+  const bottomPadding = 22;
+  const maxPlotHeight = chartHeight - topPadding - bottomPadding;
+  const points = monthlyData.map((data, index) => {
+    const x = index * barWidth + barWidth / 2;
+    const ratio = Number(data.total_spent || 0) / maxAmount;
+    const y = chartHeight - bottomPadding - ratio * maxPlotHeight;
+    return {
+      month: data.month,
+      value: Number(data.total_spent || 0),
+      transaction_count: data.transaction_count,
+      x,
+      y,
+    };
+  });
 
-  const areaPath = (() => {
-    let path = `M 0 ${chartHeight}`;
-    if (yPositions.length === 0) {
-      return path;
-    }
-    path += ` L 0 ${yPositions[0]}`;
-    yPositions.forEach((y, index) => {
-      const xStart = index * barWidth;
-      const xEnd = xStart + barWidth;
-      const flatStart = index === 0 ? xStart : xStart + stepInset;
-      const flatEnd =
-        index === yPositions.length - 1 ? xEnd : xEnd - stepInset;
-      path += ` L ${flatStart} ${y}`;
-      path += ` L ${flatEnd} ${y}`;
-      if (index < yPositions.length - 1) {
-        const nextY = yPositions[index + 1];
-        const transitionEnd = xEnd + stepInset;
-        path += ` C ${flatEnd + cornerRadius} ${y} ${transitionEnd - cornerRadius} ${nextY} ${transitionEnd} ${nextY}`;
-      }
-    });
-    path += ` L ${dataWidth} ${chartHeight} Z`;
-    return path;
-  })();
+  const linePath = points
+    .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`)
+    .join(" ");
 
-  const strokePath = (() => {
-    if (yPositions.length === 0) {
-      return "";
-    }
-    let path = `M 0 ${yPositions[0]}`;
-    yPositions.forEach((y, index) => {
-      const xStart = index * barWidth;
-      const xEnd = xStart + barWidth;
-      const flatStart = index === 0 ? xStart : xStart + stepInset;
-      const flatEnd =
-        index === yPositions.length - 1 ? xEnd : xEnd - stepInset;
-      path += ` L ${flatStart} ${y}`;
-      path += ` L ${flatEnd} ${y}`;
-      if (index < yPositions.length - 1) {
-        const nextY = yPositions[index + 1];
-        const transitionEnd = xEnd + stepInset;
-        path += ` C ${flatEnd + cornerRadius} ${y} ${transitionEnd - cornerRadius} ${nextY} ${transitionEnd} ${nextY}`;
-      }
-    });
-    return path;
-  })();
+  const horizontalGuides = [0.25, 0.5, 0.75].map((value) => {
+    return chartHeight - bottomPadding - value * maxPlotHeight;
+  });
 
   return (
     <div className="w-full overflow-x-auto pb-4" ref={containerRef}>
@@ -203,71 +168,63 @@ export default function TimelineViz({ monthlyData }) {
             viewBox={`0 0 ${chartWidth} ${chartHeight}`}
             preserveAspectRatio="none"
           >
-            <defs>
-              <linearGradient
-                id="timeline-area"
+            {horizontalGuides.map((y) => (
+              <line
+                key={`guide-${y}`}
                 x1="0"
-                y1="0"
-                x2="0"
-                y2="1"
-              >
-                <stop offset="0%" stopColor="rgba(229, 213, 184, 0.55)" />
-                <stop offset="100%" stopColor="rgba(229, 213, 184, 0.08)" />
-              </linearGradient>
-            </defs>
-            <path d={areaPath} fill="url(#timeline-area)" />
+                y1={y}
+                x2={dataWidth}
+                y2={y}
+                stroke="rgba(71, 84, 103, 0.16)"
+                strokeWidth="1"
+                strokeDasharray="4 6"
+              />
+            ))}
             <path
-              d={strokePath}
+              d={linePath}
               fill="none"
-              stroke="rgba(244, 236, 210, 0.9)"
-              strokeWidth="3"
+              stroke="rgba(46, 78, 115, 0.9)"
+              strokeWidth="2.5"
               strokeLinejoin="round"
               strokeLinecap="round"
             />
-            {monthlyData.map((data, index) => {
-              const x = index * barWidth;
+            {points.map((point) => {
               return (
-                <line
-                  key={`${data.month}-divider`}
-                  x1={x}
-                  y1="0"
-                  x2={x}
-                  y2={chartHeight}
-                  stroke="rgba(229, 213, 184, 0.2)"
-                  strokeWidth="1"
+                <circle
+                  key={`${point.month}-dot`}
+                  cx={point.x}
+                  cy={point.y}
+                  r="3.2"
+                  fill="rgba(46, 78, 115, 1)"
                 />
               );
             })}
             <line
               x1="0"
-              y1={chartHeight}
+              y1={chartHeight - bottomPadding}
               x2={dataWidth}
-              y2={chartHeight}
-              stroke="rgba(229, 213, 184, 0.25)"
+              y2={chartHeight - bottomPadding}
+              stroke="rgba(71, 84, 103, 0.26)"
               strokeWidth="1"
             />
           </svg>
-          {monthlyData.map((data, index) => {
-            const xStart = index * barWidth;
-            const flatStart = index === 0 ? 0 : stepInset;
-            const flatEnd =
-              index === yPositions.length - 1 ? barWidth : barWidth - stepInset;
-            const labelLeft = (flatStart + flatEnd) / 2;
-            const labelTop = Math.max(yPositions[index] - labelOffset, 0);
+          {points.map((point) => {
+            const xStart = point.x - barWidth / 2;
+            const labelTop = Math.max(point.y - 6, 0);
             return (
               <div
-                key={data.month}
+                key={point.month}
                 className="group absolute bottom-0"
                 style={{ left: `${xStart}px`, width: `${barWidth}px`, height: "100%" }}
               >
                 <span
-                  className="pointer-events-none absolute -translate-x-1/2 -translate-y-full text-[10px] font-bold text-cream-100/70 transition-all duration-300 group-hover:-translate-y-[110%] group-hover:text-cream-50"
-                  style={{ top: `${labelTop}px`, left: `${labelLeft}px` }}
+                  className="pointer-events-none absolute left-1/2 -translate-x-1/2 -translate-y-full text-[10px] font-semibold text-cream-300 transition-all duration-200 group-hover:text-cream-100"
+                  style={{ top: `${labelTop}px` }}
                 >
-                  {formatCompact(data.total_spent)}
+                  {formatCompact(point.value)}
                 </span>
                 <Tooltip
-                  label={`${formatMonthLabel(data.month)}: ${formatCurrency(data.total_spent)} (${data.transaction_count} txns)`}
+                  label={`${formatMonthLabel(point.month)}: ${formatCurrency(point.value)} (${point.transaction_count} txns)`}
                   className="absolute inset-0 h-full w-full [&>span:nth-child(2)]:hidden"
                 >
                   <span className="absolute inset-0" />
@@ -286,7 +243,7 @@ export default function TimelineViz({ monthlyData }) {
           {monthlyData.map((data) => (
             <div
               key={data.month}
-              className="text-center text-[10px] font-medium uppercase tracking-wider text-cream-100/40 truncate"
+              className="truncate text-center text-[10px] font-medium uppercase tracking-wider text-cream-300/70"
             >
               {formatMonthYear(data.month)}
             </div>
