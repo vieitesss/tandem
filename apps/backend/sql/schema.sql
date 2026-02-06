@@ -54,26 +54,26 @@ create table if not exists changes (
 );
 
 insert into categories (label, icon, is_default) values
-  ('Groceries', '🛒', true),
-  ('Rent', '🏠', true),
-  ('Utilities', '💡', true),
-  ('Restaurants', '🍽️', true),
-  ('Transport', '🚗', true),
-  ('Health', '🩺', true),
-  ('Entertainment', '🎬', true),
-  ('Travel', '✈️', true),
-  ('Shopping', '🛍️', true),
-  ('Subscriptions', '📦', true),
-  ('Salary', '💼', true),
-  ('Freelance', '🧑‍💻', true),
-  ('Gifts', '🎁', true),
-  ('Pets', '🐾', true),
-  ('Education', '🎓', true),
-  ('Insurance', '🛡️', true),
-  ('Home', '🧹', true),
-  ('Kids', '🧸', true),
-  ('Taxes', '🧾', true),
-  ('Other', '🧩', true)
+  ('Groceries', 'cart', true),
+  ('Rent', 'home', true),
+  ('Utilities', 'bolt', true),
+  ('Restaurants', 'cart', true),
+  ('Transport', 'car', true),
+  ('Health', 'health', true),
+  ('Entertainment', 'media', true),
+  ('Travel', 'car', true),
+  ('Shopping', 'bag', true),
+  ('Subscriptions', 'box', true),
+  ('Salary', 'briefcase', true),
+  ('Freelance', 'briefcase', true),
+  ('Gifts', 'gift', true),
+  ('Pets', 'paw', true),
+  ('Education', 'book', true),
+  ('Insurance', 'shield', true),
+  ('Home', 'home', true),
+  ('Kids', 'smile', true),
+  ('Taxes', 'receipt', true),
+  ('Other', 'tag', true)
 on conflict (label) do nothing;
 
 create or replace view user_paid as
