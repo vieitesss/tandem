@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { AnalysisSecondaryActions } from "../shared/SecondaryNavPresets";
 import { InlineMessage, PageHeader, PageShell, SectionCard } from "../shared/PageLayout";
 import TransactionsFilters from "./TransactionsFilters";
@@ -75,27 +77,25 @@ export default function TransactionsPage() {
         </SectionCard>
       ) : null}
 
-      <SectionCard className="p-4">
-        <div
-          className={`grid gap-4 ${
-            showVisibleTotals ? "xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]" : ""
-          }`}
-        >
-          <DebtSummaryCard
-            debtLine={debtLine}
-            debtSummary={debtSummary}
+      <section
+        className={`grid gap-4 ${
+          showVisibleTotals ? "xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]" : ""
+        }`}
+      >
+        <DebtSummaryCard
+          debtLine={debtLine}
+          debtSummary={debtSummary}
+          embedded
+          fillHeight={showVisibleTotals}
+        />
+        {showVisibleTotals ? (
+          <TransactionsTotals
+            presentTypes={presentTypes}
+            totalsByType={totalsByType}
             embedded
-            fillHeight={showVisibleTotals}
           />
-          {showVisibleTotals ? (
-            <TransactionsTotals
-              presentTypes={presentTypes}
-              totalsByType={totalsByType}
-              embedded
-            />
-          ) : null}
-        </div>
-      </SectionCard>
+        ) : null}
+      </section>
 
       <section className="space-y-4">
         <TransactionsFilters
@@ -116,7 +116,15 @@ export default function TransactionsPage() {
         ) : null}
 
         {status.state === "idle" && filteredTransactions.length === 0 ? (
-          <InlineMessage tone="muted">No transactions found.</InlineMessage>
+          <SectionCard className="space-y-3 p-5">
+            <InlineMessage tone="muted">No transactions found for these filters.</InlineMessage>
+            <Link
+              href="/"
+              className="inline-flex w-fit items-center rounded-xl border border-cream-500/35 bg-cream-500 px-3.5 py-2 text-sm font-display font-semibold text-white transition-colors duration-200 hover:bg-cream-600"
+            >
+              Add a transaction
+            </Link>
+          </SectionCard>
         ) : null}
 
         <TransactionsList

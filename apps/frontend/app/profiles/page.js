@@ -3,6 +3,12 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { parsePercentFraction } from "../shared/domain/splits";
+import {
+  FieldLabel,
+  PrimaryButton,
+  SecondaryButton,
+  TextInput,
+} from "../shared/FormPrimitives";
 import { normalizeNumberInput } from "../shared/inputs";
 import { InlineMessage, PageHeader, PageShell, SectionCard } from "../shared/PageLayout";
 import { apiGet, apiPatch, apiPost } from "../shared/api";
@@ -163,8 +169,10 @@ export default function ProfilesPage() {
           onSubmit={handleCreate}
         >
           <div className="grid gap-3 sm:grid-cols-[1fr_120px_120px]">
-            <input
-              className="w-full rounded-lg border border-cream-500/20 bg-obsidian-950/80 px-3 py-2.5 text-cream-50 placeholder:text-cream-100/40 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30 transition-all duration-200"
+            <TextInput
+              id="create-profile-name"
+              className="bg-obsidian-950/80 placeholder:text-cream-100/40"
+              aria-label="New profile name"
               placeholder="Name"
               value={form.displayName}
               onChange={(event) =>
@@ -174,8 +182,10 @@ export default function ProfilesPage() {
                 }))
               }
             />
-            <input
-              className="w-full rounded-lg border border-cream-500/20 bg-obsidian-950/80 px-3 py-2.5 text-cream-50 font-mono placeholder:text-cream-100/40 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30 transition-all duration-200"
+            <TextInput
+              id="create-profile-split"
+              className="bg-obsidian-950/80 font-mono placeholder:text-cream-100/40"
+              aria-label="New profile default split"
               placeholder="Split %"
               type="number"
               step="0.1"
@@ -187,12 +197,12 @@ export default function ProfilesPage() {
                 }))
               }
             />
-            <button
-              className="rounded-lg bg-cream-500 px-4 py-2.5 font-display font-semibold text-white shadow-glow-md transition-all duration-300 hover:bg-cream-400 hover:shadow-glow-lg hover:scale-[1.02] active:scale-[0.98]"
+            <PrimaryButton
+              className="py-2.5"
               type="submit"
             >
               Add
-            </button>
+            </PrimaryButton>
           </div>
         </form>
       ) : (
@@ -215,11 +225,10 @@ export default function ProfilesPage() {
                 className="group relative space-y-4 rounded-2xl border border-obsidian-600/80 bg-obsidian-800 p-5 shadow-card transition-all duration-300 hover:border-cream-500/25 hover:shadow-elevated"
               >
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-cream-100/40">
-                    Display Name
-                  </label>
-                  <input
-                    className="w-full rounded-lg border border-cream-500/10 bg-obsidian-950/60 px-3 py-2 text-sm text-cream-50 transition-all duration-200 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30"
+                  <FieldLabel htmlFor={`profile-name-${profile.id}`}>Display name</FieldLabel>
+                  <TextInput
+                    id={`profile-name-${profile.id}`}
+                    className="bg-obsidian-950/60"
                     value={profile.display_name}
                     aria-label="Profile name"
                     onChange={(event) =>
@@ -228,12 +237,11 @@ export default function ProfilesPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-cream-100/40">
-                    Default Split %
-                  </label>
+                  <FieldLabel htmlFor={`profile-split-${profile.id}`}>Default split %</FieldLabel>
                   <div className="relative">
-                    <input
-                      className="w-full rounded-lg border border-cream-500/10 bg-obsidian-950/60 px-3 py-2 pr-9 text-sm text-cream-50 font-mono transition-all duration-200 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30"
+                    <TextInput
+                      id={`profile-split-${profile.id}`}
+                      className="bg-obsidian-950/60 pr-9 font-mono"
                       type="number"
                       step="0.1"
                       value={profile.splitPercent}
@@ -251,8 +259,8 @@ export default function ProfilesPage() {
                     </span>
                   </div>
                 </div>
-                <button
-                  className="w-full flex h-10 items-center justify-center rounded-lg bg-obsidian-700/60 text-xs font-semibold text-cream-200 transition-all duration-300 hover:bg-cream-500 hover:text-white hover:shadow-glow-sm disabled:opacity-50"
+                <SecondaryButton
+                  className="flex h-10 w-full items-center justify-center border-obsidian-600/80 bg-obsidian-700/60 text-xs font-semibold"
                   type="button"
                   onClick={() => handleSave(profile)}
                   disabled={savingId === profile.id}
@@ -262,7 +270,7 @@ export default function ProfilesPage() {
                   ) : (
                     "Save Changes"
                   )}
-                </button>
+                </SecondaryButton>
               </div>
             ))}
           </div>

@@ -22,7 +22,7 @@ export default function TransactionsList({
         <div className="grid grid-cols-12 items-center gap-1.5 px-3 text-[10px] font-semibold uppercase tracking-[0.11em] text-cream-400 md:grid-cols-[70px_130px_140px_1fr_100px_96px_84px] md:gap-2 md:px-4 md:text-[11px] md:tracking-[0.12em]">
           <span className="col-span-2 md:col-auto">Day</span>
           <span className="col-span-3 md:col-auto">Paid by</span>
-          <span className="col-span-4 md:hidden">Note</span>
+          <span className="col-span-4 md:hidden">Category</span>
           <span className="hidden md:block">Category</span>
           <span className="hidden md:block">Note</span>
           <span className="hidden md:block">Split</span>

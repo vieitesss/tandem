@@ -1,12 +1,20 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
+import {
+  FieldLabel,
+  PrimaryButton,
+  TextInput,
+  fieldInputClassName,
+} from "../shared/FormPrimitives";
 import SelectField from "../shared/SelectField";
 import { useToast } from "../shared/ToastProvider";
 import { normalizeNumberInput } from "../shared/inputs";
 import { apiPost } from "../shared/api";
 import { buildDefaultPercentSplits } from "../shared/domain/splits";
+import { getCategoryIconPath } from "../shared/categoryIcons";
 import { useCategories } from "../shared/hooks/useCategories";
 import { useProfiles } from "../shared/hooks/useProfiles";
 import { categoryOptions } from "../shared/transactions";
@@ -14,131 +22,9 @@ import { notifyTransactionsUpdated } from "./transactionsCache";
 
 const initialSplit = { user_id: "", percent: "" };
 
-const categoryIconKey = (icon, label) => {
-  const iconValue = String(icon || "").trim().toLowerCase();
-  const value = String(label || "").toLowerCase();
-
-  if (
-    [
-      "cart",
-      "home",
-      "bolt",
-      "car",
-      "health",
-      "media",
-      "bag",
-      "box",
-      "briefcase",
-      "gift",
-      "paw",
-      "book",
-      "shield",
-      "smile",
-      "receipt",
-      "tag",
-    ].includes(iconValue)
-  ) {
-    return iconValue;
-  }
-
-  const emojiMap = {
-    "🛒": "cart",
-    "🏠": "home",
-    "💡": "bolt",
-    "🍽️": "cart",
-    "🚗": "car",
-    "🩺": "health",
-    "🎬": "media",
-    "✈️": "car",
-    "🛍️": "bag",
-    "📦": "box",
-    "💼": "briefcase",
-    "🧑‍💻": "briefcase",
-    "🎁": "gift",
-    "🐾": "paw",
-    "🎓": "book",
-    "🛡️": "shield",
-    "🧹": "home",
-    "🧸": "smile",
-    "🧾": "receipt",
-    "🧩": "tag",
-    "💕": "gift",
-    "🏞️": "car",
-  };
-
-  if (emojiMap[iconValue]) {
-    return emojiMap[iconValue];
-  }
-
-  if (value.includes("rent") || value.includes("home")) return "home";
-  if (value.includes("groc") || value.includes("food") || value.includes("restaurant")) return "cart";
-  if (value.includes("util") || value.includes("bill")) return "bolt";
-  if (value.includes("transport") || value.includes("travel")) return "car";
-  if (value.includes("health") || value.includes("medical")) return "health";
-  if (value.includes("entertain")) return "media";
-  if (value.includes("shop")) return "bag";
-  if (value.includes("subscr")) return "box";
-  if (value.includes("salary") || value.includes("freelance")) return "briefcase";
-  if (value.includes("gift")) return "gift";
-  if (value.includes("pet")) return "paw";
-  if (value.includes("education")) return "book";
-  if (value.includes("insurance")) return "shield";
-  if (value.includes("kids")) return "smile";
-  if (value.includes("tax")) return "receipt";
-
-  return "tag";
-};
-
 function CategoryIcon({ icon: iconProp, label, active }) {
-  const icon = categoryIconKey(iconProp, label);
+  const path = getCategoryIconPath(iconProp, label);
   const className = active ? "h-4 w-4 text-cream-100" : "h-4 w-4 text-cream-300";
-  let path = "M3 10l7-7h7v7l-7 7-7-7zm9-3h.01";
-
-  if (icon === "home") {
-    path = "M3 8.75L10 3l7 5.75V17H3V8.75zM7.5 17v-4h5v4";
-  }
-  if (icon === "cart") {
-    path = "M3 4h2l1.4 8.2h8.3L16 6H6.2M8 16a1 1 0 100-2 1 1 0 000 2zm6 0a1 1 0 100-2 1 1 0 000 2z";
-  }
-  if (icon === "bolt") {
-    path = "M11 2L5 10h4l-1 8 7-10h-4l1-6z";
-  }
-  if (icon === "car") {
-    path = "M4 11l1.5-4h9L16 11v4h-1.5v-1.5h-9V15H4v-4zm2 .5h8";
-  }
-  if (icon === "health") {
-    path = "M10 4v12M4 10h12";
-  }
-  if (icon === "media") {
-    path = "M4 5h12v10H4zM8 8l4 2-4 2V8z";
-  }
-  if (icon === "bag") {
-    path = "M5 7h10l-1 10H6L5 7zm3 0V5a2 2 0 114 0v2";
-  }
-  if (icon === "box") {
-    path = "M4 7l6-3 6 3-6 3-6-3zm0 0v6l6 3 6-3V7";
-  }
-  if (icon === "briefcase") {
-    path = "M3 7h14v9H3V7zm5-2h4v2H8V5z";
-  }
-  if (icon === "gift") {
-    path = "M4 8h12v8H4V8zm0-2h12v2H4V6zm6 0v10M8 6s-2-3 0-3c1.5 0 2 3 2 3M12 6s2-3 0-3c-1.5 0-2 3-2 3";
-  }
-  if (icon === "paw") {
-    path = "M7 8a1.2 1.2 0 110-2.4A1.2 1.2 0 017 8zm6 0a1.2 1.2 0 110-2.4A1.2 1.2 0 0113 8zM6 12.5c0-1.7 1.8-2.5 4-2.5s4 .8 4 2.5S12.2 15 10 15s-4-.8-4-2.5z";
-  }
-  if (icon === "book") {
-    path = "M4 4h8a3 3 0 013 3v9H7a3 3 0 00-3 3V4zm0 0v12";
-  }
-  if (icon === "shield") {
-    path = "M10 3l6 2v4c0 4.2-2.6 6.6-6 8-3.4-1.4-6-3.8-6-8V5l6-2z";
-  }
-  if (icon === "smile") {
-    path = "M10 17a7 7 0 100-14 7 7 0 000 14zm-3-5c.6.8 1.7 1.2 3 1.2s2.4-.4 3-1.2M7.5 8.5h.01M12.5 8.5h.01";
-  }
-  if (icon === "receipt") {
-    path = "M6 3h8v14l-2-1.2L10 17l-2-1.2L6 17V3zm2 4h4M8 9h4M8 11h3";
-  }
 
   return (
     <svg className={className} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden>
@@ -148,6 +34,7 @@ function CategoryIcon({ icon: iconProp, label, active }) {
 }
 
 export default function TransactionForm() {
+  const searchParams = useSearchParams();
   const amountInputRef = useRef(null);
   const [payerId, setPayerId] = useState("");
   const [amount, setAmount] = useState("");
@@ -161,6 +48,7 @@ export default function TransactionForm() {
   const [owedToId, setOwedToId] = useState("");
   const [hasTriedSubmit, setHasTriedSubmit] = useState(false);
   const [amountFormatError, setAmountFormatError] = useState(false);
+  const [hasAppliedPrefill, setHasAppliedPrefill] = useState(false);
   const [touched, setTouched] = useState({
     payer: false,
     amount: false,
@@ -172,17 +60,9 @@ export default function TransactionForm() {
   const { data: profiles } = useProfiles();
   const { data: categories } = useCategories({ fallback: categoryOptions });
 
-  const inputClassName = (hasError) =>
-    `w-full rounded-xl border bg-obsidian-800 px-3.5 py-2.5 text-cream-100 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-cream-500/20 ${
-      hasError ? "border-coral-400" : "border-obsidian-600 hover:border-cream-500/35"
-    }`;
-
   const sectionClassName = "space-y-2";
   const panelClassName =
     "rounded-2xl border border-obsidian-600/90 bg-obsidian-800 p-4 md:p-5";
-
-  const fieldLabelClassName =
-    "text-[11px] font-semibold uppercase tracking-[0.14em] text-cream-300";
 
   useEffect(() => {
     amountInputRef.current?.focus();
@@ -224,6 +104,44 @@ export default function TransactionForm() {
       setOwedToId("");
     }
   }, [splitMode, owedToId, payerId]);
+
+  useEffect(() => {
+    if (hasAppliedPrefill || profiles.length === 0) {
+      return;
+    }
+
+    const prefillType = String(searchParams.get("type") || "").toUpperCase();
+    const prefillPayerId = String(searchParams.get("payer_id") || "");
+    const prefillBeneficiaryId = String(searchParams.get("beneficiary_id") || "");
+    const prefillAmount = normalizeNumberInput(searchParams.get("amount") || "");
+    const prefillNote = searchParams.get("note") || "";
+
+    const profileIds = new Set(profiles.map((profile) => String(profile.id)));
+
+    if (prefillType === "LIQUIDATION") {
+      setType("LIQUIDATION");
+      setSplitMode("none");
+    }
+
+    if (profileIds.has(prefillPayerId)) {
+      setPayerId(prefillPayerId);
+    }
+
+    if (profileIds.has(prefillBeneficiaryId)) {
+      setBeneficiaryId(prefillBeneficiaryId);
+    }
+
+    if (prefillAmount) {
+      setAmount(prefillAmount);
+      setTouched((current) => ({ ...current, amount: true }));
+    }
+
+    if (prefillNote.trim()) {
+      setNote(prefillNote.trim());
+    }
+
+    setHasAppliedPrefill(true);
+  }, [hasAppliedPrefill, profiles, searchParams]);
 
   const totalPercent = useMemo(() => {
     return splits.reduce((sum, split) => sum + Number(split.percent || 0), 0);
@@ -401,9 +319,18 @@ export default function TransactionForm() {
     }
   };
 
+  const inputIds = {
+    amount: "transaction-amount",
+    date: "transaction-date",
+    payer: "transaction-payer",
+    note: "transaction-note",
+    beneficiary: "transaction-beneficiary",
+    owedTo: "transaction-owed-to",
+  };
+
   return (
     <form
-      className="animate-fade-in space-y-4 rounded-3xl border border-obsidian-600/90 bg-obsidian-800 p-4 md:p-6"
+      className="animate-fade-in space-y-4"
       onSubmit={handleSubmit}
     >
       <div className="flex flex-wrap items-center justify-between gap-3 px-1">
@@ -415,11 +342,12 @@ export default function TransactionForm() {
 
       <div className={`${panelClassName} space-y-5`}>
         <div className="space-y-2 text-center">
-          <label className={fieldLabelClassName}>
-            Amount<span className="text-coral-400"> *</span>
-          </label>
+          <FieldLabel htmlFor={inputIds.amount} required>
+            Amount
+          </FieldLabel>
           <div className="mx-auto max-w-xs">
             <input
+              id={inputIds.amount}
               ref={amountInputRef}
               className="w-full border-0 bg-transparent px-2 py-1 text-center text-5xl font-semibold tabular-nums text-cream-50 placeholder:text-cream-300/50 focus:outline-none"
               placeholder="0.00"
@@ -428,26 +356,33 @@ export default function TransactionForm() {
               pattern="[0-9]*[.]?[0-9]*"
               value={amount}
               onChange={handleAmountChange}
-              aria-invalid={showAmountError}
+              aria-invalid={showAmountError || showAmountFormatError}
+              aria-describedby={
+                showAmountFormatError || showAmountError ? "transaction-amount-error" : undefined
+              }
             />
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-cream-400">EUR</p>
           </div>
           {showAmountFormatError ? (
-            <p className="text-xs text-coral-300 font-medium">
+            <p id="transaction-amount-error" aria-live="polite" className="text-xs text-coral-300 font-medium">
               Only numbers and a decimal point are allowed.
             </p>
           ) : showAmountError ? (
-            <p className="text-xs text-coral-300 font-medium">Enter an amount above 0.</p>
+            <p id="transaction-amount-error" aria-live="polite" className="text-xs text-coral-300 font-medium">
+              Enter an amount above 0.
+            </p>
           ) : null}
         </div>
 
         <div className="grid gap-4 md:grid-cols-[220px_1fr]">
           <div className="space-y-2">
-            <label className={fieldLabelClassName}>
-              Date<span className="text-coral-400"> *</span>
-            </label>
-            <input
-              className={`${inputClassName(showDateError)} h-12`}
+            <FieldLabel htmlFor={inputIds.date} required>
+              Date
+            </FieldLabel>
+            <TextInput
+              id={inputIds.date}
+              hasError={showDateError}
+              className="h-12"
               type="date"
               value={date}
               onChange={(event) => {
@@ -455,16 +390,17 @@ export default function TransactionForm() {
                 setTouched((current) => ({ ...current, date: true }));
               }}
               aria-invalid={showDateError}
+              aria-describedby={showDateError ? "transaction-date-error" : undefined}
             />
             {showDateError ? (
-              <p className="text-xs text-coral-300 font-medium">Choose a date.</p>
+              <p id="transaction-date-error" aria-live="polite" className="text-xs text-coral-300 font-medium">
+                Choose a date.
+              </p>
             ) : null}
           </div>
 
           <div className="space-y-2">
-            <label className={fieldLabelClassName}>
-              Type<span className="text-coral-400"> *</span>
-            </label>
+            <FieldLabel required>Type</FieldLabel>
             <div className="grid grid-cols-3 gap-1 rounded-xl border border-obsidian-600 bg-obsidian-900 p-1">
               {["EXPENSE", "INCOME", "LIQUIDATION"].map((value) => {
                 const isActive = type === value;
@@ -484,7 +420,7 @@ export default function TransactionForm() {
                     onClick={() => setType(value)}
                   >
                     {value === "LIQUIDATION"
-                      ? "Liquidation"
+                      ? "Settlement"
                       : value[0] + value.slice(1).toLowerCase()}
                   </button>
                 );
@@ -496,18 +432,19 @@ export default function TransactionForm() {
 
       <div className={`${panelClassName} grid gap-4`}>
         <div className={sectionClassName}>
-          <label className={fieldLabelClassName}>
+          <FieldLabel htmlFor={inputIds.payer} required>
             {type === "INCOME" ? "Recipient" : "Paid by"}
-            <span className="text-coral-400"> *</span>
-          </label>
+          </FieldLabel>
           <SelectField
-            className={`${inputClassName(showPayerError)} appearance-none pr-9`}
+            className={`${fieldInputClassName(showPayerError)} appearance-none pr-9`}
+            id={inputIds.payer}
             value={payerId}
             onChange={(event) => {
               setPayerId(event.target.value);
               setTouched((current) => ({ ...current, payer: true }));
             }}
             aria-invalid={showPayerError}
+            aria-describedby={showPayerError ? "transaction-payer-error" : undefined}
           >
             <option value="">
               {type === "INCOME" ? "Select recipient" : "Select payer"}
@@ -519,16 +456,16 @@ export default function TransactionForm() {
             ))}
           </SelectField>
           {showPayerError ? (
-            <p className="text-xs text-coral-300 font-medium">
+            <p id="transaction-payer-error" aria-live="polite" className="text-xs text-coral-300 font-medium">
               {type === "INCOME" ? "Select a recipient." : "Select who paid."}
             </p>
           ) : null}
         </div>
 
         <div className={sectionClassName}>
-          <label className={fieldLabelClassName}>
-            Category{type !== "INCOME" ? <span className="text-coral-400"> *</span> : null}
-          </label>
+          <FieldLabel required={type !== "INCOME"}>
+            Category
+          </FieldLabel>
           {type === "INCOME" ? (
             <div className="min-h-11 rounded-xl border border-obsidian-600 bg-obsidian-900 px-3 py-2 text-sm text-cream-300">
               Not required for income
@@ -566,9 +503,10 @@ export default function TransactionForm() {
       </div>
 
       <div className={`${panelClassName} ${sectionClassName}`}>
-        <label className={fieldLabelClassName}>Note</label>
-        <input
-          className="w-full rounded-xl border border-obsidian-600 bg-obsidian-800 px-3.5 py-2.5 text-cream-100 placeholder:text-cream-300/70 transition-colors duration-200 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/20"
+        <FieldLabel htmlFor={inputIds.note}>Note</FieldLabel>
+        <TextInput
+          id={inputIds.note}
+          className="placeholder:text-cream-300/70"
           placeholder="Optional note"
           value={note}
           onChange={(event) => setNote(event.target.value)}
@@ -576,7 +514,7 @@ export default function TransactionForm() {
       </div>
       <div className={`${panelClassName} space-y-3`}>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <label className={fieldLabelClassName}>Split mode</label>
+          <FieldLabel>Split mode</FieldLabel>
           <div className="grid w-full grid-cols-3 gap-1 rounded-xl border border-obsidian-600 bg-obsidian-900 p-1 text-xs sm:w-auto sm:min-w-[264px]">
             <button
               className={`rounded-lg px-2.5 py-2 font-medium whitespace-nowrap transition-colors duration-200 disabled:opacity-50 ${
@@ -624,19 +562,21 @@ export default function TransactionForm() {
         {type === "LIQUIDATION" ? (
           <div className="space-y-2">
             <p className="text-xs text-cream-300 font-medium">
-              Liquidations always send 100% to the other partner.
+              Settlements always send 100% to the other partner.
             </p>
-            <label className={fieldLabelClassName}>
-              Recipient<span className="text-coral-400"> *</span>
-            </label>
+            <FieldLabel htmlFor={inputIds.beneficiary} required>
+              Recipient
+            </FieldLabel>
             <SelectField
-              className={`${inputClassName(showBeneficiaryError)} appearance-none pr-9`}
+              className={`${fieldInputClassName(showBeneficiaryError)} appearance-none pr-9`}
+              id={inputIds.beneficiary}
               value={beneficiaryId}
               onChange={(event) => {
                 setBeneficiaryId(event.target.value);
                 setTouched((current) => ({ ...current, beneficiary: true }));
               }}
               aria-invalid={showBeneficiaryError}
+              aria-describedby={showBeneficiaryError ? "transaction-beneficiary-error" : undefined}
             >
               <option value="">Select recipient</option>
               {profiles
@@ -648,7 +588,13 @@ export default function TransactionForm() {
                 ))}
             </SelectField>
             {showBeneficiaryError ? (
-              <p className="text-xs text-coral-300 font-medium">Select a recipient.</p>
+              <p
+                id="transaction-beneficiary-error"
+                aria-live="polite"
+                className="text-xs text-coral-300 font-medium"
+              >
+                Select a recipient.
+              </p>
             ) : null}
           </div>
         ) : null}
@@ -657,17 +603,19 @@ export default function TransactionForm() {
             <p className="text-xs text-cream-300 font-medium">
               Owed expenses assign 100% to the other partner.
             </p>
-            <label className={fieldLabelClassName}>
-              Owed by<span className="text-coral-400"> *</span>
-            </label>
+            <FieldLabel htmlFor={inputIds.owedTo} required>
+              Owed by
+            </FieldLabel>
             <SelectField
-              className={`${inputClassName(showOwedError)} appearance-none pr-9`}
+              className={`${fieldInputClassName(showOwedError)} appearance-none pr-9`}
+              id={inputIds.owedTo}
               value={owedToId}
               onChange={(event) => {
                 setOwedToId(event.target.value);
                 setTouched((current) => ({ ...current, beneficiary: true }));
               }}
               aria-invalid={showOwedError}
+              aria-describedby={showOwedError ? "transaction-owed-error" : undefined}
             >
               <option value="">Select partner</option>
               {profiles
@@ -679,7 +627,7 @@ export default function TransactionForm() {
                 ))}
             </SelectField>
             {showOwedError ? (
-              <p className="text-xs text-coral-300 font-medium">
+              <p id="transaction-owed-error" aria-live="polite" className="text-xs text-coral-300 font-medium">
                 Select the other partner who owes you.
               </p>
             ) : null}
@@ -688,9 +636,9 @@ export default function TransactionForm() {
         {splitMode === "custom" && type === "EXPENSE" ? (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <label className={fieldLabelClassName}>Splits</label>
+              <FieldLabel>Splits</FieldLabel>
               <button
-                className="text-xs font-medium text-cream-400 hover:text-cream-200"
+                className="rounded-lg border border-obsidian-600 px-2.5 py-1 text-xs font-medium text-cream-300 hover:border-cream-500/35 hover:text-cream-100"
                 type="button"
                 onClick={addSplit}
               >
@@ -760,7 +708,9 @@ export default function TransactionForm() {
               </div>
             </div>
             <div className="text-xs text-cream-300 font-medium">
-              Total: {totalPercent.toFixed(1)}%
+              <span className={hasSplitTotalError ? "text-coral-300" : "text-sage-300"}>
+                Total: {totalPercent.toFixed(1)}%
+              </span>
             </div>
             {showSplitError ? (
               <p className="text-xs text-coral-300 font-medium">
@@ -771,13 +721,13 @@ export default function TransactionForm() {
         ) : null}
       </div>
       <div className={sectionClassName}>
-        <button
-          className="w-full rounded-xl border border-cream-500/40 bg-cream-500 px-4 py-3 font-display font-semibold text-white transition-colors duration-200 hover:bg-cream-600 disabled:border-cream-500/30 disabled:bg-cream-500/75 disabled:text-white/90"
+        <PrimaryButton
+          className="w-full"
           type="submit"
           disabled={!canSubmit}
         >
           Save Transaction
-        </button>
+        </PrimaryButton>
       </div>
     </form>
   );

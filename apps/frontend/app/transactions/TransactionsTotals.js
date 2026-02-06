@@ -24,7 +24,7 @@ export default function TransactionsTotals({
     },
     {
       key: "LIQUIDATION",
-      label: "Liquidation",
+      label: "Settlement",
       value: totalsByType.LIQUIDATION || 0,
       dotClassName: "bg-cream-400",
     },
@@ -36,8 +36,8 @@ export default function TransactionsTotals({
   }
 
   const wrapperClassName = embedded
-    ? "rounded-2xl border border-obsidian-600 bg-obsidian-900 p-4"
-    : "rounded-2xl border border-obsidian-600/80 bg-obsidian-800 p-4";
+    ? "rounded-2xl border border-obsidian-600/80 bg-obsidian-800 p-4 shadow-card"
+    : "rounded-2xl border border-obsidian-600/80 bg-obsidian-800 p-4 shadow-card";
 
   return (
     <div className={wrapperClassName}>
@@ -51,7 +51,7 @@ export default function TransactionsTotals({
         {visibleTotals.map((item) => (
           <div
             key={item.key}
-            className="rounded-xl border border-obsidian-600 bg-white px-3 py-2"
+            className="rounded-xl border border-obsidian-600 bg-obsidian-900 px-3 py-2"
           >
             <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-cream-300">
               <span className={`h-1.5 w-1.5 rounded-full ${item.dotClassName}`} />

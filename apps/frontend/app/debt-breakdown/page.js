@@ -196,7 +196,7 @@ export default function DebtBreakdownPage() {
     <PageShell>
       <PageHeader
         title="Debt Breakdown"
-        description="Every number is shown with its source: expenses paid, custom split shares, owed transactions, and liquidations."
+        description="Every number is shown with its source: expenses paid, custom split shares, owed transactions, and settlements."
         eyebrow="Analysis"
         currentPage="transactions"
       >
@@ -246,7 +246,7 @@ export default function DebtBreakdownPage() {
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-cream-100/60 font-medium">Liquidations paid</span>
+                  <span className="text-cream-100/60 font-medium">Settlements paid</span>
                   <span className="text-cream-50 font-mono">
                     {formatCurrency(profile.liquidationsPaid)}
                   </span>
@@ -288,7 +288,7 @@ export default function DebtBreakdownPage() {
                   What was received
                 </div>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-cream-100/60 font-medium">Liquidations received</span>
+                  <span className="text-cream-100/60 font-medium">Settlements received</span>
                   <span className="text-cream-50 font-mono">
                     {formatCurrency(profile.liquidationsReceived)}
                   </span>
@@ -440,14 +440,14 @@ export default function DebtBreakdownPage() {
           <div className="space-y-5 rounded-2xl border border-cream-500/15 bg-obsidian-800/40 p-6 shadow-card backdrop-blur-sm">
             <div>
               <p className="text-xs uppercase tracking-wider text-cream-100/50 font-semibold">
-                Liquidations
+                Settlements
               </p>
               <h2 className="text-xl font-display font-semibold text-cream-50 tracking-tight">
                 Payments that settled up
               </h2>
             </div>
             {liquidationRowsByMonth.length === 0 ? (
-              <p className="text-sm text-cream-100/60 font-medium">No liquidations yet.</p>
+              <p className="text-sm text-cream-100/60 font-medium">No settlements yet.</p>
             ) : (
               <div className="space-y-6">
                 {liquidationRowsByMonth.map(({ month, items }) => (

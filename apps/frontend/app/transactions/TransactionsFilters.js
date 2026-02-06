@@ -284,7 +284,7 @@ export default function TransactionsFilters({
               className="min-h-11 rounded-xl bg-cream-500 px-3 text-sm font-semibold text-white"
               onClick={() => setIsFiltersOpen(false)}
             >
-              Close
+              Apply
             </button>
           </div>
         </div>

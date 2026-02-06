@@ -4,6 +4,25 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        surface: {
+          950: "#FCFDFE",
+          900: "#F7F9FB",
+          800: "#FFFFFF",
+          700: "#EEF2F6",
+          600: "#D6DEE8",
+        },
+        ink: {
+          50: "#0F172A",
+          100: "#1E293B",
+          200: "#334155",
+          300: "#475467",
+          400: "#667085",
+        },
+        accent: {
+          500: "#2E4E73",
+          600: "#243F61",
+          700: "#1C324E",
+        },
         // Neutral flat surface palette
         obsidian: {
           950: "#FCFDFE",
@@ -55,11 +74,11 @@ module.exports = {
         wider: "0.15em",
       },
       boxShadow: {
-        "glow-sm": "none",
-        "glow-md": "none",
-        "glow-lg": "none",
-        "elevated": "none",
-        "card": "none",
+        "glow-sm": "0 1px 2px rgba(15, 23, 42, 0.06), 0 4px 10px rgba(46, 78, 115, 0.08)",
+        "glow-md": "0 2px 6px rgba(15, 23, 42, 0.08), 0 10px 24px rgba(46, 78, 115, 0.1)",
+        "glow-lg": "0 8px 22px rgba(15, 23, 42, 0.12), 0 20px 36px rgba(46, 78, 115, 0.14)",
+        "elevated": "0 6px 18px rgba(15, 23, 42, 0.08)",
+        "card": "0 2px 10px rgba(15, 23, 42, 0.06)",
       },
       animation: {
         "fade-in": "fadeIn 0.6s ease-out",

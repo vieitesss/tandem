@@ -3,6 +3,11 @@
 import { useMemo, useState } from "react";
 
 import { parsePercentValue } from "../shared/domain/splits";
+import {
+  FieldLabel,
+  PrimaryButton,
+  TextInput,
+} from "../shared/FormPrimitives";
 import { normalizeNumberInput } from "../shared/inputs";
 import { PageHeader, PageShell, SectionCard } from "../shared/PageLayout";
 import { apiPost } from "../shared/api";
@@ -80,11 +85,6 @@ export default function ProfileSetup({ onComplete }) {
     }
   };
 
-  const inputClassName = (hasError) =>
-    `w-full rounded-lg border bg-obsidian-900 px-3 py-2.5 text-sm text-cream-50 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-cream-500/30 ${
-      hasError ? "border-coral-400" : "border-obsidian-600 hover:border-cream-500/30"
-    }`;
-
   return (
     <PageShell maxWidth="max-w-4xl">
       <PageHeader
@@ -113,11 +113,11 @@ export default function ProfileSetup({ onComplete }) {
                   Profile {index + 1}
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-cream-100/40">
-                    Display name
-                  </label>
-                  <input
-                    className={inputClassName(showNameError)}
+                  <FieldLabel htmlFor={`setup-profile-name-${index}`}>Display name</FieldLabel>
+                  <TextInput
+                    id={`setup-profile-name-${index}`}
+                    hasError={showNameError}
+                    className="bg-obsidian-900"
                     placeholder="Name"
                     value={profile.displayName}
                     onChange={(event) =>
@@ -127,12 +127,12 @@ export default function ProfileSetup({ onComplete }) {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-cream-100/40">
-                    Default split %
-                  </label>
+                  <FieldLabel htmlFor={`setup-profile-split-${index}`}>Default split %</FieldLabel>
                   <div className="relative">
-                    <input
-                      className={`${inputClassName(showSplitError)} pr-9 font-mono`}
+                    <TextInput
+                      id={`setup-profile-split-${index}`}
+                      hasError={showSplitError}
+                      className="bg-obsidian-900 pr-9 font-mono"
                       type="number"
                       step="0.1"
                       placeholder="50"
@@ -169,13 +169,13 @@ export default function ProfileSetup({ onComplete }) {
           </span>
         </div>
 
-        <button
-          className="w-full rounded-lg bg-cream-500 px-4 py-3 font-display font-semibold text-white shadow-glow-md transition-all duration-300 hover:bg-cream-400 hover:shadow-glow-lg hover:scale-[1.01] active:scale-[0.98] disabled:opacity-60 disabled:hover:scale-100"
+        <PrimaryButton
+          className="w-full"
           type="submit"
           disabled={isSaving}
         >
           {isSaving ? "Saving..." : "Create profiles"}
-        </button>
+        </PrimaryButton>
 
       </SectionCard>
     </PageShell>
