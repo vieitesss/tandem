@@ -119,6 +119,18 @@ PGLITE_SNAPSHOT_INTERVAL_MS=3600000
 
 The backend will automatically create the schema when using PGlite.
 
+#### Upgrading existing deployments
+
+Before starting a new backend version, run migrations once in the backend app:
+
+```bash
+cd apps/backend
+bun run db:migrate
+```
+
+The migration runner is safe to rerun and works with both Supabase and PGlite modes.
+The backend also executes pending migrations during startup.
+
 ##### Migrating data from Supabase to PGlite
 
 To sync data from an existing Supabase project to your local PGlite database:

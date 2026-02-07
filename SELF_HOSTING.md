@@ -45,7 +45,19 @@ PGLITE_SNAPSHOT_INTERVAL_MS=3600000
 
 The backend will automatically create the schema when using PGlite.
 
-#### 2) Sync from Supabase (optional)
+#### 2) Run database migrations on upgrades
+
+When upgrading to a new Tandem release, run backend migrations once before starting traffic:
+
+```bash
+cd apps/backend
+bun run db:migrate
+```
+
+This command is idempotent and can be run multiple times safely.
+The backend also runs pending migrations on startup.
+
+#### 3) Sync from Supabase (optional)
 If you have an existing Supabase project and want to migrate data to local PGlite:
 
 ```

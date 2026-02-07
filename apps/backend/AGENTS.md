@@ -6,6 +6,7 @@ This app is an Express API (CommonJS) that talks to Supabase.
 - Install: `bun install`
 - Dev (nodemon): `bun run dev`
 - Start (prod): `bun run start`
+- Run migrations: `bun run db:migrate`
 
 ## Environment
 - Required: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`.

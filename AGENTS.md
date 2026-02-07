@@ -62,3 +62,6 @@ After browser automation, remove any database changes made during testing.
 - Unsolved format: `issue - open`
 - Example solved: `docker build failed due to missing env - added required local .env values`
 - Example open: `seed script fails on fresh DB - open`
+
+### Notes
+- existing deployments could miss data format updates - added idempotent backend migration runner (`bun run db:migrate`) with startup execution
