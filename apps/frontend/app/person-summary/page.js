@@ -2,25 +2,51 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import DesktopHeaderActions from "../shared/DesktopHeaderActions";
-import { fetchJson } from "../shared/api";
+import { AnalysisSecondaryActions } from "../shared/SecondaryNavPresets";
+import { API_BASE_PATH, fetchJson } from "../shared/api";
 import { useRealtimeUpdates } from "../shared/useRealtimeUpdates";
 import { formatCurrency, formatMonthLabel } from "../shared/format";
+import { InlineMessage, PageHeader, PageShell } from "../shared/PageLayout";
 
 const emptySummary = {
   profiles: [],
   monthly_summary: [],
 };
 
+const avatarToneClass = [
+  "bg-obsidian-700 text-cream-100 border border-obsidian-600",
+  "bg-obsidian-900 text-cream-200 border border-obsidian-600",
+  "bg-cream-500/10 text-cream-100 border border-cream-500/25",
+];
+
+const initialsFromName = (value) => {
+  if (!value) {
+    return "--";
+  }
+
+  const parts = String(value)
+    .split(" ")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (parts.length === 0) {
+    return "--";
+  }
+
+  if (parts.length === 1) {
+    return parts[0].slice(0, 2).toUpperCase();
+  }
+
+  return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+};
+
 export default function PersonSummaryPage() {
   const [summary, setSummary] = useState(emptySummary);
   const [status, setStatus] = useState("loading");
 
-  const apiBaseUrl = "/api";
-
   const fetchSummary = useCallback(() => {
     setStatus("loading");
-    return fetchJson(`${apiBaseUrl}/person-monthly-summary`)
+    return fetchJson(`${API_BASE_PATH}/person-monthly-summary`)
       .then(({ data }) => {
         setSummary({
           profiles: Array.isArray(data?.profiles) ? data.profiles : [],
@@ -33,7 +59,7 @@ export default function PersonSummaryPage() {
       .catch(() => {
         setStatus("error");
       });
-  }, [apiBaseUrl]);
+  }, []);
 
   useEffect(() => {
     fetchSummary();
@@ -62,40 +88,26 @@ export default function PersonSummaryPage() {
   }, [summary.monthly_summary]);
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-8 px-6 pt-8 pb-[calc(6rem+env(safe-area-inset-bottom))] md:p-8 md:pt-12">
-      <header className="space-y-3 animate-fade-in">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-4">
-            <div className="title-icon flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-cream-500/20 to-cream-600/10 border border-cream-500/20 shadow-glow-sm md:h-12 md:w-12">
-              <img src="/icon.png" alt="Tandem" className="title-icon-media" />
-            </div>
-            <h1 className="text-3xl font-display font-semibold tracking-tight text-cream-50 md:text-4xl">
-              Summary
-            </h1>
-          </div>
-          <DesktopHeaderActions currentPage="" />
-        </div>
-        <p className="text-sm text-cream-100/60 font-medium tracking-wide">
-          Monthly breakdown of spending, income, and net balance per person
-        </p>
-      </header>
+    <PageShell>
+      <PageHeader
+        title="Summary"
+        description="Monthly breakdown of spending, income, and net balance per person."
+        eyebrow="Analysis"
+        currentPage="transactions"
+      >
+        <AnalysisSecondaryActions />
+      </PageHeader>
 
       {status === "error" ? (
-        <p className="text-sm text-coral-300 font-medium">
-          Unable to load person summary.
-        </p>
+        <InlineMessage tone="error">Unable to load person summary.</InlineMessage>
       ) : null}
 
       {status === "loading" ? (
-        <p className="text-sm text-cream-100/60 font-medium">
-          Loading person summary...
-        </p>
+        <InlineMessage tone="muted">Loading person summary...</InlineMessage>
       ) : null}
 
       {status === "idle" && monthGroups.length === 0 ? (
-        <p className="text-sm text-cream-100/60 font-medium">
-          No transaction data available yet.
-        </p>
+        <InlineMessage tone="muted">No transaction data available yet.</InlineMessage>
       ) : null}
 
       {status === "idle" && monthGroups.length > 0 ? (
@@ -103,9 +115,9 @@ export default function PersonSummaryPage() {
           {monthGroups.map((month) => (
             <div
               key={month.month}
-              className="rounded-2xl border border-cream-500/15 bg-obsidian-800/40 p-6 shadow-card backdrop-blur-sm"
+              className="rounded-3xl border border-obsidian-600/90 bg-obsidian-800 p-5 md:p-6"
             >
-              <div className="flex items-center justify-between mb-4">
+              <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-xl font-display font-semibold text-cream-50 tracking-tight">
                   {month.label}
                 </h2>
@@ -116,76 +128,85 @@ export default function PersonSummaryPage() {
                     profilesById.get(profile.profile_id) ||
                     `Profile ${profile.profile_id}`;
                   const isPositive = profile.net_total >= 0;
+                  const toneClass =
+                    avatarToneClass[Math.abs(Number(profile.profile_id || 0)) % avatarToneClass.length];
+                  const avatarLabel = initialsFromName(profileName);
 
                   return (
                     <div
                       key={profile.profile_id}
-                      className="rounded-2xl border border-cream-500/10 bg-obsidian-900/60 p-4 space-y-3"
+                      className="rounded-2xl border border-obsidian-600/90 bg-obsidian-900/50 p-4"
                     >
-                      <div className="text-xs font-bold uppercase tracking-wider text-cream-500/80">
-                        {profileName}
+                      <div className="mb-4 flex items-center gap-3">
+                        <div
+                          className={`flex h-10 w-10 items-center justify-center rounded-full text-xs font-semibold ${toneClass}`}
+                          aria-hidden
+                        >
+                          {avatarLabel}
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-cream-400">
+                            Person
+                          </p>
+                          <p className="text-sm font-semibold text-cream-100">{profileName}</p>
+                        </div>
                       </div>
 
-                      <div className="space-y-2">
-                        {/* Outflows */}
+                        <div className="space-y-2.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-cream-300">Expenses</span>
+                            <span className="text-sm font-mono tabular-nums text-cream-100">
+                              {formatCurrency(profile.expenses_total)}
+                            </span>
+                          </div>
                         <div className="flex items-center justify-between">
-                          <span className="text-sm text-cream-100/60">
-                            Expenses
+                          <span className="text-sm text-cream-300">
+                            Settlements paid
                           </span>
-                          <span className="text-sm font-mono text-cream-100">
-                            {formatCurrency(profile.expenses_total)}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-cream-100/60">
-                            Liquidations paid
-                          </span>
-                          <span className="text-sm font-mono text-cream-100">
+                          <span className="text-sm font-mono tabular-nums text-cream-200">
                             {formatCurrency(profile.liquidations_paid_total)}
                           </span>
                         </div>
-                        <div className="flex items-center justify-between border-t border-cream-500/10 pt-2">
+                        <div className="flex items-center justify-between border-t border-obsidian-600 pt-2.5">
                           <span className="text-sm font-semibold text-cream-100">
                             Total spent
                           </span>
-                          <span className="text-sm font-mono font-semibold text-cream-50">
+                          <span className="text-sm font-mono tabular-nums font-semibold text-cream-100">
                             {formatCurrency(profile.total_spent)}
                           </span>
                         </div>
 
-                        {/* Inflows */}
-                        <div className="flex items-center justify-between pt-2">
-                          <span className="text-sm text-cream-100/60">
+                        <div className="flex items-center justify-between pt-2.5">
+                          <span className="text-sm text-cream-300">
                             Income
                           </span>
-                          <span className="text-sm font-mono text-cream-100">
+                          <span className="text-sm font-mono tabular-nums text-cream-100">
                             {formatCurrency(profile.income_total)}
                           </span>
                         </div>
                         <div className="flex items-center justify-between">
-                          <span className="text-sm text-cream-100/60">
-                            Liquidations received
+                          <span className="text-sm text-cream-300">
+                            Settlements received
                           </span>
-                          <span className="text-sm font-mono text-cream-100">
+                          <span className="text-sm font-mono tabular-nums text-cream-200">
                             {formatCurrency(profile.liquidations_received_total)}
                           </span>
                         </div>
-                        <div className="flex items-center justify-between border-t border-cream-500/10 pt-2">
+                        <div className="flex items-center justify-between border-t border-obsidian-600 pt-2.5">
                           <span className="text-sm font-semibold text-cream-100">
                             Total income
                           </span>
-                          <span className="text-sm font-mono font-semibold text-cream-50">
+                          <span className="text-sm font-mono tabular-nums font-semibold text-cream-100">
                             {formatCurrency(profile.total_income)}
                           </span>
                         </div>
 
-                        {/* Net */}
-                        <div className="flex items-center justify-between border-t border-cream-500/10 pt-2">
+                        <div className="flex items-center justify-between border-t border-obsidian-600 pt-2.5">
                           <span className="text-sm font-semibold text-cream-200">
                             Net
                           </span>
                           <span
-                            className={`text-sm font-mono font-bold ${
+                            className={`text-sm font-mono tabular-nums font-bold ${
                               isPositive ? "text-sage-400" : "text-coral-400"
                             }`}
                           >
@@ -201,6 +222,6 @@ export default function PersonSummaryPage() {
           ))}
         </section>
       ) : null}
-    </main>
+    </PageShell>
   );
 }

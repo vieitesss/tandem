@@ -42,12 +42,25 @@ export default function BottomNav() {
     if (href === "/") {
       return pathname === "/";
     }
+
+    if (href === "/transactions") {
+      return ["/transactions", "/timeline", "/person-summary", "/debt-breakdown"].some(
+        (route) => pathname === route || pathname.startsWith(`${route}/`)
+      );
+    }
+
+    if (href === "/profiles") {
+      return ["/profiles", "/categories"].some(
+        (route) => pathname === route || pathname.startsWith(`${route}/`)
+      );
+    }
+
     return pathname.startsWith(href);
   };
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-50 px-4 pb-[calc(0.5rem+env(safe-area-inset-bottom))] md:hidden">
-      <div className="mx-auto flex max-w-xs items-center justify-between rounded-3xl border border-cream-500/15 bg-obsidian-800/60 px-6 py-2.5 shadow-elevated">
+    <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-obsidian-600 bg-obsidian-800/95 pb-[env(safe-area-inset-bottom)] md:hidden">
+      <div className="mx-auto grid h-16 max-w-md grid-cols-3 items-center px-4">
         {navItems.map((item) => {
           const active = isActive(item.href);
 
@@ -55,10 +68,10 @@ export default function BottomNav() {
             return (
               <Link
                 key={item.href}
-                className={`flex h-12 w-12 items-center justify-center rounded-2xl text-obsidian-950 shadow-glow-md transition-all duration-300 ${
+                className={`mx-auto flex h-11 w-11 items-center justify-center rounded-2xl text-white transition-colors duration-200 ${
                   active
-                    ? "bg-cream-400 shadow-cream-500/40"
-                    : "bg-cream-500 shadow-cream-500/30 hover:bg-cream-400 hover:scale-105"
+                    ? "bg-cream-600 text-white"
+                    : "bg-cream-500 text-white"
                 }`}
                 href={item.href}
                 aria-label={item.label}
@@ -73,10 +86,10 @@ export default function BottomNav() {
           return (
             <Link
               key={item.href}
-              className={`relative flex h-10 w-10 items-center justify-center rounded-2xl transition-all duration-300 ${
+              className={`relative mx-auto flex h-11 w-11 items-center justify-center rounded-2xl transition-colors duration-200 ${
                 active
-                  ? "bg-obsidian-700 text-cream-300 shadow-inner shadow-obsidian-950/40"
-                  : "text-cream-100/60 hover:text-cream-100 hover:bg-obsidian-700/40"
+                  ? "bg-obsidian-700 text-cream-100"
+                  : "text-cream-300"
               }`}
               href={item.href}
               aria-label={item.label}
@@ -85,7 +98,7 @@ export default function BottomNav() {
             >
               {item.icon}
               {active ? (
-                <span className="absolute bottom-1 h-1 w-1 rounded-full bg-cream-400 shadow-glow-sm" />
+                <span className="absolute bottom-1 h-1 w-1 rounded-full bg-cream-500" />
               ) : null}
             </Link>
           );

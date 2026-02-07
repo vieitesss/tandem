@@ -1,4 +1,6 @@
 const createSupabaseAdapter = ({ supabase, emitChange }) => {
+  const SCHEMA_MIGRATIONS_TABLE = "schema_migrations";
+
   const notify = (table) => {
     if (typeof emitChange === "function") {
       emitChange(table);
@@ -485,6 +487,59 @@ const createSupabaseAdapter = ({ supabase, emitChange }) => {
     return { latest_id: latestId, has_changes: hasChanges, error: null };
   };
 
+  const listAppliedMigrations = async () => {
+    const { data, error } = await supabase
+      .from("changes")
+      .select("action")
+      .eq("table_name", SCHEMA_MIGRATIONS_TABLE)
+      .order("id", { ascending: true });
+
+    if (error) {
+      return { data: null, error };
+    }
+
+    const migrationIds = Array.from(
+      new Set(
+        (data || [])
+          .map((row) => String(row.action || "").trim())
+          .filter((value) => value.length > 0)
+      )
+    );
+
+    return { data: migrationIds, error: null };
+  };
+
+  const markMigrationApplied = async (migrationId) => {
+    const normalizedMigrationId = String(migrationId || "").trim();
+
+    if (!normalizedMigrationId) {
+      return { error: { message: "Migration id is required." } };
+    }
+
+    const { data: existing, error: existingError } = await supabase
+      .from("changes")
+      .select("id")
+      .eq("table_name", SCHEMA_MIGRATIONS_TABLE)
+      .eq("action", normalizedMigrationId)
+      .limit(1);
+
+    if (existingError) {
+      return { error: existingError };
+    }
+
+    if (Array.isArray(existing) && existing.length > 0) {
+      return { error: null };
+    }
+
+    const { error } = await supabase.from("changes").insert({
+      table_name: SCHEMA_MIGRATIONS_TABLE,
+      row_id: null,
+      action: normalizedMigrationId,
+    });
+
+    return { error };
+  };
+
   return {
     getProfileCount,
     listProfiles,
@@ -515,6 +570,8 @@ const createSupabaseAdapter = ({ supabase, emitChange }) => {
     deleteCategory,
     insertCategoriesIfMissing,
     getChangesSince,
+    listAppliedMigrations,
+    markMigrationApplied,
   };
 };
 

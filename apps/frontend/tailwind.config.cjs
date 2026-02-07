@@ -4,48 +4,67 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Premium dark palette with warm undertones - lighter version
+        surface: {
+          950: "#FCFDFE",
+          900: "#F7F9FB",
+          800: "#FFFFFF",
+          700: "#EEF2F6",
+          600: "#D6DEE8",
+        },
+        ink: {
+          50: "#0F172A",
+          100: "#1E293B",
+          200: "#334155",
+          300: "#475467",
+          400: "#667085",
+        },
+        accent: {
+          500: "#2E4E73",
+          600: "#243F61",
+          700: "#1C324E",
+        },
+        // Neutral flat surface palette
         obsidian: {
-          950: "#1A1A1E",
-          900: "#202026",
-          800: "#28282F",
-          700: "#32323A",
-          600: "#3E3E48",
+          950: "#FCFDFE",
+          900: "#F7F9FB",
+          800: "#FFFFFF",
+          700: "#EEF2F6",
+          600: "#D6DEE8",
         },
-        // Lighter warm accent (soft cream/beige)
+        // Neutral ink and accent
         cream: {
-          50: "#FFFCF7",
-          100: "#FDF8F0",
-          200: "#F8F0E3",
-          300: "#F0E5D1",
-          400: "#E5D5B8",
-          500: "#D4C19D",
-          600: "#BFA982",
-          700: "#9E8A6A",
+          50: "#0F172A",
+          100: "#1E293B",
+          200: "#334155",
+          300: "#475467",
+          400: "#667085",
+          500: "#2E4E73",
+          600: "#243F61",
+          700: "#1C324E",
         },
-        // Sage green for positive financial states
+        // Positive financial states (income)
         sage: {
-          50: "#F4F6F4",
-          100: "#E8EDE8",
-          200: "#D4DDD4",
-          300: "#A8BDA8",
-          400: "#8BA888",
-          500: "#6B8E6B",
-          600: "#577357",
+          50: "#0B3D2E",
+          100: "#14553E",
+          200: "#1D6D4E",
+          300: "#258460",
+          400: "#81C784",
+          500: "#9BD3A0",
+          600: "#B8E0BD",
         },
-        // Softer coral/salmon for expenses
+        // Expense and danger states
         coral: {
-          50: "#FDF5F4",
-          100: "#FBEAE7",
-          200: "#F6D5CF",
-          300: "#EDB5AA",
-          400: "#E19181",
-          500: "#D47061",
-          600: "#B85A4C",
+          50: "#6A2F2A",
+          100: "#7A3932",
+          200: "#8C443B",
+          300: "#A04E43",
+          400: "#E57373",
+          500: "#ED8E8E",
+          600: "#F3AAAA",
         },
       },
       fontFamily: {
-        display: ["var(--font-clash)", "system-ui", "sans-serif"],
+        display: ["var(--font-inter)", "system-ui", "sans-serif"],
         body: ["var(--font-inter)", "system-ui", "sans-serif"],
         mono: ["var(--font-jetbrains)", "monospace"],
       },
@@ -55,11 +74,11 @@ module.exports = {
         wider: "0.15em",
       },
       boxShadow: {
-        "glow-sm": "0 0 10px rgba(229, 213, 184, 0.1)",
-        "glow-md": "0 0 20px rgba(229, 213, 184, 0.15)",
-        "glow-lg": "0 0 30px rgba(229, 213, 184, 0.2)",
-        "elevated": "0 20px 40px rgba(0, 0, 0, 0.4), 0 0 1px rgba(229, 213, 184, 0.1)",
-        "card": "0 8px 24px rgba(0, 0, 0, 0.3), 0 0 1px rgba(229, 213, 184, 0.08)",
+        "glow-sm": "0 1px 2px rgba(15, 23, 42, 0.06), 0 4px 10px rgba(46, 78, 115, 0.08)",
+        "glow-md": "0 2px 6px rgba(15, 23, 42, 0.08), 0 10px 24px rgba(46, 78, 115, 0.1)",
+        "glow-lg": "0 8px 22px rgba(15, 23, 42, 0.12), 0 20px 36px rgba(46, 78, 115, 0.14)",
+        "elevated": "0 6px 18px rgba(15, 23, 42, 0.08)",
+        "card": "0 2px 10px rgba(15, 23, 42, 0.06)",
       },
       animation: {
         "fade-in": "fadeIn 0.6s ease-out",

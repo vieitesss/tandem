@@ -112,24 +112,21 @@ const buildDebtSummary = async ({ db }) => {
       }
 
       if (transaction.type === "LIQUIDATION") {
-        if (payerId) {
-          addAmount(liquidationsByProfile, payerId, amount);
+        if (!payerId || !beneficiaryId || payerId === beneficiaryId) {
+          return;
         }
 
-        if (beneficiaryId) {
-          addAmount(liquidationsReceivedByProfile, beneficiaryId, amount);
-        }
+        addAmount(liquidationsByProfile, payerId, amount);
+        addAmount(liquidationsReceivedByProfile, beneficiaryId, amount);
 
-        if (payerId && beneficiaryId) {
-          liquidationTransactions.push({
-            id: transaction.id,
-            payer_id: payerId,
-            beneficiary_id: beneficiaryId,
-            amount,
-            date: transaction.date,
-            note: transaction.note || null,
-          });
-        }
+        liquidationTransactions.push({
+          id: transaction.id,
+          payer_id: payerId,
+          beneficiary_id: beneficiaryId,
+          amount,
+          date: transaction.date,
+          note: transaction.note || null,
+        });
       }
     });
   }

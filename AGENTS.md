@@ -1,36 +1,69 @@
 # AGENTS.md
 
-Tandem is a small monorepo with a Next.js frontend and an Express API backed by Supabase.
+This is a shared file for both the project owner and the coding agent.
+Use it as the source of truth for project working agreements.
 
-## Getting Oriented
-- Apps: `apps/frontend` (Next.js App Router + Tailwind), `apps/backend` (Express + Supabase).
-- Package manager: Bun (each app pins it via `packageManager`).
-- Local dev (one command): `docker compose up --build` (uses `.env` for Supabase credentials).
+## Project Scope and Usage
 
-## Repo-Wide Conventions
-- JavaScript only.
-- Frontend uses ESM; backend uses CommonJS.
-- Formatting: 2 spaces, double quotes, semicolons.
-- API payload keys: snake_case.
-- Avoid adding new tooling unless requested.
+### Scope
+Tandem is a monorepo with:
+- `apps/frontend`: Next.js App Router + Tailwind
+- `apps/backend`: Express API + Supabase
 
-## More Specific Guidance
+### Stack and Conventions
+- JavaScript only
+- Frontend uses ESM
+- Backend uses CommonJS
+- Package manager: Bun
+- Formatting: 2 spaces, double quotes, semicolons
+- API payload keys: snake_case
+- Avoid adding new tooling unless requested
+
+### Local Usage
+- Start local environment: `docker compose up --build`
+- Uses `.env` for local Supabase credentials
+
+### More Guidance
 - Frontend: `apps/frontend/AGENTS.md`
 - Backend: `apps/backend/AGENTS.md`
 
-## Browser Automation
-
+### Browser Automation
 Use `agent-browser` for web automation. Run `agent-browser --help` for all commands.
 
 Core workflow:
-1. `agent-browser open <url>` - Navigate to page
-2. `agent-browser snapshot -i` - Get interactive elements with refs (@e1, @e2)
-3. `agent-browser click @e1` / `fill @e2 "text"` - Interact using refs
+1. `agent-browser open <url>`
+2. `agent-browser snapshot -i`
+3. `agent-browser click @e1` / `agent-browser fill @e2 "text"`
 4. Re-snapshot after page changes
 
-Remove any changes made to the database after running commands.
+After browser automation, remove any database changes made during testing.
 
-## Important instructions
-- Do not update the main supabase database.
-- By default, update the local pglite database.
-- If i ever need to update a supabase database, it must be the dev supabase, that you can access with the credentials in .env.demo.
+### Database Safety
+- Do not update the main Supabase database
+- By default, update the local pglite database
+- If Supabase must be updated, use only the dev Supabase with credentials from `.env.demo`
+
+## My Own Likings
+
+- Keep the codebase clean and organized
+- The application styling must follow best design practices and be visually appealing
+- The application must be responsive and work well on different screen sizes
+- The application must follow best UX practices and be easy to use
+- If you are going to write the same code in multiple places, create a reusable function or component instead
+- Preserve existing patterns unless asked to refactor
+- Ask before adding dependencies
+- Do not commit unless explicitly requested
+
+## Went Wrong / Solved
+
+- Add short notes here as we work
+- The coding agent must update this section whenever an issue is reported or a fix is completed
+- Solved format: `issue - solution`
+- Unsolved format: `issue - open`
+- Example solved: `docker build failed due to missing env - added required local .env values`
+- Example open: `seed script fails on fresh DB - open`
+
+### Notes
+- existing deployments could miss data format updates - added idempotent backend migration runner (`bun run db:migrate`) with startup execution
+- transaction amount sign wrapped on narrow screens and mobile row expansion missed note content - made amount display non-wrapping and added note line to expanded mobile transaction details
+- mobile row expansion repeated category already visible in row - removed category line from expanded mobile transaction details

@@ -87,6 +87,18 @@ cp -r ./data/tandem-db ./data/tandem-db.backup.$(date +%Y%m%d_%H%M%S)
 
 ## Data Migration
 
+### App Migrations (all deployment modes)
+
+Run pending backend data migrations before serving traffic on upgrades:
+
+```bash
+cd apps/backend
+bun run db:migrate
+```
+
+This command is idempotent and safe to rerun.
+The backend also runs pending migrations automatically at startup.
+
 ### Supabase → PGlite
 
 ```bash

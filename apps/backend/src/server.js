@@ -6,6 +6,7 @@ const {
   DEFAULT_SNAPSHOT_INTERVAL_MS,
 } = require("./snapshot");
 const { createApp } = require("./app");
+const { runPendingMigrations } = require("./migrations");
 
 const { PORT = 4000 } = process.env;
 
@@ -18,6 +19,8 @@ const startServer = async () => {
 
   const db = adapter;
   const dbMode = mode;
+
+  await runPendingMigrations({ db, logger: console });
 
   if (mode === "local" && pg) {
     const snapshotPath = String(process.env.PGLITE_SNAPSHOT_PATH || "").trim();

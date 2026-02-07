@@ -2,9 +2,17 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { parsePercentFraction } from "../shared/domain/splits";
+import {
+  FieldLabel,
+  PrimaryButton,
+  SecondaryButton,
+  TextInput,
+} from "../shared/FormPrimitives";
 import { normalizeNumberInput } from "../shared/inputs";
-import DesktopHeaderActions from "../shared/DesktopHeaderActions";
-import SecondaryActions, { SecondaryLink } from "../shared/SecondaryActions";
+import { InlineMessage, PageHeader, PageShell, SectionCard } from "../shared/PageLayout";
+import { apiGet, apiPatch, apiPost } from "../shared/api";
+import { SetupSecondaryActions } from "../shared/SecondaryNavPresets";
 import { useToast } from "../shared/ToastProvider";
 import ProfileSetup from "./ProfileSetup";
 
@@ -16,13 +24,11 @@ export default function ProfilesPage() {
   const [savingId, setSavingId] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const apiBaseUrl = "/api";
   const { showToast } = useToast();
 
   const loadProfiles = useCallback(() => {
     setIsLoading(true);
-    fetch(`${apiBaseUrl}/profiles`)
-      .then((response) => response.json())
+    apiGet("/profiles")
       .then((data) => {
         setProfiles(
           Array.isArray(data)
@@ -41,7 +47,7 @@ export default function ProfilesPage() {
         setProfiles([]);
         setIsLoading(false);
       });
-  }, [apiBaseUrl]);
+  }, []);
 
   useEffect(() => {
     loadProfiles();
@@ -55,14 +61,6 @@ export default function ProfilesPage() {
     );
   };
 
-  const parsePercent = (value) => {
-    const normalized = Number(value);
-    if (Number.isNaN(normalized) || normalized <= 0 || normalized >= 100) {
-      return null;
-    }
-    return normalized / 100;
-  };
-
   const handleCreate = async (event) => {
     event.preventDefault();
 
@@ -71,7 +69,7 @@ export default function ProfilesPage() {
       return;
     }
 
-    const defaultSplit = parsePercent(form.splitPercent);
+    const defaultSplit = parsePercentFraction(form.splitPercent);
 
     if (!form.displayName.trim() || defaultSplit === null) {
       showToast("Add a name and valid split.", { tone: "error" });
@@ -79,19 +77,14 @@ export default function ProfilesPage() {
     }
 
     try {
-      const response = await fetch(`${apiBaseUrl}/profiles`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      await apiPost(
+        "/profiles",
+        {
           display_name: form.displayName.trim(),
           default_split: defaultSplit,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorBody = await response.json();
-        throw new Error(errorBody.error || "Failed to create profile");
-      }
+        },
+        "Failed to create profile"
+      );
 
       setForm(emptyProfile);
       loadProfiles();
@@ -104,7 +97,7 @@ export default function ProfilesPage() {
   const handleSave = async (profile) => {
     setSavingId(profile.id);
 
-    const defaultSplit = parsePercent(profile.splitPercent);
+    const defaultSplit = parsePercentFraction(profile.splitPercent);
 
     if (!profile.display_name.trim() || defaultSplit === null) {
       showToast("Enter name and split 0-100.", { tone: "error" });
@@ -113,19 +106,14 @@ export default function ProfilesPage() {
     }
 
     try {
-      const response = await fetch(`${apiBaseUrl}/profiles/${profile.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      await apiPatch(
+        `/profiles/${profile.id}`,
+        {
           display_name: profile.display_name.trim(),
           default_split: defaultSplit,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorBody = await response.json();
-        throw new Error(errorBody.error || "Failed to update profile");
-      }
+        },
+        "Failed to update profile"
+      );
 
       showToast("Profile updated.");
       loadProfiles();
@@ -138,23 +126,15 @@ export default function ProfilesPage() {
 
   if (isLoading) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 px-6 pt-8 pb-[calc(6rem+env(safe-area-inset-bottom))] md:p-8 md:pt-12">
-        <header className="space-y-3 animate-fade-in">
-          <div className="flex items-center gap-4">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-cream-500/20 to-cream-600/10 border border-cream-500/20 shadow-glow-sm md:h-12 md:w-12">
-              <img
-                src="/icon.png"
-                alt="Tandem"
-                className="h-7 w-7 md:h-8 md:w-8"
-              />
-            </div>
-            <h1 className="text-3xl font-display font-semibold tracking-tight text-cream-50 md:text-4xl">Profiles</h1>
-          </div>
-          <p className="text-sm text-cream-100/60 font-medium tracking-wide">
-            Loading profiles...
-          </p>
-        </header>
-      </main>
+      <PageShell maxWidth="max-w-3xl">
+        <PageHeader
+          title="Profiles"
+          description="Manage default split percentages for each partner."
+          currentPage="profiles"
+          eyebrow="Setup"
+        />
+        <InlineMessage tone="muted">Loading profiles...</InlineMessage>
+      </PageShell>
     );
   }
 
@@ -166,52 +146,33 @@ export default function ProfilesPage() {
   const canAddProfile = profiles.length < 2;
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-8 px-6 pt-8 pb-[calc(6rem+env(safe-area-inset-bottom))] md:p-8 md:pt-12">
-      <header className="space-y-3 animate-fade-in">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-4">
-            <div className="title-icon flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-cream-500/20 to-cream-600/10 border border-cream-500/20 shadow-glow-sm md:h-12 md:w-12">
-              <img
-                src="/icon.png"
-                alt="Tandem"
-                className="title-icon-media"
-              />
-            </div>
-            <h1 className="text-3xl font-display font-semibold tracking-tight text-cream-50 md:text-4xl">Profiles</h1>
-          </div>
-          <DesktopHeaderActions currentPage="profiles" />
-        </div>
-        <p className="text-sm text-cream-100/60 font-medium tracking-wide">
-          Manage default split percentages for each partner
-        </p>
-        <SecondaryActions>
-          <SecondaryLink
-            href="/categories"
-            label="Categories"
-            icon={
-              <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-              </svg>
-            }
-          />
-        </SecondaryActions>
-      </header>
+    <PageShell maxWidth="max-w-3xl">
+      <PageHeader
+        title="Profiles"
+        description="Manage default split percentages for each partner."
+        currentPage="profiles"
+        eyebrow="Setup"
+      >
+        <SetupSecondaryActions />
+      </PageHeader>
 
       {hasTooManyProfiles ? (
-        <section className="rounded-2xl border border-coral-500/30 bg-coral-500/10 p-5 text-sm text-coral-100 shadow-card">
+        <SectionCard className="border-coral-300/60 bg-coral-50 p-5 text-sm text-coral-100">
           This workspace has {profiles.length} profiles. Tandem supports exactly
           two. Remove extras in the database, then refresh the page.
-        </section>
+        </SectionCard>
       ) : null}
 
       {canAddProfile ? (
         <form
-          className="space-y-3 rounded-2xl border border-cream-500/15 bg-obsidian-800/40 p-6 shadow-card backdrop-blur-sm animate-slide-up stagger-1"
+          className="animate-slide-up stagger-1 space-y-3 rounded-3xl border border-obsidian-600/80 bg-obsidian-800 p-6 shadow-card"
           onSubmit={handleCreate}
         >
           <div className="grid gap-3 sm:grid-cols-[1fr_120px_120px]">
-            <input
-              className="w-full rounded-lg border border-cream-500/20 bg-obsidian-950/80 px-3 py-2.5 text-cream-50 placeholder:text-cream-100/40 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30 transition-all duration-200"
+            <TextInput
+              id="create-profile-name"
+              className="bg-obsidian-950/80 placeholder:text-cream-100/40"
+              aria-label="New profile name"
               placeholder="Name"
               value={form.displayName}
               onChange={(event) =>
@@ -221,8 +182,10 @@ export default function ProfilesPage() {
                 }))
               }
             />
-            <input
-              className="w-full rounded-lg border border-cream-500/20 bg-obsidian-950/80 px-3 py-2.5 text-cream-50 font-mono placeholder:text-cream-100/40 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30 transition-all duration-200"
+            <TextInput
+              id="create-profile-split"
+              className="bg-obsidian-950/80 font-mono placeholder:text-cream-100/40"
+              aria-label="New profile default split"
               placeholder="Split %"
               type="number"
               step="0.1"
@@ -234,20 +197,20 @@ export default function ProfilesPage() {
                 }))
               }
             />
-            <button
-              className="rounded-lg bg-cream-500 px-4 py-2.5 font-display font-semibold text-obsidian-950 shadow-glow-md transition-all duration-300 hover:bg-cream-400 hover:shadow-glow-lg hover:scale-[1.02] active:scale-[0.98]"
+            <PrimaryButton
+              className="py-2.5"
               type="submit"
             >
               Add
-            </button>
+            </PrimaryButton>
           </div>
         </form>
       ) : (
-        <section className="rounded-2xl border border-cream-500/15 bg-obsidian-800/40 p-6 text-sm text-cream-100/70 shadow-card">
+        <SectionCard className="p-6 text-sm text-cream-300">
           {hasTooManyProfiles
             ? "Profile limit exceeded. Remove extras and reload this page."
             : "Two profiles are already set. Edit them below as needed."}
-        </section>
+        </SectionCard>
       )}
 
       <section className="space-y-4 animate-slide-up stagger-2">
@@ -259,14 +222,13 @@ export default function ProfilesPage() {
             {profiles.map((profile) => (
               <div
                 key={profile.id}
-                className="group relative space-y-4 rounded-2xl border border-cream-500/15 bg-obsidian-800/40 p-5 shadow-card backdrop-blur-sm transition-all duration-300 hover:border-cream-500/25 hover:shadow-elevated"
+                className="group relative space-y-4 rounded-2xl border border-obsidian-600/80 bg-obsidian-800 p-5 shadow-card transition-all duration-300 hover:border-cream-500/25 hover:shadow-elevated"
               >
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-cream-100/40">
-                    Display Name
-                  </label>
-                  <input
-                    className="w-full rounded-lg border border-cream-500/10 bg-obsidian-950/60 px-3 py-2 text-sm text-cream-50 transition-all duration-200 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30"
+                  <FieldLabel htmlFor={`profile-name-${profile.id}`}>Display name</FieldLabel>
+                  <TextInput
+                    id={`profile-name-${profile.id}`}
+                    className="bg-obsidian-950/60"
                     value={profile.display_name}
                     aria-label="Profile name"
                     onChange={(event) =>
@@ -275,12 +237,11 @@ export default function ProfilesPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-cream-100/40">
-                    Default Split %
-                  </label>
+                  <FieldLabel htmlFor={`profile-split-${profile.id}`}>Default split %</FieldLabel>
                   <div className="relative">
-                    <input
-                      className="w-full rounded-lg border border-cream-500/10 bg-obsidian-950/60 px-3 py-2 pr-9 text-sm text-cream-50 font-mono transition-all duration-200 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/30"
+                    <TextInput
+                      id={`profile-split-${profile.id}`}
+                      className="bg-obsidian-950/60 pr-9 font-mono"
                       type="number"
                       step="0.1"
                       value={profile.splitPercent}
@@ -298,8 +259,8 @@ export default function ProfilesPage() {
                     </span>
                   </div>
                 </div>
-                <button
-                  className="w-full flex h-10 items-center justify-center rounded-lg bg-obsidian-700/60 text-xs font-semibold text-cream-200 transition-all duration-300 hover:bg-cream-500 hover:text-obsidian-950 hover:shadow-glow-sm disabled:opacity-50"
+                <SecondaryButton
+                  className="flex h-10 w-full items-center justify-center border-obsidian-600/80 bg-obsidian-700/60 text-xs font-semibold"
                   type="button"
                   onClick={() => handleSave(profile)}
                   disabled={savingId === profile.id}
@@ -309,13 +270,13 @@ export default function ProfilesPage() {
                   ) : (
                     "Save Changes"
                   )}
-                </button>
+                </SecondaryButton>
               </div>
             ))}
           </div>
         )}
       </section>
 
-    </main>
+    </PageShell>
   );
 }

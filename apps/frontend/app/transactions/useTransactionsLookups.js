@@ -1,33 +1,23 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 
-import { fetchJson } from "../shared/api";
+import { resolveCategoryIcon } from "../shared/categoryIcons";
+import { useCategories } from "../shared/hooks/useCategories";
+import { useProfiles } from "../shared/hooks/useProfiles";
 import { categoryOptions } from "../shared/transactions";
 
-const API_BASE_URL = "/api";
-
 export const useTransactionsLookups = () => {
-  const [profiles, setProfiles] = useState([]);
-  const [categories, setCategories] = useState(categoryOptions);
-  useEffect(() => {
-    fetchJson(`${API_BASE_URL}/profiles`)
-      .then(({ data }) => {
-        setProfiles(Array.isArray(data) ? data : []);
-      })
-      .catch(() => setProfiles([]));
-  }, []);
-
-  useEffect(() => {
-    fetchJson(`${API_BASE_URL}/categories`)
-      .then(({ data }) => {
-        if (Array.isArray(data) && data.length > 0) {
-          setCategories(data);
-        }
-      })
-      .catch(() => setCategories(categoryOptions));
-  }, []);
+  const { data: profiles } = useProfiles();
+  const { data: categories } = useCategories({ fallback: categoryOptions });
 
   const categoryFilterOptions = useMemo(() => {
-    return ["All", ...categories.map((option) => option.label)];
+    return [
+      { value: "All", label: "All", icon: "" },
+      ...categories.map((option) => ({
+        value: option.label,
+        label: option.label,
+        icon: resolveCategoryIcon(option.icon || ""),
+      })),
+    ];
   }, [categories]);
 
   return {

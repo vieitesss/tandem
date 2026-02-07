@@ -53,7 +53,7 @@ export const useDebtSummary = () => {
       line = `${
         debtProfilesById.get(debtBalance.from_profile_id)?.display_name ||
         "Partner 1"
-      } owed ${formatCurrency(debtBalance.amount)} to ${
+      } owes ${formatCurrency(debtBalance.amount)} to ${
         debtProfilesById.get(debtBalance.to_profile_id)?.display_name ||
         "Partner 2"
       }`;

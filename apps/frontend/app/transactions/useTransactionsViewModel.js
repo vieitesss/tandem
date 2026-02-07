@@ -1,5 +1,7 @@
 import { useMemo } from "react";
 
+import { groupByMonth } from "../shared/domain/months";
+
 export const useTransactionsViewModel = ({ transactions, filters }) => {
   const filteredTransactions = useMemo(() => {
     const payerId = filters.payerId ? Number(filters.payerId) : null;
@@ -31,23 +33,7 @@ export const useTransactionsViewModel = ({ transactions, filters }) => {
   }, [filters.payerId, filters.split, transactions]);
 
   const groupedTransactions = useMemo(() => {
-    const groups = new Map();
-
-    filteredTransactions.forEach((transaction) => {
-      const monthKey = transaction.date
-        ? transaction.date.slice(0, 7)
-        : "unknown";
-
-      if (!groups.has(monthKey)) {
-        groups.set(monthKey, []);
-      }
-
-      groups.get(monthKey).push(transaction);
-    });
-
-    return Array.from(groups.keys())
-      .sort((a, b) => b.localeCompare(a))
-      .map((month) => ({ month, items: groups.get(month) }));
+    return groupByMonth(filteredTransactions);
   }, [filteredTransactions]);
 
   const totalsByType = useMemo(() => {

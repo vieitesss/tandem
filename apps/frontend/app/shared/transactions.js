@@ -2,7 +2,7 @@ export const typeOptions = [
   { value: "ALL", label: "All" },
   { value: "EXPENSE", label: "Expense" },
   { value: "INCOME", label: "Income" },
-  { value: "LIQUIDATION", label: "Liquidation" },
+  { value: "LIQUIDATION", label: "Settlement" },
 ];
 
 export const categoryOptions = [

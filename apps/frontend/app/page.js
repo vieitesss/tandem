@@ -4,19 +4,17 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 import ProfileSetup from "./profiles/ProfileSetup";
-import DesktopHeaderActions from "./shared/DesktopHeaderActions";
+import { apiGet } from "./shared/api";
+import { InlineMessage, PageHeader, PageShell, SectionCard } from "./shared/PageLayout";
 import TransactionForm from "./transactions/TransactionForm";
 
 export default function Home() {
   const [profiles, setProfiles] = useState([]);
   const [status, setStatus] = useState("loading");
 
-  const apiBaseUrl = "/api";
-
   const loadProfiles = useCallback(() => {
     setStatus("loading");
-    fetch(`${apiBaseUrl}/profiles`)
-      .then((response) => response.json())
+    apiGet("/profiles")
       .then((data) => {
         setProfiles(Array.isArray(data) ? data : []);
         setStatus("idle");
@@ -25,50 +23,30 @@ export default function Home() {
         setProfiles([]);
         setStatus("error");
       });
-  }, [apiBaseUrl]);
+  }, []);
 
   useEffect(() => {
     loadProfiles();
   }, [loadProfiles]);
 
+  const renderState = (description, tone = "muted") => (
+    <PageShell maxWidth="max-w-3xl">
+      <PageHeader
+        title="Add"
+        description="Record expenses, income, and settlements with ease."
+        currentPage="home"
+        eyebrow="Workspace"
+      />
+      <InlineMessage tone={tone}>{description}</InlineMessage>
+    </PageShell>
+  );
+
   if (status === "loading") {
-    return (
-      <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 px-6 pt-8 pb-[calc(6rem+env(safe-area-inset-bottom))] md:p-8 md:pt-12">
-        <header className="space-y-3 animate-fade-in">
-          <div className="flex items-center gap-4">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-cream-500/20 to-cream-600/10 border border-cream-500/20 shadow-glow-sm md:h-12 md:w-12">
-              <img src="/icon.png" alt="Tandem" className="h-7 w-7 md:h-8 md:w-8" />
-            </div>
-            <h1 className="text-3xl font-display font-semibold tracking-tight text-cream-50 md:text-4xl">
-              Add
-            </h1>
-          </div>
-          <p className="text-sm text-cream-100/60 font-medium tracking-wide">
-            Loading profiles...
-          </p>
-        </header>
-      </main>
-    );
+    return renderState("Loading profiles...");
   }
 
   if (status === "error") {
-    return (
-      <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 px-6 pt-8 pb-[calc(6rem+env(safe-area-inset-bottom))] md:p-8 md:pt-12">
-        <header className="space-y-3 animate-fade-in">
-          <div className="flex items-center gap-4">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-cream-500/20 to-cream-600/10 border border-cream-500/20 shadow-glow-sm md:h-12 md:w-12">
-              <img src="/icon.png" alt="Tandem" className="h-7 w-7 md:h-8 md:w-8" />
-            </div>
-            <h1 className="text-3xl font-display font-semibold tracking-tight text-cream-50 md:text-4xl">
-              Add
-            </h1>
-          </div>
-          <p className="text-sm text-coral-300 font-medium">
-            Unable to load profiles. Refresh the page to try again.
-          </p>
-        </header>
-      </main>
-    );
+    return renderState("Unable to load profiles. Refresh the page to try again.", "error");
   }
 
   if (profiles.length === 0) {
@@ -77,21 +55,14 @@ export default function Home() {
 
   if (profiles.length !== 2) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 px-6 pt-8 pb-[calc(6rem+env(safe-area-inset-bottom))] md:p-8 md:pt-12">
-        <header className="space-y-3 animate-fade-in">
-          <div className="flex items-center gap-4">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-cream-500/20 to-cream-600/10 border border-cream-500/20 shadow-glow-sm md:h-12 md:w-12">
-              <img src="/icon.png" alt="Tandem" className="h-7 w-7 md:h-8 md:w-8" />
-            </div>
-            <h1 className="text-3xl font-display font-semibold tracking-tight text-cream-50 md:text-4xl">
-              Add
-            </h1>
-          </div>
-          <p className="text-sm text-cream-100/60 font-medium tracking-wide">
-            Tandem supports exactly two profiles before you can add transactions.
-          </p>
-        </header>
-        <section className="rounded-2xl border border-coral-500/30 bg-coral-500/10 p-5 text-sm text-coral-100 shadow-card">
+      <PageShell maxWidth="max-w-3xl">
+        <PageHeader
+          title="Add"
+          description="Tandem supports exactly two profiles before you can add transactions."
+          currentPage="home"
+          eyebrow="Workspace"
+        />
+        <SectionCard className="border-coral-300/60 bg-coral-50 p-5 text-sm text-coral-100">
           {profiles.length > 2 ? (
             <p>
               This workspace has {profiles.length} profiles. Remove extras in the
@@ -102,40 +73,26 @@ export default function Home() {
               Only one profile exists. Add the second profile to continue.
             </p>
           )}
-        </section>
+        </SectionCard>
         <Link
-          className="inline-flex w-fit items-center rounded-lg bg-cream-500 px-4 py-2.5 text-sm font-display font-semibold text-obsidian-950 shadow-glow-md transition-all duration-300 hover:bg-cream-400"
+          className="inline-flex w-fit items-center rounded-xl bg-cream-500 px-4 py-2.5 text-sm font-display font-semibold text-white shadow-glow-md transition-all duration-300 hover:bg-cream-400"
           href="/profiles"
         >
           Manage profiles
         </Link>
-      </main>
+      </PageShell>
     );
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-8 px-6 pt-8 pb-[calc(6rem+env(safe-area-inset-bottom))] md:p-8 md:pt-12">
-      <header className="space-y-4 animate-fade-in">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-4">
-            <div className="title-icon flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-cream-500/20 to-cream-600/10 border border-cream-500/20 shadow-glow-sm md:h-12 md:w-12">
-              <img
-                src="/icon.png"
-                alt="Tandem"
-                className="title-icon-media"
-              />
-            </div>
-            <h1 className="text-3xl font-display font-semibold tracking-tight text-cream-50 md:text-4xl">
-              Add
-            </h1>
-          </div>
-          <DesktopHeaderActions currentPage="home" />
-        </div>
-        <p className="text-sm text-cream-100/60 font-medium tracking-wide">
-          Record expenses, income, and settlements with ease
-        </p>
-      </header>
+    <PageShell maxWidth="max-w-3xl">
+      <PageHeader
+        title="Add"
+        description="Record expenses, income, and settlements with ease."
+        currentPage="home"
+        eyebrow="Workspace"
+      />
       <TransactionForm />
-    </main>
+    </PageShell>
   );
 }
