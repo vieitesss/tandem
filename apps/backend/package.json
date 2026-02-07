@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
+    "db:migrate": "node scripts/run-migrations.js",
     "sync-supabase": "node scripts/sync-supabase-to-pglite.js",
     "seed-demo": "node scripts/seed-pglite-demo.js",
     "lint": "eslint ."

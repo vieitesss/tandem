@@ -13,6 +13,8 @@ const normalizeError = (error) => {
   };
 };
 
+const SCHEMA_MIGRATIONS_TABLE = "schema_migrations";
+
 const buildInsertValues = (rows, columns) => {
   const params = [];
   const values = rows
@@ -597,6 +599,50 @@ const createPgliteAdapter = ({ pg, emitChange }) => {
     }
   };
 
+  const listAppliedMigrations = async () => {
+    try {
+      const { rows } = await pg.query(
+        "SELECT action FROM changes WHERE table_name = $1 ORDER BY id ASC",
+        [SCHEMA_MIGRATIONS_TABLE]
+      );
+      const migrationIds = Array.from(
+        new Set(
+          (rows || [])
+            .map((row) => String(row.action || "").trim())
+            .filter((value) => value.length > 0)
+        )
+      );
+      return { data: migrationIds, error: null };
+    } catch (error) {
+      return { data: null, error: normalizeError(error) };
+    }
+  };
+
+  const markMigrationApplied = async (migrationId) => {
+    const normalizedMigrationId = String(migrationId || "").trim();
+
+    if (!normalizedMigrationId) {
+      return { error: normalizeError("Migration id is required.") };
+    }
+
+    try {
+      await pg.query(
+        `INSERT INTO changes (table_name, row_id, action)
+         SELECT $1, NULL, $2
+         WHERE NOT EXISTS (
+           SELECT 1
+           FROM changes
+           WHERE table_name = $1 AND action = $2
+         )`,
+        [SCHEMA_MIGRATIONS_TABLE, normalizedMigrationId]
+      );
+
+      return { error: null };
+    } catch (error) {
+      return { error: normalizeError(error) };
+    }
+  };
+
   return {
     getProfileCount,
     listProfiles,
@@ -627,6 +673,8 @@ const createPgliteAdapter = ({ pg, emitChange }) => {
     deleteCategory,
     insertCategoriesIfMissing,
     getChangesSince,
+    listAppliedMigrations,
+    markMigrationApplied,
   };
 };
 

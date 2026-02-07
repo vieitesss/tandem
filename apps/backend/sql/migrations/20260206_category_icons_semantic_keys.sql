@@ -1,3 +1,4 @@
+-- Migration: 20260206_category_icons_semantic_keys
 -- Migrates category icons from emoji values to semantic outline icon keys.
 -- Safe to rerun: only updates known labels and leaves custom labels untouched.
 
