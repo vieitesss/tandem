@@ -399,7 +399,9 @@ export default function TransactionRow({
         {noteLabel || notePlaceholder}
       </span>
       <span className="hidden truncate text-cream-100/60 md:block">{splitLabel}</span>
-      <span className={`col-span-3 text-right font-mono tabular-nums font-semibold md:col-auto ${amountClass}`}>
+      <span
+        className={`col-span-3 text-right font-mono tabular-nums font-semibold whitespace-nowrap md:col-auto ${amountClass}`}
+      >
         {`${amountPrefix}${formatCurrency(transaction.amount)}`}
       </span>
       <div className="hidden justify-end md:flex">
@@ -417,15 +419,12 @@ export default function TransactionRow({
   const expandedContent = (
     <div className="space-y-1">
       <div className="flex items-center gap-2">
-        <span className="text-cream-100/50 text-xs font-medium">Category:</span>
-        <span className="inline-flex items-center gap-1.5 text-cream-100">
-          <CategoryIcon icon={categoryIcon} label={categoryLabel} />
-          <span>{categoryLabel}</span>
-        </span>
-      </div>
-      <div className="flex items-center gap-2">
         <span className="text-cream-100/50 text-xs font-medium">Split:</span>
         <span className="text-cream-100">{splitLabel}</span>
+      </div>
+      <div className="flex items-start gap-2">
+        <span className="shrink-0 text-cream-100/50 text-xs font-medium">Note:</span>
+        <span className="min-w-0 break-words text-cream-100">{noteLabel || notePlaceholder}</span>
       </div>
     </div>
   );
