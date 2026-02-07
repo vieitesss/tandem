@@ -14,6 +14,7 @@ export default function AppModal({
   const [mounted, setMounted] = useState(false);
   const dialogRef = useRef(null);
   const previousFocusRef = useRef(null);
+  const onCloseRef = useRef(onClose);
   const titleId = useId();
   const subtitleId = useId();
 
@@ -21,6 +22,10 @@ export default function AppModal({
     setMounted(true);
     return () => setMounted(false);
   }, []);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     if (!open) {
@@ -49,7 +54,7 @@ export default function AppModal({
 
     const handleEscape = (event) => {
       if (event.key === "Escape") {
-        onClose();
+        onCloseRef.current?.();
         return;
       }
 
@@ -87,7 +92,7 @@ export default function AppModal({
         previousFocusRef.current.focus();
       }
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!mounted || !open) {
     return null;

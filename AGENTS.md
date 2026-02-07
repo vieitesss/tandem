@@ -67,3 +67,4 @@ After browser automation, remove any database changes made during testing.
 - existing deployments could miss data format updates - added idempotent backend migration runner (`bun run db:migrate`) with startup execution
 - transaction amount sign wrapped on narrow screens and mobile row expansion missed note content - made amount display non-wrapping and added note line to expanded mobile transaction details
 - mobile row expansion repeated category already visible in row - removed category line from expanded mobile transaction details
+- mobile keyboard closed after each key while editing transaction note - stabilized modal focus effect to avoid refocus on every draft change
