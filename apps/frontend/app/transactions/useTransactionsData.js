@@ -318,13 +318,16 @@ export const useTransactionsData = ({ onRefreshExtras } = {}) => {
     return fetchJson(`${apiBaseUrl}/transactions/months`)
       .then(({ data }) => {
         if (!Array.isArray(data)) {
-          return;
+          return [];
         }
 
         setMonthOptions(data);
         persistCacheWithState({ monthOptions: data });
+        return data;
       })
-      .catch(() => {});
+      .catch(() => {
+        return [];
+      });
   }, [allMonthsSelected, apiBaseUrl, filters.month, transactions]);
 
   const fetchTransactions = useCallback(() => {
@@ -605,6 +608,15 @@ export const useTransactionsData = ({ onRefreshExtras } = {}) => {
         return nextTransactions;
       });
       notifyTransactionsUpdated({ month: deletedMonth });
+
+      const updatedMonths = await refreshMonthOptions();
+      if (
+        Array.isArray(updatedMonths) &&
+        updatedMonths.length > 0 &&
+        !updatedMonths.includes(filters.month)
+      ) {
+        setFilters((current) => ({ ...current, month: updatedMonths[0] }));
+      }
 
       return data;
     } finally {
