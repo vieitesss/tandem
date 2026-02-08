@@ -135,6 +135,7 @@ export default function TransactionsPage() {
           deletingId={deletingId}
           onSave={handleUpdate}
           onDelete={handleDelete}
+          activePayerId={filters.payerId}
         />
       </section>
     </PageShell>

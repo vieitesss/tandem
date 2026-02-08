@@ -9,6 +9,7 @@ export default function TransactionsList({
   deletingId,
   onSave,
   onDelete,
+  activePayerId,
 }) {
   return groupedTransactions.map((group) => {
     const monthLabel =
@@ -39,6 +40,7 @@ export default function TransactionsList({
               onDelete={onDelete}
               isSaving={savingId === transaction.id}
               isDeleting={deletingId === transaction.id}
+              activePayerId={activePayerId}
             />
           ))}
         </div>

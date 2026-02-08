@@ -28,8 +28,25 @@ export default function TransactionsTotals({
       value: totalsByType.LIQUIDATION || 0,
       dotClassName: "bg-cream-400",
     },
+    {
+      key: "LIQUIDATION_PAID",
+      label: "Settlements paid",
+      value: totalsByType.LIQUIDATION_PAID || 0,
+      dotClassName: "bg-coral-400",
+    },
+    {
+      key: "LIQUIDATION_RECEIVED",
+      label: "Settlements received",
+      value: totalsByType.LIQUIDATION_RECEIVED || 0,
+      dotClassName: "bg-sage-300",
+    },
   ];
-  const visibleTotals = totals.filter((item) => presentTypes.includes(item.key));
+  const visibleTotals = totals.filter((item) => {
+    if (item.key === "LIQUIDATION_PAID" || item.key === "LIQUIDATION_RECEIVED") {
+      return (totalsByType[item.key] || 0) > 0;
+    }
+    return presentTypes.includes(item.key);
+  });
 
   if (visibleTotals.length === 0) {
     return null;

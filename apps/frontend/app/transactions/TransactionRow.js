@@ -48,6 +48,7 @@ export default function TransactionRow({
   onDelete,
   isSaving,
   isDeleting,
+  activePayerId,
 }) {
   const defaultCustomSplits = useMemo(
     () => buildDefaultCustomSplits(profiles),
@@ -79,9 +80,14 @@ export default function TransactionRow({
         : "",
   }));
 
-  const amountClass = amountClassFor(transaction.type);
+  const isSettlementReceived =
+    transaction.type === "LIQUIDATION" &&
+    activePayerId &&
+    Number(activePayerId) === transaction.beneficiary_id;
+  const displayType = isSettlementReceived ? "INCOME" : transaction.type;
+  const amountClass = amountClassFor(displayType);
   const amountPrefix =
-    transaction.type === "EXPENSE" ? "-" : transaction.type === "INCOME" ? "+" : "";
+    displayType === "EXPENSE" ? "-" : displayType === "INCOME" ? "+" : "";
   const { showToast } = useToast();
   const dayLabel = formatDayOfMonth(transaction.date);
   const payerLabel = useMemo(() => {
@@ -93,6 +99,12 @@ export default function TransactionRow({
       "—"
     );
   }, [profiles, transaction.payer_id, transaction.payer_name]);
+  const beneficiaryLabel = useMemo(() => {
+    if (!transaction.beneficiary_id) return "—";
+    const profileMatch = profiles.find((profile) => profile.id === transaction.beneficiary_id);
+    return profileMatch?.display_name || transaction.beneficiary_id || "—";
+  }, [profiles, transaction.beneficiary_id]);
+  const displayedPayerLabel = isSettlementReceived ? beneficiaryLabel : payerLabel;
   const categoryLabel = transaction.category || "—";
   const categoryIcon = useMemo(() => {
     if (!transaction.category) {
@@ -382,7 +394,7 @@ export default function TransactionRow({
   const rowContent = (
     <div className="grid grid-cols-12 items-center gap-1.5 text-[13px] md:grid-cols-[70px_130px_140px_1fr_100px_96px_84px] md:gap-2 md:text-sm">
       <span className="col-span-2 text-cream-100 tabular-nums font-mono md:col-auto">{dayLabel}</span>
-      <span className="col-span-3 truncate text-cream-100 font-medium md:col-auto">{payerLabel}</span>
+      <span className="col-span-3 truncate text-cream-100 font-medium md:col-auto">{displayedPayerLabel}</span>
       <span className="col-span-4 truncate text-cream-100/80 md:hidden">
         <span className="inline-flex items-center gap-1.5">
           <CategoryIcon icon={categoryIcon} label={categoryLabel} className="h-3.5 w-3.5 text-cream-300" />
@@ -467,7 +479,7 @@ export default function TransactionRow({
           open={isModalOpen}
           onClose={handleCloseModal}
           title="Edit Transaction"
-          subtitle={`Type: ${transaction.type === "LIQUIDATION" ? "Settlement" : transaction.type}`}
+          subtitle={`Type: ${transaction.type === "LIQUIDATION" ? (isSettlementReceived ? "Settlement (received)" : "Settlement (paid)") : transaction.type}`}
           maxWidth="max-w-lg"
         >
           <div className="grid gap-3 text-sm">
