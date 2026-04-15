@@ -40,6 +40,38 @@ const amountClassFor = (type) => {
   return "text-cream-50";
 };
 
+const buildInitialCustomSplits = (transaction, defaultCustomSplits) => {
+  const savedSplits = Array.isArray(transaction?.splits_percent)
+    ? transaction.splits_percent.filter((split) => split?.user_id)
+    : [];
+
+  if (transaction?.split_mode !== "custom" || savedSplits.length === 0) {
+    return defaultCustomSplits;
+  }
+
+  const profileOrder = new Map(
+    defaultCustomSplits.map((split, index) => [split.user_id, index])
+  );
+
+  return savedSplits
+    .map((split) => ({
+      user_id: String(split.user_id),
+      percent: String(split.percent ?? ""),
+    }))
+    .sort((left, right) => {
+      const leftOrder = profileOrder.get(left.user_id) ?? Number.MAX_SAFE_INTEGER;
+      const rightOrder = profileOrder.get(right.user_id) ?? Number.MAX_SAFE_INTEGER;
+
+      if (leftOrder !== rightOrder) {
+        return leftOrder - rightOrder;
+      }
+
+      return String(left.user_id).localeCompare(String(right.user_id), undefined, {
+        numeric: true,
+      });
+    });
+};
+
 export default function TransactionRow({
   transaction,
   profiles,
@@ -54,11 +86,15 @@ export default function TransactionRow({
     () => buildDefaultCustomSplits(profiles),
     [profiles]
   );
+  const initialCustomSplits = useMemo(
+    () => buildInitialCustomSplits(transaction, defaultCustomSplits),
+    [defaultCustomSplits, transaction]
+  );
   const [isExpanded, setIsExpanded] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteConfirm, setIsDeleteConfirm] = useState(false);
   const [error, setError] = useState("");
-  const [customSplits, setCustomSplits] = useState(defaultCustomSplits);
+  const [customSplits, setCustomSplits] = useState(initialCustomSplits);
   const [hasCustomSplitsTouched, setHasCustomSplitsTouched] = useState(false);
   const [draft, setDraft] = useState(() => ({
     date: transaction.date || "",
@@ -160,9 +196,9 @@ export default function TransactionRow({
           ? String(transaction.beneficiary_id)
           : "",
     });
-    setCustomSplits(defaultCustomSplits);
+    setCustomSplits(initialCustomSplits);
     setHasCustomSplitsTouched(false);
-  }, [defaultCustomSplits, transaction, isModalOpen]);
+  }, [initialCustomSplits, transaction, isModalOpen]);
 
   useEffect(() => {
     if (
@@ -275,7 +311,7 @@ export default function TransactionRow({
           ? String(transaction.beneficiary_id)
           : "",
     });
-    setCustomSplits(defaultCustomSplits);
+    setCustomSplits(initialCustomSplits);
     setHasCustomSplitsTouched(false);
     setIsModalOpen(true);
   };

@@ -69,3 +69,4 @@ After browser automation, remove any database changes made during testing.
 - mobile row expansion repeated category already visible in row - removed category line from expanded mobile transaction details
 - mobile keyboard closed after each key while editing transaction note - stabilized modal focus effect to avoid refocus on every draft change
 - deleting last transaction from oldest month left stale month in dropdown - added auto-navigation to latest month when current month no longer exists after delete
+- editing custom transaction reopened profile default splits instead of saved splits - transactions API now hydrates `splits_percent` and edit modal seeds from transaction-specific splits

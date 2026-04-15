@@ -3,6 +3,94 @@ const { normalizeId } = require("../lib/ids");
 const { allocateAmount } = require("../lib/amounts");
 const { parseMonthRange, expenseSplitModes } = require("../lib/validation");
 
+const roundPercent = (value) => Number(Number(value || 0).toFixed(2));
+
+const buildSplitPercentages = (transaction, splits) => {
+  const totalAmount = Number(transaction?.amount || 0);
+
+  if (!Array.isArray(splits) || splits.length === 0 || totalAmount <= 0) {
+    return [];
+  }
+
+  const percentages = splits.map((split) => ({
+    user_id: split.user_id,
+    percent: roundPercent((Number(split.amount || 0) / totalAmount) * 100),
+  }));
+
+  const totalPercent = percentages.reduce(
+    (sum, split) => sum + Number(split.percent || 0),
+    0
+  );
+  const remainder = roundPercent(100 - totalPercent);
+
+  if (remainder !== 0) {
+    const largestSplitIndex = splits.reduce((bestIndex, split, index) => {
+      return Number(split.amount || 0) > Number(splits[bestIndex]?.amount || 0)
+        ? index
+        : bestIndex;
+    }, 0);
+
+    percentages[largestSplitIndex] = {
+      ...percentages[largestSplitIndex],
+      percent: roundPercent(
+        Number(percentages[largestSplitIndex]?.percent || 0) + remainder
+      ),
+    };
+  }
+
+  return percentages;
+};
+
+const attachSplitPercentages = async (db, transactions) => {
+  if (!Array.isArray(transactions) || transactions.length === 0) {
+    return { data: [], error: null };
+  }
+
+  const customTransactionIds = transactions
+    .filter((transaction) => transaction?.id && transaction.split_mode === "custom")
+    .map((transaction) => transaction.id);
+
+  if (customTransactionIds.length === 0) {
+    return {
+      data: transactions.map((transaction) => ({
+        ...transaction,
+        splits_percent: [],
+      })),
+      error: null,
+    };
+  }
+
+  const { data: splits, error } = await db.listTransactionSplitsByTransactionIds(
+    customTransactionIds
+  );
+
+  if (error) {
+    return { data: null, error };
+  }
+
+  const splitsByTransactionId = new Map();
+
+  (splits || []).forEach((split) => {
+    const current = splitsByTransactionId.get(split.transaction_id) || [];
+    current.push(split);
+    splitsByTransactionId.set(split.transaction_id, current);
+  });
+
+  return {
+    data: transactions.map((transaction) => ({
+      ...transaction,
+      splits_percent:
+        transaction?.split_mode === "custom"
+          ? buildSplitPercentages(
+              transaction,
+              splitsByTransactionId.get(transaction.id) || []
+            )
+          : [],
+    })),
+    error: null,
+  };
+};
+
 const createTransactionsRouter = ({ db }) => {
   const router = express.Router();
 
@@ -68,7 +156,14 @@ const createTransactionsRouter = ({ db }) => {
       payer_name: profilesById.get(transaction.payer_id) || null,
     }));
 
-    return res.json(response);
+    const { data: responseWithSplitPercentages, error: splitsError } =
+      await attachSplitPercentages(db, response);
+
+    if (splitsError) {
+      return res.status(500).json({ error: splitsError.message });
+    }
+
+    return res.json(responseWithSplitPercentages);
   });
 
   router.get("/transactions/latest-month", async (_req, res) => {
@@ -579,7 +674,15 @@ const createTransactionsRouter = ({ db }) => {
       payerName = profiles && profiles[0] ? profiles[0].display_name : null;
     }
 
-    return res.json({ ...updated, payer_name: payerName });
+    const response = { ...updated, payer_name: payerName };
+    const { data: responseWithSplitPercentages, error: splitsError } =
+      await attachSplitPercentages(db, [response]);
+
+    if (splitsError) {
+      return res.status(500).json({ error: splitsError.message });
+    }
+
+    return res.json(responseWithSplitPercentages[0]);
   });
 
   router.delete("/transactions/:id", async (req, res) => {
