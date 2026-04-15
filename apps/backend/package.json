@@ -1,6 +1,6 @@
 {
   "name": "tandem-backend",
-  "version": "0.8.0",
+  "version": "0.8.1-c13e664a",
   "private": true,
   "type": "commonjs",
   "main": "src/index.js",
