@@ -1,4 +1,5 @@
 const { roundAmount } = require("../lib/amounts");
+const { contributionOf } = require("./contribution");
 
 const buildPersonMonthlySummary = async ({ db }) => {
   const { data: profiles, error: profilesError } = await db.listProfiles();
@@ -72,20 +73,22 @@ const buildPersonMonthlySummary = async ({ db }) => {
     }
 
     if (t.type === "LIQUIDATION") {
-      // Track liquidations received by beneficiary
-      if (t.beneficiary_id) {
-        const profileData = profileMap.get(t.beneficiary_id);
-        profileData.liquidations_received_total = roundAmount(
-          profileData.liquidations_received_total + Number(t.amount)
-        );
-      }
-      // Track liquidations paid by payer
-      if (t.payer_id) {
-        const profileData = profileMap.get(t.payer_id);
-        profileData.liquidations_paid_total = roundAmount(
-          profileData.liquidations_paid_total + Number(t.amount)
-        );
-      }
+      contributionOf(t).forEach(({ profile_id, delta }) => {
+        const profileData = profileMap.get(profile_id);
+        if (!profileData) {
+          return;
+        }
+
+        if (delta > 0) {
+          profileData.liquidations_paid_total = roundAmount(
+            profileData.liquidations_paid_total + delta
+          );
+        } else {
+          profileData.liquidations_received_total = roundAmount(
+            profileData.liquidations_received_total - delta
+          );
+        }
+      });
     }
   });
 

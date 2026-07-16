@@ -1,4 +1,5 @@
 const { roundAmount, addAmount } = require("../lib/amounts");
+const { contributionOf } = require("./contribution");
 
 const buildDebtSummary = async ({ db }) => {
   const { data: profiles, error: profilesError } = await db.listProfiles();
@@ -132,6 +133,7 @@ const buildDebtSummary = async ({ db }) => {
   }
 
   const customSplitDetails = [];
+  const splitsByTransaction = new Map();
 
   if (customTransactions.size > 0) {
     const customIds = Array.from(customTransactions.keys());
@@ -143,8 +145,6 @@ const buildDebtSummary = async ({ db }) => {
     }
 
     if (splits && splits.length > 0) {
-      const splitsByTransaction = new Map();
-
       splits.forEach((split) => {
         const transaction = customTransactions.get(split.transaction_id);
         const userId = split.user_id;
@@ -196,20 +196,18 @@ const buildDebtSummary = async ({ db }) => {
     }
   }
 
-  const netByProfile = new Map(
-    profileIds.map((profileId) => {
-      const net = roundAmount(
-        (customSplitPaidByProfile.get(profileId) || 0) +
-          (owedPaidByProfile.get(profileId) || 0) +
-          (liquidationsByProfile.get(profileId) || 0) -
-          ((customSplitShareByProfile.get(profileId) || 0) +
-            (owedTransactionsByProfile.get(profileId) || 0) +
-            (liquidationsReceivedByProfile.get(profileId) || 0))
-      );
+  const netByProfile = new Map(profileIds.map((profileId) => [profileId, 0]));
 
-      return [profileId, net];
-    })
-  );
+  (transactions || []).forEach((transaction) => {
+    contributionOf(
+      transaction,
+      splitsByTransaction.get(transaction.id) || []
+    ).forEach(({ profile_id, delta }) => {
+      if (netByProfile.has(profile_id)) {
+        addAmount(netByProfile, profile_id, delta);
+      }
+    });
+  });
 
   let balance = { from_profile_id: null, to_profile_id: null, amount: 0 };
 

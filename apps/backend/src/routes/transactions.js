@@ -1,45 +1,11 @@
 const express = require("express");
 const { normalizeId } = require("../lib/ids");
-const { allocateAmount } = require("../lib/amounts");
-const { parseMonthRange, expenseSplitModes } = require("../lib/validation");
-
-const roundPercent = (value) => Number(Number(value || 0).toFixed(2));
-
-const buildSplitPercentages = (transaction, splits) => {
-  const totalAmount = Number(transaction?.amount || 0);
-
-  if (!Array.isArray(splits) || splits.length === 0 || totalAmount <= 0) {
-    return [];
-  }
-
-  const percentages = splits.map((split) => ({
-    user_id: split.user_id,
-    percent: roundPercent((Number(split.amount || 0) / totalAmount) * 100),
-  }));
-
-  const totalPercent = percentages.reduce(
-    (sum, split) => sum + Number(split.percent || 0),
-    0
-  );
-  const remainder = roundPercent(100 - totalPercent);
-
-  if (remainder !== 0) {
-    const largestSplitIndex = splits.reduce((bestIndex, split, index) => {
-      return Number(split.amount || 0) > Number(splits[bestIndex]?.amount || 0)
-        ? index
-        : bestIndex;
-    }, 0);
-
-    percentages[largestSplitIndex] = {
-      ...percentages[largestSplitIndex],
-      percent: roundPercent(
-        Number(percentages[largestSplitIndex]?.percent || 0) + remainder
-      ),
-    };
-  }
-
-  return percentages;
-};
+const { toPercents } = require("../lib/amounts");
+const { parseMonthRange } = require("../lib/validation");
+const {
+  buildTransaction,
+  buildTransactionUpdate,
+} = require("../services/transactionBuilder");
 
 const attachSplitPercentages = async (db, transactions) => {
   if (!Array.isArray(transactions) || transactions.length === 0) {
@@ -81,10 +47,17 @@ const attachSplitPercentages = async (db, transactions) => {
       ...transaction,
       splits_percent:
         transaction?.split_mode === "custom"
-          ? buildSplitPercentages(
-              transaction,
-              splitsByTransactionId.get(transaction.id) || []
-            )
+          ? (() => {
+              const splits = splitsByTransactionId.get(transaction.id) || [];
+              const percentages = toPercents(
+                transaction.amount,
+                splits.map((split) => split.amount)
+              );
+              return splits.map((split, index) => ({
+                user_id: split.user_id,
+                percent: percentages[index],
+              }));
+            })()
           : [],
     })),
     error: null,
@@ -187,152 +160,24 @@ const createTransactionsRouter = ({ db }) => {
   });
 
   router.post("/transactions", async (req, res) => {
-    const {
-      payer_id,
-      amount,
-      category,
-      date,
-      note,
-      type,
-      split_mode,
-      splits_percent,
-      beneficiary_id,
-    } = req.body || {};
+    const result = buildTransaction(req.body || {});
 
-    if (!amount || !type || !date) {
-      return res.status(400).json({ error: "Invalid payload." });
+    if (result.error) {
+      return res.status(400).json({ error: result.error.message });
     }
-
-    const isIncome = type === "INCOME";
-    const isLiquidation = type === "LIQUIDATION";
-    const normalizedPayerId = normalizeId(payer_id);
-    const normalizedBeneficiaryId = normalizeId(beneficiary_id);
-    const requestedSplitMode = split_mode || "custom";
-
-    if (
-      Number.isNaN(normalizedPayerId) ||
-      Number.isNaN(normalizedBeneficiaryId)
-    ) {
-      return res.status(400).json({ error: "Profile ids must be numbers." });
-    }
-
-    if (isLiquidation && !normalizedBeneficiaryId) {
-      return res
-        .status(400)
-        .json({ error: "Liquidation requires a beneficiary." });
-    }
-
-    if (
-      isLiquidation &&
-      normalizedBeneficiaryId &&
-      normalizedPayerId &&
-      normalizedBeneficiaryId === normalizedPayerId
-    ) {
-      return res
-        .status(400)
-        .json({ error: "Liquidation requires another profile." });
-    }
-
-    if (isIncome && !normalizedBeneficiaryId && !normalizedPayerId) {
-      return res.status(400).json({ error: "Income requires a recipient." });
-    }
-
-    if (!isIncome && !normalizedPayerId) {
-      return res.status(400).json({ error: "Payer is required." });
-    }
-
-    if (
-      !isIncome &&
-      !isLiquidation &&
-      !expenseSplitModes.has(requestedSplitMode)
-    ) {
-      return res.status(400).json({ error: "Invalid split mode." });
-    }
-
-    if (requestedSplitMode === "owed" && !normalizedBeneficiaryId) {
-      return res
-        .status(400)
-        .json({ error: "Owed expenses need a beneficiary." });
-    }
-
-    if (
-      requestedSplitMode === "owed" &&
-      normalizedBeneficiaryId &&
-      normalizedBeneficiaryId === normalizedPayerId
-    ) {
-      return res
-        .status(400)
-        .json({ error: "Owed expenses need another profile." });
-    }
-
-    const payerForInsert = isIncome
-      ? normalizedBeneficiaryId || normalizedPayerId
-      : normalizedPayerId;
-    const categoryForInsert = isIncome || isLiquidation ? null : category;
-    const splitModeForInsert =
-      isIncome || isLiquidation ? "none" : requestedSplitMode;
-    const beneficiaryForInsert = isIncome
-      ? payerForInsert
-      : isLiquidation
-        ? normalizedBeneficiaryId
-        : requestedSplitMode === "owed"
-          ? normalizedBeneficiaryId
-          : null;
 
     const { data: transaction, error: transactionError } =
-      await db.insertTransaction({
-        payer_id: payerForInsert,
-        beneficiary_id: beneficiaryForInsert,
-        split_mode: splitModeForInsert,
-        amount,
-        category: categoryForInsert,
-        date,
-        note,
-        type,
-      });
+      await db.insertTransaction(result.transaction);
 
     if (transactionError) {
       return res.status(500).json({ error: transactionError.message });
     }
 
-    const normalizedAmount = Number(amount);
-
-    if (transaction.split_mode === "custom") {
-      if (!Array.isArray(splits_percent)) {
-        return res
-          .status(400)
-          .json({ error: "Split percentages are required." });
-      }
-
-      const totalPercent = splits_percent.reduce(
-        (sum, split) => sum + Number(split.percent || 0),
-        0
-      );
-
-      const invalidPercent = splits_percent.some((split) => {
-        const normalizedSplitId = normalizeId(split.user_id);
-        return Number(split.percent || 0) <= 0 || !normalizedSplitId;
-      });
-
-      if (Math.abs(totalPercent - 100) > 0.01 || invalidPercent) {
-        return res
-          .status(400)
-          .json({ error: "Split percentages must total 100%." });
-      }
-
-      const percentages = splits_percent.map((split) =>
-        Number(split.percent || 0)
-      );
-      const allocatedAmounts = allocateAmount(normalizedAmount, percentages);
-
-      const splitRows = splits_percent.map((split, index) => {
-        return {
-          transaction_id: transaction.id,
-          user_id: Number(split.user_id),
-          amount: allocatedAmounts[index],
-        };
-      });
-
+    if (result.splits.length > 0) {
+      const splitRows = result.splits.map((split) => ({
+        transaction_id: transaction.id,
+        ...split,
+      }));
       const { error: splitsError } = await db.insertTransactionSplits(splitRows);
 
       if (splitsError) {
@@ -345,18 +190,8 @@ const createTransactionsRouter = ({ db }) => {
 
   router.patch("/transactions/:id", async (req, res) => {
     const { id } = req.params;
-    const {
-      payer_id,
-      amount,
-      category,
-      date,
-      note,
-      split_mode,
-      beneficiary_id,
-      splits_percent,
-    } = req.body || {};
+    const input = req.body || {};
     const transactionId = normalizeId(id);
-    const hasSplitsPercentPayload = splits_percent !== undefined;
 
     if (!id || Number.isNaN(transactionId)) {
       return res.status(400).json({ error: "Transaction id must be a number." });
@@ -373,201 +208,30 @@ const createTransactionsRouter = ({ db }) => {
       return res.status(404).json({ error: "Transaction not found." });
     }
 
-    const updates = {};
+    const shouldLoadExistingSplits =
+      existing.type === "EXPENSE" &&
+      existing.split_mode === "custom" &&
+      input.amount !== undefined &&
+      input.splits_percent === undefined &&
+      (input.split_mode === undefined || input.split_mode === "custom");
+    let result = buildTransactionUpdate(existing, input);
 
-    if (date !== undefined) {
-      if (!date) {
-        return res.status(400).json({ error: "Date is required." });
-      }
-      updates.date = date;
+    if (result.error) {
+      return res.status(400).json({ error: result.error.message });
     }
 
-    if (amount !== undefined) {
-      const normalizedAmount = Number(amount);
-      if (Number.isNaN(normalizedAmount) || normalizedAmount <= 0) {
-        return res.status(400).json({ error: "Amount must be greater than 0." });
+    if (shouldLoadExistingSplits) {
+      const { data: splits, error: splitsError } =
+        await db.listTransactionSplitsByTransactionId(transactionId);
+
+      if (splitsError) {
+        return res.status(500).json({ error: splitsError.message });
       }
-      updates.amount = normalizedAmount;
+
+      result = buildTransactionUpdate(existing, input, splits || []);
     }
 
-    let updatedPayerId = existing.payer_id;
-    let updatedSplitMode = existing.split_mode;
-    let updatedBeneficiaryId = existing.beneficiary_id;
-
-    if (payer_id !== undefined) {
-      const normalizedPayerId = normalizeId(payer_id);
-
-      if (Number.isNaN(normalizedPayerId)) {
-        return res.status(400).json({ error: "Payer must be a number." });
-      }
-
-      if (!normalizedPayerId) {
-        return res.status(400).json({ error: "Payer is required." });
-      }
-
-      updatedPayerId = normalizedPayerId;
-      updates.payer_id = normalizedPayerId;
-    }
-
-    if (category !== undefined) {
-      if (existing.type === "EXPENSE" && !category) {
-        return res.status(400).json({ error: "Category is required." });
-      }
-      updates.category = existing.type === "EXPENSE" ? category : null;
-    } else if (existing.type !== "EXPENSE" && existing.category) {
-      updates.category = null;
-    }
-
-    if (note !== undefined) {
-      updates.note = note ? String(note).trim() : null;
-    }
-
-    if (split_mode !== undefined) {
-      if (existing.type !== "EXPENSE") {
-        return res
-          .status(400)
-          .json({ error: "Split mode only applies to expenses." });
-      }
-
-      if (!expenseSplitModes.has(split_mode)) {
-        return res.status(400).json({ error: "Invalid split mode." });
-      }
-
-      if (
-        split_mode === "custom" &&
-        existing.split_mode !== "custom" &&
-        !hasSplitsPercentPayload
-      ) {
-        return res.status(400).json({
-          error: "Custom split percentages are required.",
-        });
-      }
-
-      updatedSplitMode = split_mode;
-      updates.split_mode = split_mode;
-
-      if (split_mode !== "owed") {
-        updatedBeneficiaryId = null;
-        updates.beneficiary_id = null;
-      }
-    }
-
-    let normalizedSplitsPercent = null;
-
-    if (hasSplitsPercentPayload) {
-      if (existing.type !== "EXPENSE") {
-        return res
-          .status(400)
-          .json({ error: "Split percentages only apply to expenses." });
-      }
-
-      if (updatedSplitMode !== "custom") {
-        return res
-          .status(400)
-          .json({ error: "Split percentages require custom split mode." });
-      }
-
-      if (!Array.isArray(splits_percent) || splits_percent.length === 0) {
-        return res
-          .status(400)
-          .json({ error: "Split percentages are required." });
-      }
-
-      const totalPercent = splits_percent.reduce(
-        (sum, split) => sum + Number(split.percent || 0),
-        0
-      );
-
-      const invalidPercent = splits_percent.some((split) => {
-        const normalizedSplitId = normalizeId(split.user_id);
-        return Number(split.percent || 0) <= 0 || !normalizedSplitId;
-      });
-
-      if (Math.abs(totalPercent - 100) > 0.01 || invalidPercent) {
-        return res
-          .status(400)
-          .json({ error: "Split percentages must total 100%." });
-      }
-
-      normalizedSplitsPercent = splits_percent.map((split) => ({
-        user_id: Number(split.user_id),
-        percent: Number(split.percent || 0),
-      }));
-    }
-
-    if (beneficiary_id !== undefined) {
-      const normalizedBeneficiaryId = normalizeId(beneficiary_id);
-
-      if (Number.isNaN(normalizedBeneficiaryId)) {
-        return res.status(400).json({ error: "Beneficiary must be a number." });
-      }
-
-      if (existing.type === "EXPENSE") {
-        if (updatedSplitMode !== "owed" && normalizedBeneficiaryId) {
-          return res
-            .status(400)
-            .json({ error: "Beneficiary only applies to owed." });
-        }
-      } else if (existing.type === "LIQUIDATION") {
-        if (!normalizedBeneficiaryId) {
-          return res
-            .status(400)
-            .json({ error: "Liquidation requires a beneficiary." });
-        }
-      } else {
-        return res
-          .status(400)
-          .json({ error: "Beneficiary only applies to expenses and liquidations." });
-      }
-
-      updatedBeneficiaryId = normalizedBeneficiaryId;
-      updates.beneficiary_id = normalizedBeneficiaryId;
-    }
-
-    if (existing.type === "EXPENSE") {
-      if (
-        updatedSplitMode !== "owed" &&
-        (updatedBeneficiaryId || updates.beneficiary_id)
-      ) {
-        updatedBeneficiaryId = null;
-        updates.beneficiary_id = null;
-      }
-
-      if (updatedSplitMode === "owed" && !updatedBeneficiaryId) {
-        return res
-          .status(400)
-          .json({ error: "Owed expenses need a beneficiary." });
-      }
-
-      if (
-        updatedSplitMode === "owed" &&
-        updatedBeneficiaryId &&
-        updatedBeneficiaryId === updatedPayerId
-      ) {
-        return res
-          .status(400)
-          .json({ error: "Owed expenses need another profile." });
-      }
-    }
-
-    if (existing.type === "LIQUIDATION") {
-      if (!updatedBeneficiaryId) {
-        return res
-          .status(400)
-          .json({ error: "Liquidation requires a beneficiary." });
-      }
-
-      if (updatedBeneficiaryId === updatedPayerId) {
-        return res
-          .status(400)
-          .json({ error: "Liquidation requires another profile." });
-      }
-    }
-
-    if (Object.keys(updates).length === 0) {
-      return res.status(400).json({ error: "No updates provided." });
-    }
-
+    const { updates, split_operation } = result;
     const { data: updated, error: updateError } = await db.updateTransaction(
       transactionId,
       updates
@@ -577,11 +241,7 @@ const createTransactionsRouter = ({ db }) => {
       return res.status(500).json({ error: updateError.message });
     }
 
-    if (
-      existing.type === "EXPENSE" &&
-      existing.split_mode === "custom" &&
-      updated.split_mode !== "custom"
-    ) {
+    if (split_operation?.action === "delete") {
       const { error: deleteError } =
         await db.deleteTransactionSplitsByTransactionId(transactionId);
 
@@ -590,12 +250,7 @@ const createTransactionsRouter = ({ db }) => {
       }
     }
 
-    const shouldReplaceCustomSplits =
-      existing.type === "EXPENSE" &&
-      updated.split_mode === "custom" &&
-      Array.isArray(normalizedSplitsPercent);
-
-    if (shouldReplaceCustomSplits) {
+    if (split_operation?.action === "replace") {
       const { error: clearSplitsError } =
         await db.deleteTransactionSplitsByTransactionId(transactionId);
 
@@ -603,60 +258,26 @@ const createTransactionsRouter = ({ db }) => {
         return res.status(500).json({ error: clearSplitsError.message });
       }
 
-      const percentages = normalizedSplitsPercent.map((split) => split.percent);
-      const allocatedAmounts = allocateAmount(updated.amount, percentages);
-      const splitRows = normalizedSplitsPercent.map((split, index) => ({
+      const splitRows = split_operation.rows.map((split) => ({
         transaction_id: transactionId,
-        user_id: split.user_id,
-        amount: allocatedAmounts[index],
+        ...split,
       }));
-
-      const { error: insertSplitsError } = await db.insertTransactionSplits(splitRows);
+      const { error: insertSplitsError } = await db.insertTransactionSplits(
+        splitRows
+      );
 
       if (insertSplitsError) {
         return res.status(500).json({ error: insertSplitsError.message });
       }
     }
 
-    const shouldRebalanceCustomSplits =
-      existing.type === "EXPENSE" &&
-      updated.split_mode === "custom" &&
-      !shouldReplaceCustomSplits &&
-      amount !== undefined;
+    if (split_operation?.action === "update") {
+      const { error: splitError } = await db.updateTransactionSplitAmounts(
+        split_operation.rows
+      );
 
-    if (shouldRebalanceCustomSplits) {
-      const { data: splits, error: splitsError } =
-        await db.listTransactionSplitsByTransactionId(transactionId);
-
-      if (splitsError) {
-        return res.status(500).json({ error: splitsError.message });
-      }
-
-      if (splits && splits.length > 0) {
-        const total = splits.reduce(
-          (sum, split) => sum + Number(split.amount || 0),
-          0
-        );
-
-        if (total > 0) {
-          // Calculate proportions (percentages) from current split amounts
-          const proportions = splits.map(
-            (split) => (Number(split.amount || 0) / total) * 100
-          );
-          const allocatedAmounts = allocateAmount(updated.amount, proportions);
-
-          const splitUpdates = splits.map((split, index) => ({
-            id: split.id,
-            amount: allocatedAmounts[index],
-          }));
-          const { error: splitError } = await db.updateTransactionSplitAmounts(
-            splitUpdates
-          );
-
-          if (splitError) {
-            return res.status(500).json({ error: splitError.message });
-          }
-        }
+      if (splitError) {
+        return res.status(500).json({ error: splitError.message });
       }
     }
 

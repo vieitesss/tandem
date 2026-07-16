@@ -9,27 +9,65 @@ const roundAmount = (value) => Number(Number(value || 0).toFixed(2));
  * @param {number[]} percentages - Array of percentages (should sum to 100)
  * @returns {number[]} Array of allocated amounts
  */
-const allocateAmount = (totalAmount, percentages) => {
-  if (!percentages || percentages.length === 0) {
+const toAmounts = (totalAmount, percentages) => {
+  if (!Array.isArray(percentages) || percentages.length === 0) {
     return [];
   }
 
-  // Calculate each split with rounding
-  const splits = percentages.map((percent) =>
-    roundAmount((totalAmount * percent) / 100)
-  );
-
-  // Calculate remainder
-  const sumOfSplits = splits.reduce((sum, amount) => sum + amount, 0);
-  const remainder = roundAmount(totalAmount - sumOfSplits);
-
-  // Distribute remainder to the split with the largest percentage
-  if (remainder !== 0 && splits.length > 0) {
-    const maxPercentIndex = percentages.indexOf(Math.max(...percentages));
-    splits[maxPercentIndex] = roundAmount(splits[maxPercentIndex] + remainder);
+  const total = Number(totalAmount || 0);
+  if (!Number.isFinite(total)) {
+    return [];
   }
 
-  return splits;
+  const amounts = percentages.map((percent) =>
+    roundAmount((total * Number(percent || 0)) / 100)
+  );
+  const remainder = roundAmount(
+    total - amounts.reduce((sum, amount) => sum + amount, 0)
+  );
+
+  if (remainder !== 0) {
+    const largestShareIndex = percentages.indexOf(
+      Math.max(...percentages.map((percent) => Number(percent || 0)))
+    );
+    amounts[largestShareIndex] = roundAmount(
+      amounts[largestShareIndex] + remainder
+    );
+  }
+
+  return amounts;
+};
+
+const toPercents = (totalAmount, amounts) => {
+  if (!Array.isArray(amounts) || amounts.length === 0) {
+    return [];
+  }
+
+  const total = Number(totalAmount || 0);
+  if (!Number.isFinite(total) || total <= 0) {
+    return [];
+  }
+  const percentages = amounts.map((amount) =>
+    roundAmount((Number(amount || 0) / total) * 100)
+  );
+  const remainder = roundAmount(
+    100 - percentages.reduce((sum, percent) => sum + percent, 0)
+  );
+
+  if (remainder !== 0) {
+    const largestShareIndex = amounts.reduce(
+      (bestIndex, amount, index) =>
+        Number(amount || 0) > Number(amounts[bestIndex] || 0)
+          ? index
+          : bestIndex,
+      0
+    );
+    percentages[largestShareIndex] = roundAmount(
+      percentages[largestShareIndex] + remainder
+    );
+  }
+
+  return percentages;
 };
 
 const addAmount = (map, profileId, amount) => {
@@ -42,4 +80,4 @@ const addAmount = (map, profileId, amount) => {
   map.set(profileId, next);
 };
 
-module.exports = { roundAmount, allocateAmount, addAmount };
+module.exports = { roundAmount, toAmounts, toPercents, addAmount };
