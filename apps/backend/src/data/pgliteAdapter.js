@@ -285,7 +285,7 @@ const createPgliteAdapter = ({ pg, emitChange }) => {
   const listTimelineTransactions = async () => {
     try {
       const { rows } = await pg.query(
-        "SELECT id, amount, date, type, category, payer_id, beneficiary_id FROM transactions ORDER BY date ASC"
+        "SELECT id, amount, date, type, category, payer_id, beneficiary_id, split_mode, note FROM transactions ORDER BY date ASC"
       );
       return { data: normalizeRows(rows), error: null };
     } catch (error) {

@@ -1,159 +1,135 @@
 const { roundAmount } = require("../lib/amounts");
 
-const buildTimeline = async ({ db }) => {
-  // Fetch all transactions ordered by date
-  const { data: transactions, error: transactionsError } =
-    await db.listTimelineTransactions();
+const monthKey = (date) => String(date).slice(0, 7);
 
-  if (transactionsError) {
-    return { error: transactionsError };
-  }
+const nextMonth = (month) => {
+  const [year, value] = month.split("-").map(Number);
+  const date = new Date(Date.UTC(year, value, 1));
+  return date.toISOString().slice(0, 7);
+};
 
-  if (!transactions || transactions.length === 0) {
+const summarizeTimeline = (transactions, currentMonth) => {
+  if (!transactions.length) {
     return {
-      data: {
-        summary: {
-          first_transaction_date: null,
-          total_transactions: 0,
-          total_money_managed: 0,
-          months_together: 0,
-        },
-        insights: {},
-        monthly_data: [],
-        milestones: [],
-      },
+      latest_month: null,
+      monthly_data: [],
+      category_usage: [],
     };
   }
 
-  // Calculate summary stats
-  const firstTransactionDate = transactions[0].date;
-  const lastTransactionDate = transactions[transactions.length - 1].date;
-  const totalTransactions = transactions.length;
-  const totalMoneyManaged = transactions.reduce(
-    (sum, t) => (t.type === "EXPENSE" ? sum + Number(t.amount) : sum),
-    0
-  );
-
-  const firstDate = new Date(firstTransactionDate);
-  const lastDate = new Date(lastTransactionDate);
-  const monthsDiff =
-    (lastDate.getFullYear() - firstDate.getFullYear()) * 12 +
-    (lastDate.getMonth() - firstDate.getMonth()) +
-    1;
-
-  // Group transactions by month
+  const latestMonth = monthKey(transactions[transactions.length - 1].date);
+  const firstMonth = monthKey(transactions[0].date);
+  const startMonth = currentMonth < firstMonth ? currentMonth : firstMonth;
+  const finalMonth = currentMonth > latestMonth ? currentMonth : latestMonth;
   const monthlyMap = new Map();
-  transactions.forEach((t) => {
-    const monthKey = t.date.slice(0, 7); // YYYY-MM
-    if (!monthlyMap.has(monthKey)) {
-      monthlyMap.set(monthKey, {
-        month: monthKey,
-        total_spent: 0,
+
+  for (let month = startMonth; month <= finalMonth; month = nextMonth(month)) {
+    monthlyMap.set(month, {
+      month,
+      total_spent: 0,
+      income_total: 0,
+      transaction_count: 0,
+      categories: [],
+      largest_shared_expense: null,
+    });
+  }
+
+  const categoriesByMonth = new Map();
+  const categoryUsage = new Map();
+
+  transactions.forEach((transaction) => {
+    const month = monthKey(transaction.date);
+    const summary = monthlyMap.get(month);
+
+    if (!summary) {
+      return;
+    }
+
+    if (transaction.type === "INCOME") {
+      summary.income_total = roundAmount(summary.income_total + Number(transaction.amount));
+      return;
+    }
+
+    if (transaction.type !== "EXPENSE") {
+      return;
+    }
+
+    const amount = Number(transaction.amount);
+    summary.total_spent = roundAmount(summary.total_spent + amount);
+    summary.transaction_count += 1;
+
+    if (transaction.category) {
+      const categoryKey = `${month}:${transaction.category}`;
+      const category = categoriesByMonth.get(categoryKey) || {
+        category: transaction.category,
+        amount: 0,
         transaction_count: 0,
-        transactions: [],
-      });
+      };
+      category.amount = roundAmount(category.amount + amount);
+      category.transaction_count += 1;
+      categoriesByMonth.set(categoryKey, category);
+
+      const usage = categoryUsage.get(transaction.category) || {
+        category: transaction.category,
+        transaction_count: 0,
+        last_used_date: transaction.date,
+      };
+      usage.transaction_count += 1;
+      if (transaction.date > usage.last_used_date) {
+        usage.last_used_date = transaction.date;
+      }
+      categoryUsage.set(transaction.category, usage);
     }
-    const monthData = monthlyMap.get(monthKey);
-    if (t.type === "EXPENSE") {
-      monthData.total_spent = roundAmount(
-        monthData.total_spent + Number(t.amount)
-      );
+
+    if (
+      transaction.split_mode === "custom" &&
+      (!summary.largest_shared_expense ||
+        amount > Number(summary.largest_shared_expense.amount))
+    ) {
+      summary.largest_shared_expense = {
+        id: transaction.id,
+        amount,
+        category: transaction.category,
+        note: transaction.note,
+        date: transaction.date,
+      };
     }
-    monthData.transaction_count++;
-    monthData.transactions.push(t);
   });
 
-  const monthlyData = Array.from(monthlyMap.values());
+  const monthlyData = Array.from(monthlyMap.values()).map((summary) => {
+    const categories = Array.from(categoriesByMonth.entries())
+      .filter(([key]) => key.startsWith(`${summary.month}:`))
+      .map(([, category]) => ({
+        ...category,
+        share: summary.total_spent
+          ? Math.round((category.amount / summary.total_spent) * 100)
+          : 0,
+      }))
+      .sort((a, b) => b.amount - a.amount || a.category.localeCompare(b.category));
 
-  // Calculate insights
-  const categoryCount = {};
-  transactions.forEach((t) => {
-    if (t.category) {
-      categoryCount[t.category] = (categoryCount[t.category] || 0) + 1;
-    }
+    return { ...summary, categories };
   });
-
-  const mostCommonCategory =
-    Object.entries(categoryCount).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
-
-  const busiestMonth = monthlyData.reduce(
-    (max, month) => (month.total_spent > max.total_spent ? month : max),
-    monthlyData[0]
-  );
-
-  const averageMonthlySpending =
-    monthlyData.length > 0
-      ? roundAmount(
-          monthlyData.reduce((sum, m) => sum + m.total_spent, 0) /
-            monthlyData.length
-        )
-      : 0;
-
-  const insights = {
-    most_common_category: mostCommonCategory,
-    busiest_month: busiestMonth?.month || null,
-    busiest_month_amount: busiestMonth?.total_spent || 0,
-    average_monthly_spending: averageMonthlySpending,
-  };
-
-  // Calculate milestones
-  const milestones = [];
-
-  // First transaction
-  milestones.push({
-    type: "first_transaction",
-    date: firstTransactionDate,
-    title: "Your financial journey began",
-    description: "First transaction recorded",
-    icon: "💑",
-  });
-
-  // Every 100th transaction
-  for (let i = 100; i <= totalTransactions; i += 100) {
-    const transaction = transactions[i - 1];
-    milestones.push({
-      type: "transaction_milestone",
-      date: transaction.date,
-      title: `${i} transactions together`,
-      description: `Reached ${i} shared transactions`,
-      icon: "🎯",
-    });
-  }
-
-  // Largest expense
-  const largestExpense = transactions
-    .filter((t) => t.type === "EXPENSE")
-    .reduce(
-      (max, t) => (t.amount > max.amount ? t : max),
-      { amount: 0, date: null }
-    );
-
-  if (largestExpense.date) {
-    milestones.push({
-      type: "largest_expense",
-      date: largestExpense.date,
-      title: "Largest expense",
-      description: `€${Number(largestExpense.amount).toFixed(2)}`,
-      icon: "💰",
-    });
-  }
-
-  // Sort milestones by date
-  milestones.sort((a, b) => new Date(a.date) - new Date(b.date));
 
   return {
-    data: {
-      summary: {
-        first_transaction_date: firstTransactionDate,
-        total_transactions: totalTransactions,
-        total_money_managed: roundAmount(totalMoneyManaged),
-        months_together: monthsDiff,
-      },
-      insights,
-      monthly_data: monthlyData,
-      milestones,
-    },
+    latest_month: latestMonth,
+    monthly_data: monthlyData,
+    category_usage: Array.from(categoryUsage.values()),
   };
 };
 
-module.exports = { buildTimeline };
+const buildTimeline = async ({ db, now = new Date() }) => {
+  const { data: transactions, error } = await db.listTimelineTransactions();
+
+  if (error) {
+    return { error };
+  }
+
+  return {
+    data: summarizeTimeline(
+      transactions || [],
+      now.toISOString().slice(0, 7)
+    ),
+  };
+};
+
+module.exports = { buildTimeline, summarizeTimeline };

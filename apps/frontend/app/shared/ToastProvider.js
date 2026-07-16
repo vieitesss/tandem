@@ -35,6 +35,7 @@ export function ToastProvider({ children }) {
       message,
       tone,
       duration,
+      action: options.action,
     });
   }, []);
 
@@ -65,7 +66,14 @@ export function ToastProvider({ children }) {
             }`}
             role="status"
           >
-            {toast.message}
+            <div className="flex items-center justify-between gap-3">
+              <span>{toast.message}</span>
+              {toast.action ? (
+                <a className="shrink-0 underline underline-offset-4" href={toast.action.href}>
+                  {toast.action.label}
+                </a>
+              ) : null}
+            </div>
           </div>
         </div>
       ) : null}

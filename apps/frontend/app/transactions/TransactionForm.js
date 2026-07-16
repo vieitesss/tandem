@@ -12,7 +12,7 @@ import {
 import SelectField from "../shared/SelectField";
 import { useToast } from "../shared/ToastProvider";
 import { normalizeNumberInput } from "../shared/inputs";
-import { apiPost } from "../shared/api";
+import { apiGet, apiPost } from "../shared/api";
 import { buildDefaultPercentSplits } from "../shared/domain/splits";
 import { getCategoryIconPath } from "../shared/categoryIcons";
 import { useCategories } from "../shared/hooks/useCategories";
@@ -21,6 +21,11 @@ import { categoryOptions } from "../shared/transactions";
 import { notifyTransactionsUpdated } from "./transactionsCache";
 
 const initialSplit = { user_id: "", percent: "" };
+const today = () => {
+  const date = new Date();
+  const offset = date.getTimezoneOffset() * 60_000;
+  return new Date(date.getTime() - offset).toISOString().slice(0, 10);
+};
 
 function CategoryIcon({ icon: iconProp, label, active }) {
   const path = getCategoryIconPath(iconProp, label);
@@ -40,7 +45,7 @@ export default function TransactionForm() {
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState("");
   const [note, setNote] = useState("");
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(today);
   const [type, setType] = useState("EXPENSE");
   const [splitMode, setSplitMode] = useState("custom");
   const [splits, setSplits] = useState([initialSplit]);
@@ -49,6 +54,8 @@ export default function TransactionForm() {
   const [hasTriedSubmit, setHasTriedSubmit] = useState(false);
   const [amountFormatError, setAmountFormatError] = useState(false);
   const [hasAppliedPrefill, setHasAppliedPrefill] = useState(false);
+  const [categoryUsage, setCategoryUsage] = useState([]);
+  const [showAllCategories, setShowAllCategories] = useState(false);
   const [touched, setTouched] = useState({
     payer: false,
     amount: false,
@@ -66,6 +73,9 @@ export default function TransactionForm() {
 
   useEffect(() => {
     amountInputRef.current?.focus();
+    apiGet("/timeline")
+      .then((data) => setCategoryUsage(Array.isArray(data?.category_usage) ? data.category_usage : []))
+      .catch(() => setCategoryUsage([]));
   }, []);
 
   useEffect(() => {
@@ -74,7 +84,23 @@ export default function TransactionForm() {
     }
 
     setSplits(buildDefaultPercentSplits(profiles));
+
+    const savedPayerId = window.localStorage.getItem("tandem:last-payer-id");
+    setPayerId((current) => {
+      if (current) {
+        return current;
+      }
+      return profiles.some((profile) => String(profile.id) === savedPayerId)
+        ? savedPayerId
+        : "";
+    });
   }, [profiles]);
+
+  useEffect(() => {
+    if (payerId) {
+      window.localStorage.setItem("tandem:last-payer-id", payerId);
+    }
+  }, [payerId]);
 
   useEffect(() => {
     if (type === "INCOME" || type === "LIQUIDATION") {
@@ -142,6 +168,32 @@ export default function TransactionForm() {
 
     setHasAppliedPrefill(true);
   }, [hasAppliedPrefill, profiles, searchParams]);
+
+  const orderedCategories = useMemo(() => {
+    const categoryByLabel = new Map(categories.map((option) => [option.label, option]));
+    const recent = [...categoryUsage]
+      .filter((usage) => categoryByLabel.has(usage.category))
+      .sort((a, b) => b.last_used_date.localeCompare(a.last_used_date))
+      .slice(0, 4);
+    const recentLabels = new Set(recent.map((usage) => usage.category));
+    const frequent = [...categoryUsage]
+      .filter((usage) => categoryByLabel.has(usage.category) && !recentLabels.has(usage.category))
+      .sort((a, b) => b.transaction_count - a.transaction_count || a.category.localeCompare(b.category))
+      .slice(0, 6);
+    const featuredLabels = new Set([...recent, ...frequent].map((usage) => usage.category));
+    const remaining = categories
+      .filter((option) => !featuredLabels.has(option.label))
+      .sort((a, b) => a.label.localeCompare(b.label));
+
+    return [
+      ...recent.map((usage) => categoryByLabel.get(usage.category)),
+      ...frequent.map((usage) => categoryByLabel.get(usage.category)),
+      ...remaining,
+    ];
+  }, [categories, categoryUsage]);
+  const visibleCategories = showAllCategories
+    ? orderedCategories
+    : orderedCategories.slice(0, 10);
 
   const totalPercent = useMemo(() => {
     return splits.reduce((sum, split) => sum + Number(split.percent || 0), 0);
@@ -257,6 +309,7 @@ export default function TransactionForm() {
     setHasTriedSubmit(true);
 
     if (!canSubmit) {
+      showToast("Complete the required fields.", { tone: "error" });
       return;
     }
 
@@ -292,14 +345,36 @@ export default function TransactionForm() {
     try {
       await apiPost("/transactions", payload, "Failed to save transaction");
 
-      showToast("Transaction saved.");
+      if (payload.type === "EXPENSE" && payload.category) {
+        setCategoryUsage((current) => {
+          const existing = current.find((usage) => usage.category === payload.category);
+          return [
+            ...current.filter((usage) => usage.category !== payload.category),
+            {
+              category: payload.category,
+              transaction_count: Number(existing?.transaction_count || 0) + 1,
+              last_used_date:
+                existing?.last_used_date > payload.date
+                  ? existing.last_used_date
+                  : payload.date,
+            },
+          ];
+        });
+      }
+
+      showToast("Transaction saved.", {
+        duration: 5000,
+        action: { href: "/transactions", label: "View transaction" },
+      });
       notifyTransactionsUpdated({
         month: payload.date ? String(payload.date).slice(0, 7) : "",
       });
       setAmount("");
       setCategory("");
       setNote("");
-      setSplitMode(type === "INCOME" || type === "LIQUIDATION" ? "none" : "custom");
+      setType("EXPENSE");
+      setSplitMode("custom");
+      setShowAllCategories(false);
       setBeneficiaryId("");
       setOwedToId("");
       setSplits(
@@ -314,6 +389,7 @@ export default function TransactionForm() {
         beneficiary: false,
         category: false,
       });
+      requestAnimationFrame(() => amountInputRef.current?.focus());
     } catch (error) {
       showToast(error.message, { tone: "error" });
     }
@@ -374,6 +450,37 @@ export default function TransactionForm() {
           ) : null}
         </div>
 
+        <div className={sectionClassName}>
+          <FieldLabel htmlFor={inputIds.payer} required>
+            {type === "INCOME" ? "Recipient" : "Paid by"}
+          </FieldLabel>
+          <SelectField
+            className={`${fieldInputClassName(showPayerError)} appearance-none pr-9`}
+            id={inputIds.payer}
+            value={payerId}
+            onChange={(event) => {
+              setPayerId(event.target.value);
+              setTouched((current) => ({ ...current, payer: true }));
+            }}
+            aria-invalid={showPayerError}
+            aria-describedby={showPayerError ? "transaction-payer-error" : undefined}
+          >
+            <option value="">
+              {type === "INCOME" ? "Select recipient" : "Select payer"}
+            </option>
+            {profiles.map((profile) => (
+              <option key={profile.id} value={profile.id}>
+                {profile.display_name || profile.id}
+              </option>
+            ))}
+          </SelectField>
+          {showPayerError ? (
+            <p id="transaction-payer-error" aria-live="polite" className="text-xs text-coral-300 font-medium">
+              {type === "INCOME" ? "Select a recipient." : "Select who paid."}
+            </p>
+          ) : null}
+        </div>
+
         <div className="grid gap-4 md:grid-cols-[220px_1fr]">
           <div className="space-y-2">
             <FieldLabel htmlFor={inputIds.date} required>
@@ -417,7 +524,12 @@ export default function TransactionForm() {
                             : "bg-cream-500/20 text-cream-100"
                         : "text-cream-300 hover:bg-obsidian-800"
                     }`}
-                    onClick={() => setType(value)}
+                    onClick={() => {
+                      if (value === "EXPENSE" && type !== "EXPENSE") {
+                        setSplitMode("custom");
+                      }
+                      setType(value);
+                    }}
                   >
                     {value === "LIQUIDATION"
                       ? "Settlement"
@@ -432,37 +544,6 @@ export default function TransactionForm() {
 
       <div className={`${panelClassName} grid gap-4`}>
         <div className={sectionClassName}>
-          <FieldLabel htmlFor={inputIds.payer} required>
-            {type === "INCOME" ? "Recipient" : "Paid by"}
-          </FieldLabel>
-          <SelectField
-            className={`${fieldInputClassName(showPayerError)} appearance-none pr-9`}
-            id={inputIds.payer}
-            value={payerId}
-            onChange={(event) => {
-              setPayerId(event.target.value);
-              setTouched((current) => ({ ...current, payer: true }));
-            }}
-            aria-invalid={showPayerError}
-            aria-describedby={showPayerError ? "transaction-payer-error" : undefined}
-          >
-            <option value="">
-              {type === "INCOME" ? "Select recipient" : "Select payer"}
-            </option>
-            {profiles.map((profile) => (
-              <option key={profile.id} value={profile.id}>
-                {profile.display_name || profile.id}
-              </option>
-            ))}
-          </SelectField>
-          {showPayerError ? (
-            <p id="transaction-payer-error" aria-live="polite" className="text-xs text-coral-300 font-medium">
-              {type === "INCOME" ? "Select a recipient." : "Select who paid."}
-            </p>
-          ) : null}
-        </div>
-
-        <div className={sectionClassName}>
           <FieldLabel required={type !== "INCOME"}>
             Category
           </FieldLabel>
@@ -472,7 +553,7 @@ export default function TransactionForm() {
             </div>
           ) : (
             <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-6">
-              {categories.map((option) => {
+              {visibleCategories.map((option) => {
                 const isActive = category === option.label;
                 return (
                   <button
@@ -496,6 +577,15 @@ export default function TransactionForm() {
               })}
             </div>
           )}
+          {type !== "INCOME" && orderedCategories.length > 10 ? (
+            <button
+              type="button"
+              className="min-h-11 w-fit text-sm font-semibold text-cream-500 underline underline-offset-4"
+              onClick={() => setShowAllCategories((value) => !value)}
+            >
+              {showAllCategories ? "Show frequent" : "Show all"}
+            </button>
+          ) : null}
           {showCategoryError ? (
             <p className="mt-2 text-xs text-coral-300 font-medium">Select a category.</p>
           ) : null}
@@ -648,7 +738,7 @@ export default function TransactionForm() {
             <div className="space-y-2">
               <div className="grid grid-cols-[minmax(0,1fr)_68px_36px] gap-2 px-2.5 text-[11px] font-medium text-cream-400 sm:grid-cols-[minmax(0,1fr)_80px_44px] sm:px-3 sm:text-xs">
                 <span>
-                  User<span className="text-coral-400"> *</span>
+                  Partner<span className="text-coral-400"> *</span>
                 </span>
                 <span>
                   Percent<span className="text-coral-400"> *</span>
@@ -667,14 +757,24 @@ export default function TransactionForm() {
                       onChange={(event) =>
                         updateSplit(index, "user_id", event.target.value)
                       }
-                      aria-label="Split user"
+                      aria-label="Split partner"
                     >
-                      <option value="">Select user</option>
-                      {profiles.map((profile) => (
-                        <option key={profile.id} value={profile.id}>
-                          {profile.display_name || profile.id}
-                        </option>
-                      ))}
+                      <option value="">Select partner</option>
+                      {profiles
+                        .filter(
+                          (profile) =>
+                            profile.id === split.user_id ||
+                            !splits.some(
+                              (other, otherIndex) =>
+                                otherIndex !== index &&
+                                other.user_id === profile.id
+                            )
+                        )
+                        .map((profile) => (
+                          <option key={profile.id} value={profile.id}>
+                            {profile.display_name || profile.id}
+                          </option>
+                        ))}
                     </SelectField>
                     <input
                       className="w-full rounded-lg border border-obsidian-600 bg-obsidian-800 px-2 py-2 text-right text-sm font-mono text-cream-100 transition-colors duration-200 hover:border-cream-500/30 focus:outline-none focus:ring-2 focus:ring-cream-500/20"
@@ -693,7 +793,7 @@ export default function TransactionForm() {
                     />
                     {splits.length > 1 ? (
                       <button
-                        className="flex h-7 w-7 items-center justify-center justify-self-end rounded-lg bg-obsidian-900 text-coral-300 transition-colors duration-200 hover:bg-coral-100/20 sm:h-8 sm:w-8"
+                        className="flex h-11 w-11 items-center justify-center justify-self-end rounded-lg bg-obsidian-900 text-coral-300 transition-colors duration-200 hover:bg-coral-100/20"
                         type="button"
                         onClick={() => removeSplit(index)}
                         aria-label="Remove split"
@@ -714,7 +814,7 @@ export default function TransactionForm() {
             </div>
             {showSplitError ? (
               <p className="text-xs text-coral-300 font-medium">
-                Select a user and percent for each split. Total must be 100%.
+                Select a partner and percent for each split. Total must be 100%.
               </p>
             ) : null}
           </div>
@@ -724,7 +824,6 @@ export default function TransactionForm() {
         <PrimaryButton
           className="w-full"
           type="submit"
-          disabled={!canSubmit}
         >
           Save Transaction
         </PrimaryButton>

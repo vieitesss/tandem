@@ -195,8 +195,8 @@ export default function DebtBreakdownPage() {
   return (
     <PageShell>
       <PageHeader
-        title="Debt Breakdown"
-        description="Every number is shown with its source: expenses paid, custom split shares, owed transactions, and settlements."
+        title="Balance details"
+        description="See how shared expenses, owed expenses, and settlements produce the all-time balance."
         eyebrow="Analysis"
         currentPage="transactions"
       >
@@ -206,7 +206,10 @@ export default function DebtBreakdownPage() {
       <SectionCard className="p-6">
         <div className="space-y-2">
           <p className="text-sm text-cream-300 font-medium">{debtLine}</p>
-          <p className="text-xs text-cream-300 font-medium">All-time</p>
+          <p className="text-xs text-cream-300 font-medium">All-time settlement balance</p>
+          <p className="text-sm text-cream-300">
+            Each partner’s paid amount minus their assigned share and settlements received determines this balance.
+          </p>
         </div>
       </SectionCard>
 
@@ -318,8 +321,11 @@ export default function DebtBreakdownPage() {
       ) : null}
 
       {debtSummary.state === "idle" ? (
-        <section className="space-y-5 rounded-2xl border border-cream-500/15 bg-obsidian-800/40 p-6 shadow-card backdrop-blur-sm animate-slide-up stagger-3">
-          <div>
+        <details className="rounded-2xl border border-cream-500/15 bg-obsidian-800/40 p-6 shadow-card">
+          <summary className="min-h-11 cursor-pointer text-lg font-display font-semibold text-cream-50">
+            Custom split source transactions
+          </summary>
+          <div className="mt-5">
             <p className="text-xs uppercase tracking-wider text-cream-100/50 font-semibold">
               Custom Split Details
             </p>
@@ -386,15 +392,18 @@ export default function DebtBreakdownPage() {
               ))}
             </div>
           )}
-        </section>
+        </details>
       ) : null}
 
       {debtSummary.state === "idle" ? (
-        <section className="grid gap-6 md:grid-cols-2 animate-slide-up stagger-4">
-          <div className="space-y-5 rounded-2xl border border-cream-500/15 bg-obsidian-800/40 p-6 shadow-card backdrop-blur-sm">
-            <div>
-              <p className="text-xs uppercase tracking-wider text-cream-100/50 font-semibold">
-                Owed Transactions
+        <section className="grid items-start gap-4 md:grid-cols-2">
+          <details className="rounded-2xl border border-cream-500/15 bg-obsidian-800/40 p-6 shadow-card">
+            <summary className="min-h-11 cursor-pointer text-lg font-display font-semibold text-cream-50">
+              Owed expense source transactions
+            </summary>
+            <div className="mt-5">
+              <p className="text-xs font-semibold text-cream-300">
+                Owed expenses
               </p>
               <h2 className="text-xl font-display font-semibold text-cream-50 tracking-tight">
                 Expenses paid for someone else
@@ -435,11 +444,14 @@ export default function DebtBreakdownPage() {
                 ))}
               </div>
             )}
-          </div>
+          </details>
 
-          <div className="space-y-5 rounded-2xl border border-cream-500/15 bg-obsidian-800/40 p-6 shadow-card backdrop-blur-sm">
+          <details className="rounded-2xl border border-cream-500/15 bg-obsidian-800/40 p-6 shadow-card">
+            <summary className="min-h-11 cursor-pointer text-lg font-display font-semibold text-cream-50">
+              Settlement source transactions
+            </summary>
             <div>
-              <p className="text-xs uppercase tracking-wider text-cream-100/50 font-semibold">
+              <p className="text-xs font-semibold text-cream-300">
                 Settlements
               </p>
               <h2 className="text-xl font-display font-semibold text-cream-50 tracking-tight">
@@ -481,7 +493,7 @@ export default function DebtBreakdownPage() {
                 ))}
               </div>
             )}
-          </div>
+          </details>
         </section>
       ) : null}
     </PageShell>

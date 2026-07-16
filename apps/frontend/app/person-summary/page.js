@@ -75,7 +75,7 @@ export default function PersonSummaryPage() {
   const profilesById = useMemo(() => {
     const map = new Map();
     summary.profiles.forEach((p) => {
-      map.set(p.id, p.display_name || `Profile ${p.id}`);
+      map.set(p.id, p.display_name || `Partner ${p.id}`);
     });
     return map;
   }, [summary.profiles]);
@@ -90,8 +90,8 @@ export default function PersonSummaryPage() {
   return (
     <PageShell>
       <PageHeader
-        title="Summary"
-        description="Monthly breakdown of spending, income, and net balance per person."
+        title="Partner analysis"
+        description="Monthly spending, income, settlements, and net totals for each partner."
         eyebrow="Analysis"
         currentPage="transactions"
       >
@@ -99,11 +99,11 @@ export default function PersonSummaryPage() {
       </PageHeader>
 
       {status === "error" ? (
-        <InlineMessage tone="error">Unable to load person summary.</InlineMessage>
+        <InlineMessage tone="error">Unable to load partner analysis.</InlineMessage>
       ) : null}
 
       {status === "loading" ? (
-        <InlineMessage tone="muted">Loading person summary...</InlineMessage>
+        <InlineMessage tone="muted">Loading partner analysis...</InlineMessage>
       ) : null}
 
       {status === "idle" && monthGroups.length === 0 ? (
@@ -126,7 +126,7 @@ export default function PersonSummaryPage() {
                 {month.profiles.map((profile) => {
                   const profileName =
                     profilesById.get(profile.profile_id) ||
-                    `Profile ${profile.profile_id}`;
+                    `Partner ${profile.profile_id}`;
                   const isPositive = profile.net_total >= 0;
                   const toneClass =
                     avatarToneClass[Math.abs(Number(profile.profile_id || 0)) % avatarToneClass.length];
@@ -146,7 +146,7 @@ export default function PersonSummaryPage() {
                         </div>
                         <div>
                           <p className="text-xs font-semibold uppercase tracking-[0.12em] text-cream-400">
-                            Person
+                            Partner
                           </p>
                           <p className="text-sm font-semibold text-cream-100">{profileName}</p>
                         </div>

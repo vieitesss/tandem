@@ -106,7 +106,7 @@ export default function TransactionsFilters({
   };
 
   const mobileChipClass =
-    "inline-flex min-h-10 items-center rounded-xl px-3 text-sm font-semibold transition-colors";
+    "inline-flex min-h-11 items-center rounded-xl px-3 text-sm font-semibold transition-colors";
 
   const monthActive = Boolean(filters.month);
   const typeActive = filters.type !== "ALL";
@@ -122,11 +122,66 @@ export default function TransactionsFilters({
   );
 
   return (
-    <section className="animate-slide-up stagger-2">
-      <div className="-mx-1 flex items-center gap-1.5 overflow-x-auto overflow-y-visible px-1 pt-1.5 pb-0.5">
+    <section>
+      <div className="hidden grid-cols-5 gap-2 md:grid">
+        <SelectField
+          className="min-h-11 w-full appearance-none rounded-xl border border-obsidian-600 bg-obsidian-800 px-3 pr-9 text-sm text-cream-100"
+          value={filters.month}
+          onChange={onMonthChange}
+          aria-label="Filter by month"
+        >
+          <option value="">All months</option>
+          {monthOptions.map((month) => (
+            <option key={month} value={month}>{formatMonthLabel(month)}</option>
+          ))}
+        </SelectField>
+        <SelectField
+          className="min-h-11 w-full appearance-none rounded-xl border border-obsidian-600 bg-obsidian-800 px-3 pr-9 text-sm text-cream-100"
+          value={filters.type}
+          onChange={(event) => onFilterChange("type", event.target.value)}
+          aria-label="Filter by type"
+        >
+          {typeOptions.map((option) => (
+            <option key={option.value} value={option.value}>{option.label}</option>
+          ))}
+        </SelectField>
+        <SelectField
+          className="min-h-11 w-full appearance-none rounded-xl border border-obsidian-600 bg-obsidian-800 px-3 pr-9 text-sm text-cream-100"
+          value={filters.category}
+          onChange={(event) => onFilterChange("category", event.target.value)}
+          aria-label="Filter by category"
+        >
+          {categoryFilterOptions.map((option) => (
+            <option key={option.value} value={option.value}>{option.label}</option>
+          ))}
+        </SelectField>
+        <SelectField
+          className="min-h-11 w-full appearance-none rounded-xl border border-obsidian-600 bg-obsidian-800 px-3 pr-9 text-sm text-cream-100"
+          value={filters.payerId}
+          onChange={(event) => onFilterChange("payerId", event.target.value)}
+          aria-label="Filter by payer"
+        >
+          <option value="">All payers</option>
+          {profiles.map((profile) => (
+            <option key={profile.id} value={profile.id}>{profile.display_name || profile.id}</option>
+          ))}
+        </SelectField>
+        <SelectField
+          className="min-h-11 w-full appearance-none rounded-xl border border-obsidian-600 bg-obsidian-800 px-3 pr-9 text-sm text-cream-100"
+          value={filters.split}
+          onChange={(event) => onFilterChange("split", event.target.value)}
+          aria-label="Filter by split"
+        >
+          {Object.entries(splitLabels).map(([value, label]) => (
+            <option key={value} value={value}>{label}</option>
+          ))}
+        </SelectField>
+      </div>
+
+      <div className="-mx-1 flex items-center gap-1.5 overflow-x-auto overflow-y-visible px-1 pt-1.5 pb-0.5 md:hidden">
         <button
           type="button"
-          className="relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-obsidian-700 text-cream-100"
+          className="relative inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-obsidian-700 text-cream-100"
           onClick={() => setIsFiltersOpen(true)}
           aria-label="Open filters"
         >
@@ -144,7 +199,7 @@ export default function TransactionsFilters({
           <button
             key={chip.key}
             type="button"
-            className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg bg-obsidian-700 px-2.5 text-xs font-medium text-cream-100"
+            className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg bg-obsidian-700 px-2.5 text-xs font-medium text-cream-100"
             onClick={chip.onClear}
             aria-label={`Clear ${chip.label} filter`}
           >

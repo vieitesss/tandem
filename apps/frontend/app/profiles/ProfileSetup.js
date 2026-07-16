@@ -53,7 +53,7 @@ export default function ProfileSetup({ onComplete }) {
 
     if (!canSubmit) {
       if (hasInvalidName) {
-        showToast("Add names for both profiles.", { tone: "error" });
+        showToast("Add names for both partners.", { tone: "error" });
       } else if (hasInvalidSplit) {
         showToast("Splits must be between 0 and 100.", { tone: "error" });
       } else if (hasInvalidTotal) {
@@ -72,9 +72,9 @@ export default function ProfileSetup({ onComplete }) {
         })),
       };
 
-      await apiPost("/profiles/setup", payload, "Failed to create profiles.");
+      await apiPost("/profiles/setup", payload, "Failed to create partners.");
 
-      showToast("Profiles created.");
+      showToast("Partners created.");
       setProfiles(initialProfiles);
       setHasTriedSubmit(false);
       onComplete?.();
@@ -88,13 +88,13 @@ export default function ProfileSetup({ onComplete }) {
   return (
     <PageShell maxWidth="max-w-4xl">
       <PageHeader
-        title="Create two profiles"
+        title="Add both partners"
         description="Tandem works with two partners only. Add both names and how you split shared expenses."
         eyebrow="First time setup"
       />
 
       <SectionCard className="border-coral-300/60 bg-coral-50 p-4 text-xs text-coral-100">
-        Creating profiles resets existing transactions in this workspace.
+        Creating partners resets existing transactions in this workspace.
       </SectionCard>
 
       <SectionCard as="form" className="animate-slide-up space-y-6 p-6" onSubmit={handleSubmit}>
@@ -110,7 +110,7 @@ export default function ProfileSetup({ onComplete }) {
                 className="space-y-4 rounded-2xl border border-obsidian-600/80 bg-obsidian-900 p-5"
               >
                 <div className="text-xs font-bold uppercase tracking-widest text-cream-100/50">
-                  Profile {index + 1}
+                  Partner {index + 1}
                 </div>
                 <div className="space-y-2">
                   <FieldLabel htmlFor={`setup-profile-name-${index}`}>Display name</FieldLabel>
@@ -174,7 +174,7 @@ export default function ProfileSetup({ onComplete }) {
           type="submit"
           disabled={isSaving}
         >
-          {isSaving ? "Saving..." : "Create profiles"}
+          {isSaving ? "Saving..." : "Create partners"}
         </PrimaryButton>
 
       </SectionCard>

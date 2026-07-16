@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { formatCurrency, formatMonthLabel } from "../shared/format";
-import Tooltip from "../shared/Tooltip";
 
 // Helper for compact currency display on chart
 const formatCompact = (value) => {
@@ -167,6 +166,8 @@ export default function TimelineViz({ monthlyData }) {
             className="h-full w-full"
             viewBox={`0 0 ${chartWidth} ${chartHeight}`}
             preserveAspectRatio="none"
+            role="img"
+            aria-label="Monthly household spending trend"
           >
             {horizontalGuides.map((y) => (
               <line
@@ -223,12 +224,9 @@ export default function TimelineViz({ monthlyData }) {
                 >
                   {formatCompact(point.value)}
                 </span>
-                <Tooltip
-                  label={`${formatMonthLabel(point.month)}: ${formatCurrency(point.value)} (${point.transaction_count} txns)`}
-                  className="absolute inset-0 h-full w-full [&>span:nth-child(2)]:hidden"
-                >
-                  <span className="absolute inset-0" />
-                </Tooltip>
+                <span className="sr-only">
+                  {formatMonthLabel(point.month)}: {formatCurrency(point.value)} ({point.transaction_count} expenses)
+                </span>
               </div>
             );
           })}

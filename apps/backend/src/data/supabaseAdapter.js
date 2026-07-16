@@ -231,7 +231,7 @@ const createSupabaseAdapter = ({ supabase, emitChange }) => {
   const listTimelineTransactions = async () => {
     const { data, error } = await supabase
       .from("transactions")
-      .select("id, amount, date, type, category, payer_id, beneficiary_id")
+      .select("id, amount, date, type, category, payer_id, beneficiary_id, split_mode, note")
       .order("date", { ascending: true });
 
     return { data, error };

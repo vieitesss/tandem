@@ -25,7 +25,7 @@ const navItems = [
   },
   {
     href: "/profiles",
-    label: "Person",
+    label: "Partners",
     icon: (
       <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
         <path d="M10 10a3 3 0 100-6 3 3 0 000 6z" />

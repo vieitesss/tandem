@@ -65,7 +65,7 @@ export default function ProfilesPage() {
     event.preventDefault();
 
     if (profiles.length >= 2) {
-      showToast("Only two profiles are supported.", { tone: "error" });
+      showToast("Only two partners are supported.", { tone: "error" });
       return;
     }
 
@@ -83,12 +83,12 @@ export default function ProfilesPage() {
           display_name: form.displayName.trim(),
           default_split: defaultSplit,
         },
-        "Failed to create profile"
+        "Failed to create partner"
       );
 
       setForm(emptyProfile);
       loadProfiles();
-      showToast("Profile created.");
+      showToast("Partner created.");
     } catch (error) {
       showToast(error.message, { tone: "error" });
     }
@@ -112,10 +112,10 @@ export default function ProfilesPage() {
           display_name: profile.display_name.trim(),
           default_split: defaultSplit,
         },
-        "Failed to update profile"
+        "Failed to update partner"
       );
 
-      showToast("Profile updated.");
+      showToast("Partner updated.");
       loadProfiles();
     } catch (error) {
       showToast(error.message, { tone: "error" });
@@ -128,12 +128,12 @@ export default function ProfilesPage() {
     return (
       <PageShell maxWidth="max-w-3xl">
         <PageHeader
-          title="Profiles"
-          description="Manage default split percentages for each partner."
+          title="Partners"
+          description="Manage each partner and your default split."
           currentPage="profiles"
           eyebrow="Setup"
         />
-        <InlineMessage tone="muted">Loading profiles...</InlineMessage>
+        <InlineMessage tone="muted">Loading partners...</InlineMessage>
       </PageShell>
     );
   }
@@ -148,8 +148,8 @@ export default function ProfilesPage() {
   return (
     <PageShell maxWidth="max-w-3xl">
       <PageHeader
-        title="Profiles"
-        description="Manage default split percentages for each partner."
+        title="Partners"
+        description="Manage each partner and your default split."
         currentPage="profiles"
         eyebrow="Setup"
       >
@@ -158,7 +158,7 @@ export default function ProfilesPage() {
 
       {hasTooManyProfiles ? (
         <SectionCard className="border-coral-300/60 bg-coral-50 p-5 text-sm text-coral-100">
-          This workspace has {profiles.length} profiles. Tandem supports exactly
+          This workspace has {profiles.length} partners. Tandem supports exactly
           two. Remove extras in the database, then refresh the page.
         </SectionCard>
       ) : null}
@@ -172,7 +172,7 @@ export default function ProfilesPage() {
             <TextInput
               id="create-profile-name"
               className="bg-obsidian-950/80 placeholder:text-cream-100/40"
-              aria-label="New profile name"
+              aria-label="New partner name"
               placeholder="Name"
               value={form.displayName}
               onChange={(event) =>
@@ -185,7 +185,7 @@ export default function ProfilesPage() {
             <TextInput
               id="create-profile-split"
               className="bg-obsidian-950/80 font-mono placeholder:text-cream-100/40"
-              aria-label="New profile default split"
+              aria-label="New partner default split"
               placeholder="Split %"
               type="number"
               step="0.1"
@@ -208,15 +208,15 @@ export default function ProfilesPage() {
       ) : (
         <SectionCard className="p-6 text-sm text-cream-300">
           {hasTooManyProfiles
-            ? "Profile limit exceeded. Remove extras and reload this page."
-            : "Two profiles are already set. Edit them below as needed."}
+            ? "Partner limit exceeded. Remove extras and reload this page."
+            : "Both partners are set. Edit them below as needed."}
         </SectionCard>
       )}
 
       <section className="space-y-4 animate-slide-up stagger-2">
-        <h2 className="text-sm font-display font-semibold text-cream-100 tracking-tight">Existing Profiles</h2>
+        <h2 className="text-sm font-display font-semibold text-cream-100 tracking-tight">Partners</h2>
         {profiles.length === 0 ? (
-          <p className="text-sm text-cream-100/60 font-medium">No profiles yet.</p>
+          <p className="text-sm text-cream-100/60 font-medium">No partners yet.</p>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2">
             {profiles.map((profile) => (
@@ -230,7 +230,7 @@ export default function ProfilesPage() {
                     id={`profile-name-${profile.id}`}
                     className="bg-obsidian-950/60"
                     value={profile.display_name}
-                    aria-label="Profile name"
+                    aria-label="Partner name"
                     onChange={(event) =>
                       updateProfile(profile.id, "display_name", event.target.value)
                     }

@@ -42,11 +42,11 @@ export default function Home() {
   );
 
   if (status === "loading") {
-    return renderState("Loading profiles...");
+    return renderState("Loading partners...");
   }
 
   if (status === "error") {
-    return renderState("Unable to load profiles. Refresh the page to try again.", "error");
+    return renderState("Unable to load partners. Refresh the page to try again.", "error");
   }
 
   if (profiles.length === 0) {
@@ -58,19 +58,19 @@ export default function Home() {
       <PageShell maxWidth="max-w-3xl">
         <PageHeader
           title="Add"
-          description="Tandem supports exactly two profiles before you can add transactions."
+          description="Tandem needs exactly two partners before you can add transactions."
           currentPage="home"
           eyebrow="Workspace"
         />
         <SectionCard className="border-coral-300/60 bg-coral-50 p-5 text-sm text-coral-100">
           {profiles.length > 2 ? (
             <p>
-              This workspace has {profiles.length} profiles. Remove extras in the
+              This workspace has {profiles.length} partners. Remove extras in the
               database, then refresh the page.
             </p>
           ) : (
             <p>
-              Only one profile exists. Add the second profile to continue.
+              Add the second partner to continue.
             </p>
           )}
         </SectionCard>
@@ -78,7 +78,7 @@ export default function Home() {
           className="inline-flex w-fit items-center rounded-xl bg-cream-500 px-4 py-2.5 text-sm font-display font-semibold text-white shadow-glow-md transition-all duration-300 hover:bg-cream-400"
           href="/profiles"
         >
-          Manage profiles
+          Manage partners
         </Link>
       </PageShell>
     );

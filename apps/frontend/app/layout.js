@@ -10,7 +10,7 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className="scroll-smooth">
+    <html lang="en" className="scroll-smooth" data-scroll-behavior="smooth">
       <body className="min-h-screen overflow-x-hidden antialiased selection:bg-cream-500/20 selection:text-cream-50">
         <ToastProvider>
           {children}

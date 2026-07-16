@@ -70,3 +70,8 @@ After browser automation, remove any database changes made during testing.
 - mobile keyboard closed after each key while editing transaction note - stabilized modal focus effect to avoid refocus on every draft change
 - deleting last transaction from oldest month left stale month in dropdown - added auto-navigation to latest month when current month no longer exists after delete
 - editing custom transaction reopened profile default splits instead of saved splits - transactions API now hydrates `splits_percent` and edit modal seeds from transaction-specific splits
+- expense entry and spending analysis were visually dense and unclear - streamlined Add, replaced Timeline with monthly Insights, clarified settlement balance details, and aligned partner terminology
+- demo database was too sparse for realistic Insights - expanded the deterministic local seed to 12 months and 120 varied transactions
+- transaction filters had detached, unclickable arrows and incomplete forms gave no feedback - made desktop selects full-width and enabled submit-time field validation
+- split mode was hidden behind Change/Done and settlement period was grouped with its action - exposed split options and separated the all-time label from Settle up
+- Turbopack served stale server HTML that caused a Partners/Profiles hydration mismatch - cleared the dev cache, restarted Next, and added the smooth-scroll route-transition marker

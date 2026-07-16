@@ -33,9 +33,9 @@ const categoriesIcon = (
 
 export const analysisSecondaryNavItems = [
   { href: "/transactions", label: "Overview", icon: overviewIcon },
-  { href: "/timeline", label: "Timeline", icon: timelineIcon },
-  { href: "/person-summary", label: "Person Summary", icon: personSummaryIcon },
-  { href: "/debt-breakdown", label: "Debt Breakdown", icon: debtBreakdownIcon },
+  { href: "/timeline", label: "Insights", icon: timelineIcon },
+  { href: "/person-summary", label: "Partner analysis", icon: personSummaryIcon },
+  { href: "/debt-breakdown", label: "Balance details", icon: debtBreakdownIcon },
 ];
 
 export const setupSecondaryNavItems = [
